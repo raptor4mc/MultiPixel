@@ -1,0 +1,45 @@
+MultiPixel Security & Anti-Cheat Policy
+Relimintor (Raptor4 / MultiPixel)
+
+1. PURPOSE
+This policy defines what constitutes cheating and how MultiPixel enforces
+security.
+
+2. PROHIBITED BEHAVIOR
+• cheats
+• exploits
+• hacks
+• automation tools
+• bots
+• packet manipulation
+• replay tools
+• proxies that alter traffic
+• modified clients
+• custom launchers
+• bypassing anti-cheat
+• memory editing
+• code injection
+
+3. DETECTION METHODS
+MultiPixel may use:
+• behavioral analysis
+• packet validation
+• integrity checks
+• server-side verification
+• anomaly detection
+
+4. CONSEQUENCES
+• temporary bans
+• permanent bans
+• server bans
+• mod removal
+• legal action (for severe cases)
+
+5. APPEALS
+Users may submit appeals, but MultiPixel is not obligated to reverse bans.
+
+6. SERVER REQUIREMENTS
+Servers must:
+• enforce anti-cheat
+• ban cheaters
+• report major exploits
