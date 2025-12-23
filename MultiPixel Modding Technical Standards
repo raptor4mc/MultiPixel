@@ -1,0 +1,58 @@
+MultiPixel Modding Technical Standards
+Relimintor 
+
+1. PURPOSE
+This document defines the technical expectations for Mods, even before the
+official API is released.
+
+2. GENERAL PRINCIPLES
+Mods must:
+• be stable
+• be safe
+• not degrade performance
+• not interfere with anti-cheat
+• not modify executable code
+• not modify network packets
+• not introduce vulnerabilities
+
+3. PROHIBITED TECHNIQUES
+Mods may NOT:
+• inject code
+• patch memory
+• modify bytecode
+• alter network traffic
+• bypass security checks
+• use proxies or packet sniffers
+• automate gameplay
+• modify the launcher or client
+
+4. FUTURE API EXPECTATIONS
+The official API will:
+• provide safe hooks
+• prevent unsafe operations
+• enforce sandboxing
+• restrict access to sensitive systems
+
+5. COMPATIBILITY REQUIREMENTS
+Mods must:
+• not break other mods
+• not break servers
+• not break client updates
+• follow versioning rules
+
+6. SUBMISSION REQUIREMENTS
+Mod submissions must include:
+• description
+• version
+• dependencies
+• changelog
+• safety notes
+• performance notes
+
+7. MULTIPIXEL RIGHTS
+MultiPixel may:
+• reject mods
+• modify mods
+• remove mods
+• revoke approval
+• enforce safety standards
