@@ -1,0 +1,278 @@
+MultiPixel Source-Available License
+Version 2.2 — Fortress Edition
+All Rights Reserved
+
+Copyright (c) 2025
+Relimintor (Raptor4 / MultiPixel)
+
+IMPORTANT: BY INSTALLING, ACCESSING, OR USING THIS SOFTWARE, YOU AGREE TO
+BE BOUND BY THE TERMS OF THIS LICENSE. IF YOU DO NOT AGREE, YOU MUST NOT
+USE THE SOFTWARE.
+
+0. Definitions
+
+a. “Software” means the MultiPixel game, engine, tools, launchers, assets,
+   data, and all related components provided by MultiPixel.
+
+b. “User” means any individual who lawfully obtains and uses the Software.
+
+c. “Mod(s)” means any modification, plugin, add-on, or derivative work
+   created by a User that is based on or interacts with the Software,
+   including API-only Mods.
+
+d. “Server” means any multiplayer, online, or networked instance that uses
+   the Software, including unofficial or community-hosted servers.
+
+e. “Gross revenue” means all income generated before any deductions,
+   including donations, subscriptions, item sales, advertisements,
+   sponsorships, crypto, barter, or anything of value.
+
+f. “Political Server” means any Server where political topics are a primary
+   or significant focus.
+
+g. “Private use” means use by a single individual only. It does NOT include
+   sharing with friends, groups, communities, or private circles.
+
+1. Nature of License (No Ownership Transfer)
+
+a. The Software is licensed, not sold. MultiPixel retains all rights, title,
+   and interest in and to the Software.
+
+b. MultiPixel grants the User a limited, personal, non-exclusive,
+   non-transferable, non-sublicensable, revocable license to install and
+   use the Software for personal, non-commercial purposes.
+
+c. No rights are granted except those expressly stated in this License.
+
+2. Grant of Rights
+
+a. The User may:
+   i. Install and run the Software for personal use.
+   ii. View and study the source code where made available.
+   iii. Modify the source code for personal, private use only.
+
+b. The User may NOT:
+   i. Copy, reuse, or reimplement any part of the Software.
+   ii. Translate or port the Software to another language or engine.
+   iii. Use the Software as reference for another game or engine.
+
+3. Modding Permission
+
+a. Users may create Mods for personal, private use.
+
+b. Mods may not be distributed, uploaded, shared, or monetized without
+   explicit written approval from MultiPixel.
+
+c. All Mods, including API-only Mods, are derivative works.
+
+d. Mods must not remove or alter copyright notices.
+
+4. Ownership of Mods
+
+a. All Mods are derivative works of the Software.
+
+b. By creating a Mod, the User agrees that:
+   i. All rights to the Mod are automatically assigned to MultiPixel.
+   ii. MultiPixel may use, modify, publish, or distribute the Mod without
+       compensation or permission.
+   iii. The User waives all claims of ownership or authorship.
+
+5. Mod Monetization
+
+a. Monetization of Mods is prohibited unless explicitly approved.
+
+b. If approved:
+   i. MultiPixel receives fifteen percent (15%) of all gross revenue.
+   ii. The creator must maintain accurate revenue records.
+   iii. MultiPixel may request revenue reports at any time.
+   iv. MultiPixel may revoke approval at any time.
+
+c. MultiPixel may impose fines, tariffs, or pursue legal action for
+   unapproved monetization.
+
+6. Server Hosting
+
+a. Users may operate Servers without approval ONLY IF:
+   i. The Server is non-commercial (no revenue of any kind).
+   ii. The Server does not involve banned topics (e.g., politics).
+
+b. Servers require explicit written approval if:
+   i. They generate revenue of any kind.
+   ii. They involve political content.
+   iii. They involve any restricted or sensitive topics.
+
+c. Hosting any Server without required approval is a violation regardless of
+   intent, testing status, or scale.
+
+7. Server Monetization
+
+a. Monetization requires explicit written approval.
+
+b. If approved:
+   i. MultiPixel receives thirty percent (30%) of all gross revenue.
+   ii. Operators must maintain accurate revenue records.
+   iii. MultiPixel may request revenue reports at any time.
+   iv. MultiPixel may revoke approval at any time.
+
+c. MultiPixel may impose fines, tariffs, or pursue legal action for
+   unapproved monetization.
+
+8. Political Servers
+
+a. Political Servers require explicit written approval from MultiPixel.
+
+b. Political Servers must be clearly labeled as such.
+
+c. Political Servers may be official or unofficial.
+
+d. MultiPixel retains full oversight and may:
+   i. Impose additional rules.
+   ii. Require moderation standards.
+   iii. Require age restrictions.
+   iv. Require transparency and logging.
+   v. Revoke approval at any time.
+
+e. Political content is prohibited on all non-political Servers.
+
+9. Online Safety and Behavior
+
+The following are strictly prohibited:
+
+a. Harassment, bullying, hate speech, or targeted abuse.
+
+b. Extremist, violent, or illegal content.
+
+c. Adult content, sexual content, or grooming behavior.
+
+d. Encouraging self-harm or dangerous acts.
+
+e. Stalking, doxxing, or revealing private information.
+
+10. Asset Protection
+
+a. Users may not extract, export, scrape, or reuse any assets, including:
+   textures, models, audio, animations, UI, maps, or other content.
+
+b. Users may not recreate MultiPixel assets in a similar style for use in
+   other games or engines.
+
+c. Users may not use MultiPixel assets in AI training or generation.
+
+d. Video content (gameplay, reviews, commentary, exposés) is allowed.
+
+11. Client Modification Rules
+
+a. Users may not:
+   i. Create custom launchers.
+   ii. Create custom clients.
+   iii. Modify executable code.
+   iv. Modify network packets.
+   v. Reverse engineer protocols.
+   vi. Use proxies to alter traffic.
+   vii. Use packet sniffers or replay tools.
+   viii. Use automation tools or bots.
+   ix. Bypass anti-cheat or DRM.
+
+12. Server Data and Telemetry
+
+a. MultiPixel may collect:
+   i. Which Servers a player joins.
+   ii. When they join.
+   iii. Chat messages.
+   iv. Usage data.
+
+b. This data is used to optimize user experience and improve safety.
+
+c. Approved Servers may collect:
+   i. Join/leave logs.
+   ii. Chat logs.
+
+d. Servers may NOT collect:
+   i. Personal data.
+   ii. Payment information.
+   iii. Sensitive data.
+
+13. Mod Quality and Safety
+
+a. Mods must not:
+   i. Break the Software.
+   ii. Introduce vulnerabilities.
+   iii. Interfere with anti-cheat.
+   iv. Modify executable code.
+   v. Modify network packets.
+   vi. Harm performance.
+   vii. Contain malware or harmful code.
+
+14. Server Monetization Rules
+
+Allowed:
+a. Lootboxes.
+b. In-game currency.
+c. Roles (VIP, cosmetic ranks).
+
+Prohibited:
+d. Gambling.
+e. Crypto/NFTs.
+f. Selling progression.
+g. Selling admin/mod roles.
+h. Pay-to-win mechanics (unless approved).
+
+15. Enforcement Tools
+
+MultiPixel reserves the right to:
+
+a. Audit Server revenue.
+b. Audit Mod revenue.
+c. Impose fines or tariffs.
+d. Pursue legal action.
+e. Revoke approvals.
+f. Ban Servers.
+g. Issue cease-and-desist orders.
+h. Block IPs or accounts.
+i. Enforce DMCA.
+j. Terminate licenses instantly.
+
+16. Branding and Presentation
+
+a. Unofficial Servers must display “Unofficial Server”.
+
+b. Unofficial Mods must display “Unofficial Mod”.
+
+c. Users may not use the names:
+   “Raptor4”, “Raptor4mc”, “MultiPixel”, or “Relimintor”
+   in:
+   i. domain names,
+   ii. social media handles,
+   iii. server names,
+   iv. community names,
+   without explicit approval.
+
+d. Users may not use MultiPixel logos without approval.
+
+e. Users may not claim official partnership without approval.
+
+17. DMCA
+
+MultiPixel may issue DMCA takedowns for any unauthorized use.
+
+18. Warranty Disclaimer
+
+THE SOFTWARE IS PROVIDED “AS IS,” WITHOUT WARRANTY OF ANY KIND.
+
+19. Governing Law
+
+This License is governed by the laws of Sweden.
+
+20. Jurisdiction
+
+All disputes shall be resolved exclusively in the courts of Dalarna, Sweden.
+
+21. Termination
+
+Any violation terminates this License immediately.
+
+22. Severability
+
+If any provision is invalid, the rest remains in effect.
+
+All rights not expressly granted are reserved by MultiPixel.
