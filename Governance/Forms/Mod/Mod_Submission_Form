@@ -1,1 +1,125 @@
+MultiPixel Mod Submission Form
+Version 1.0 — Relimintor (Raptor4 / MultiPixel)
 
+This form is required for submitting any Mod for review, approval, or
+inclusion within the MultiPixel ecosystem. All submitted Mods must comply
+with the MultiPixel Source-Available License 2.2 — Fortress Edition and all
+governance documents.
+
+---
+
+SECTION 1 — CREATOR INFORMATION
+• Full Name:
+• Online Alias:
+• Email Address:
+• Country of Residence:
+• Age:
+• Organization/Team (if applicable):
+
+---
+
+SECTION 2 — MOD DETAILS
+• Mod Name:
+• Mod Version:
+• Mod Category:
+  ☐ Gameplay
+  ☐ Cosmetic
+  ☐ Utility
+  ☐ Content Pack
+  ☐ Server Plugin
+  ☐ Other (describe):
+
+• Mod Description:
+  (Provide a clear explanation of what the Mod does.)
+
+• Mod Purpose:
+  (Explain why the Mod was created and what problem it solves.)
+
+• Dependencies:
+  (List any libraries, APIs, or other Mods required.)
+
+• Supported MultiPixel Version(s):
+
+---
+
+SECTION 3 — TECHNICAL INFORMATION
+• Does the Mod modify executable code?
+  ☐ Yes (not allowed)
+  ☐ No
+
+• Does the Mod modify network packets?
+  ☐ Yes (not allowed)
+  ☐ No
+
+• Does the Mod use automation, bots, or gameplay scripting?
+  ☐ Yes (not allowed)
+  ☐ No
+
+• Does the Mod interact with anti-cheat systems?
+  ☐ Yes (explain):
+  ☐ No
+
+• Performance Impact:
+  ☐ Minimal
+  ☐ Moderate
+  ☐ Heavy (explain):
+
+• Security Considerations:
+  (Explain any potential risks or sensitive operations.)
+
+---
+
+SECTION 4 — DISTRIBUTION & RIGHTS
+• Do you intend to distribute this Mod publicly?
+  ☐ Yes
+  ☐ No
+
+• Do you intend to monetize this Mod?
+  ☐ Yes (requires separate Monetization Request Form)
+  ☐ No
+
+• Agreement that the Mod is a derivative work owned by MultiPixel:
+  ☐ Yes, I agree
+
+• Agreement that MultiPixel may modify, publish, or distribute the Mod:
+  ☐ Yes, I agree
+
+---
+
+SECTION 5 — TESTING & QUALITY
+• Has the Mod been tested on a clean installation?
+  ☐ Yes
+  ☐ No
+
+• Has the Mod been tested with other Mods?
+  ☐ Yes (list compatibility notes):
+  ☐ No
+
+• Known Issues or Limitations:
+  (List any bugs, conflicts, or incomplete features.)
+
+---
+
+SECTION 6 — ATTACHMENTS
+Please include the following with your submission:
+• Mod files (source + compiled, if applicable)
+• Changelog
+• Installation instructions
+• Screenshots (optional)
+• Performance notes (optional)
+
+---
+
+SECTION 7 — DECLARATION
+By submitting this Mod, I confirm that:
+• All information provided is accurate.
+• The Mod complies with all MultiPixel governance documents.
+• The Mod does not contain harmful, malicious, or unauthorized code.
+• I understand that MultiPixel may reject, modify, or remove the Mod at any time.
+
+Signature:
+Date:
+
+---
+
+© Relimintor (Raptor4 / MultiPixel) — All Rights Reserved.
