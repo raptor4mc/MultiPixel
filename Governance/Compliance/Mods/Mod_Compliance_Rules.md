@@ -222,6 +222,32 @@ See:
 • Mod_Violation_Categories.md  
 • Mod_Penalty_Tiers.md  
 
+-----------------------------------------------------------------------------
+
+### Recommended Use of MultiPixel Inbuilt Systems
+
+Developers are strongly encouraged to use the official, inbuilt MultiPixel
+systems for data handling, telemetry, storage, transmission, and analytics
+whenever possible.
+
+The inbuilt systems are designed to:
+• ensure full compliance with all Data Governance rules  
+• eliminate the need for third‑party services  
+• provide secure, encrypted data handling by default  
+• reduce risk of data leaks, breaches, or misconfiguration  
+• simplify Mod approval and auditing  
+• ensure consistent behavior across the ecosystem  
+
+Using MultiPixel’s inbuilt systems significantly reduces:
+• the risk of non‑compliance  
+• the need for complex disclosures  
+• the need for external security reviews  
+• the risk of violating storage or transmission rules  
+
+While third‑party services may be approved under strict conditions,
+MultiPixel’s native systems are the recommended and preferred method for
+all Mod data operations.
+
 ---------------------------------------------------------------------------
 
 SECTION 12 — AMENDMENTS
