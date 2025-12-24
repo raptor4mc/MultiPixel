@@ -1,278 +1,190 @@
-MultiPixel Source-Available License
-Version 2.2 — Fortress Edition
-All Rights Reserved
+This document is NOT a legal license.
+
+The only legally binding license for the MultiPixel ecosystem is:
+
+    /LICENSE
+    MultiPixel Source-Available License 2.2 — Fortress Edition
+
+This Governance License Router exists to:
+• map the governance structure
+• route readers to the correct folders
+• provide a deep-dive index into all governance areas
+• ensure all governance documents remain subordinate to the root license
+• prevent duplication, contradictions, or legal drift
+
+All documents referenced below inherit their authority from the root license.
+No governance document overrides or replaces the root license.
+
+---------------------------------------------------------------------------
+ROOT GOVERNANCE STRUCTURE
+---------------------------------------------------------------------------
+
+Governance/
+ ├── Compliance/
+ ├── Ecosystem/
+ ├── Guidelines/
+ ├── Policies/
+ ├── Requirements/
+ ├── Forms/
+ ├── Notices/
+ └── Guides/
+
+Each section below routes to the correct subfolders and documents.
+
+---------------------------------------------------------------------------
+
+COMPLIANCE/
+    Purpose: Enforceable rules, obligations, and penalties.
+
+    Subfolders:
+        Compliance/Monetization/
+        Compliance/Servers/
+        Compliance/Mods/
+        Compliance/Branding/
+        Compliance/Data/
+        Compliance/Audits/
+        Compliance/Violations/
 
-Copyright (c) 2025
-Relimintor (Raptor4 / MultiPixel)
+    Each subfolder contains:
+        - *_Compliance_Rules
+        - *_Standards
+        - *_Requirements
+        - *_Audit_Procedures
+        - *_Violation_Categories
+        - *_Penalty_Tiers
+
+---------------------------------------------------------------------------
+
+ECOSYSTEM/
+    Purpose: High-level descriptions of how the MultiPixel ecosystem works.
+
+    Subfolders:
+        Ecosystem/Overview/
+        Ecosystem/Roles/
+        Ecosystem/Architecture/
+        Ecosystem/Workflows/
+        Ecosystem/Lifecycle/
+        Ecosystem/Systems/
+        Ecosystem/Governance/
+        Ecosystem/Glossary/
+
+    These documents are descriptive, not enforceable.
+
+---------------------------------------------------------------------------
+
+GUIDELINES/
+    Purpose: Recommended best practices (non-enforceable).
+
+    Subfolders:
+        Guidelines/Global/
+        Guidelines/Server/
+        Guidelines/Mod/
+        Guidelines/Community/
+        Guidelines/Safety/
+        Guidelines/Conduct/
+        Guidelines/Content/
+        Guidelines/Branding/
+        Guidelines/BestPractices/
+
+    These documents support but do not replace Compliance or Policies.
+
+---------------------------------------------------------------------------
+
+POLICIES/
+    Purpose: Enforceable behavior, safety, and operational policies.
+
+    Subfolders:
+        Policies/Safety/
+        Policies/Moderation/
+        Policies/Content/
+        Policies/Platform/
+        Policies/Legal/
 
-IMPORTANT: BY INSTALLING, ACCESSING, OR USING THIS SOFTWARE, YOU AGREE TO
-BE BOUND BY THE TERMS OF THIS LICENSE. IF YOU DO NOT AGREE, YOU MUST NOT
-USE THE SOFTWARE.
+    Policies must always align with the root license and Compliance rules.
 
-0. Definitions
+---------------------------------------------------------------------------
 
-a. “Software” means the MultiPixel game, engine, tools, launchers, assets,
-   data, and all related components provided by MultiPixel.
+REQUIREMENTS/
+    Purpose: Mandatory technical and operational requirements.
 
-b. “User” means any individual who lawfully obtains and uses the Software.
+    Subfolders:
+        Requirements/Servers/
+        Requirements/Mods/
+        Requirements/Branding/
+        Requirements/Data/
+        Requirements/Monetization/
 
-c. “Mod(s)” means any modification, plugin, add-on, or derivative work
-   created by a User that is based on or interacts with the Software,
-   including API-only Mods.
+    Requirements define what must be done, not how.
 
-d. “Server” means any multiplayer, online, or networked instance that uses
-   the Software, including unofficial or community-hosted servers.
+---------------------------------------------------------------------------
 
-e. “Gross revenue” means all income generated before any deductions,
-   including donations, subscriptions, item sales, advertisements,
-   sponsorships, crypto, barter, or anything of value.
+FORMS/
+    Purpose: Official submission and reporting forms.
 
-f. “Political Server” means any Server where political topics are a primary
-   or significant focus.
+    Subfolders:
+        Forms/Server/
+        Forms/User/
+        Forms/Business/
+        Forms/Other/
 
-g. “Private use” means use by a single individual only. It does NOT include
-   sharing with friends, groups, communities, or private circles.
+    Forms must match the structure defined in Compliance and Policies.
 
-1. Nature of License (No Ownership Transfer)
+---------------------------------------------------------------------------
 
-a. The Software is licensed, not sold. MultiPixel retains all rights, title,
-   and interest in and to the Software.
+NOTICES/
+    Purpose: Public notices, warnings, and administrative messages.
 
-b. MultiPixel grants the User a limited, personal, non-exclusive,
-   non-transferable, non-sublicensable, revocable license to install and
-   use the Software for personal, non-commercial purposes.
+    Subfolders:
+        Notices/Legal/
+        Notices/Security/
+        Notices/Updates/
+        Notices/Enforcement/
 
-c. No rights are granted except those expressly stated in this License.
+    Notices communicate changes but do not override the root license.
 
-2. Grant of Rights
+---------------------------------------------------------------------------
 
-a. The User may:
-   i. Install and run the Software for personal use.
-   ii. View and study the source code where made available.
-   iii. Modify the source code for personal, private use only.
+GUIDES/
+    Purpose: Practical, step-by-step “how to” documents that help users,
+             server owners, developers, and staff correctly implement
+             Governance, Compliance, Policies, and Requirements.
 
-b. The User may NOT:
-   i. Copy, reuse, or reimplement any part of the Software.
-   ii. Translate or port the Software to another language or engine.
-   iii. Use the Software as reference for another game or engine.
+    Recommended subfolders:
+        Guides/Servers/
+        Guides/Mods/
+        Guides/Monetization/
+        Guides/Moderation/
+        Guides/Safety/
+        Guides/Branding/
+        Guides/Onboarding/
 
-3. Modding Permission
+    Example documents:
+        Guides/Servers/How_to_Set_Up_a_Compliant_Server
+        Guides/Mods/How_to_Submit_a_Mod
+        Guides/Monetization/How_to_Enable_Compliant_Monetization
+        Guides/Moderation/How_to_Handle_Reports_and_Appeals
+        Guides/Safety/How_to_Respond_to_Safety_Issues
 
-a. Users may create Mods for personal, private use.
+    Guides are instructional and supportive. They:
+        - do NOT create new rules
+        - do NOT override Compliance, Policies, or Requirements
+        - MUST stay consistent with the root license and other governance areas
 
-b. Mods may not be distributed, uploaded, shared, or monetized without
-   explicit written approval from MultiPixel.
+---------------------------------------------------------------------------
 
-c. All Mods, including API-only Mods, are derivative works.
+FINAL DECLARATION
+All governance documents:
+• are subordinate to the root license
+• must not contradict the root license
+• must not introduce new permissions not granted by the root license
+• must not weaken any restriction defined in the root license
+• must be updated when the root license changes
 
-d. Mods must not remove or alter copyright notices.
+If a governance document is missing, incomplete, or outdated:
+• the root license takes precedence
+• the missing document must be created before enforcement
+• no rule may be enforced unless it exists in writing
 
-4. Ownership of Mods
+---------------------------------------------------------------------------
 
-a. All Mods are derivative works of the Software.
-
-b. By creating a Mod, the User agrees that:
-   i. All rights to the Mod are automatically assigned to MultiPixel.
-   ii. MultiPixel may use, modify, publish, or distribute the Mod without
-       compensation or permission.
-   iii. The User waives all claims of ownership or authorship.
-
-5. Mod Monetization
-
-a. Monetization of Mods is prohibited unless explicitly approved.
-
-b. If approved:
-   i. MultiPixel receives fifteen percent (15%) of all gross revenue.
-   ii. The creator must maintain accurate revenue records.
-   iii. MultiPixel may request revenue reports at any time.
-   iv. MultiPixel may revoke approval at any time.
-
-c. MultiPixel may impose fines, tariffs, or pursue legal action for
-   unapproved monetization.
-
-6. Server Hosting
-
-a. Users may operate Servers without approval ONLY IF:
-   i. The Server is non-commercial (no revenue of any kind).
-   ii. The Server does not involve banned topics (e.g., politics).
-
-b. Servers require explicit written approval if:
-   i. They generate revenue of any kind.
-   ii. They involve political content.
-   iii. They involve any restricted or sensitive topics.
-
-c. Hosting any Server without required approval is a violation regardless of
-   intent, testing status, or scale.
-
-7. Server Monetization
-
-a. Monetization requires explicit written approval.
-
-b. If approved:
-   i. MultiPixel receives thirty percent (30%) of all gross revenue.
-   ii. Operators must maintain accurate revenue records.
-   iii. MultiPixel may request revenue reports at any time.
-   iv. MultiPixel may revoke approval at any time.
-
-c. MultiPixel may impose fines, tariffs, or pursue legal action for
-   unapproved monetization.
-
-8. Political Servers
-
-a. Political Servers require explicit written approval from MultiPixel.
-
-b. Political Servers must be clearly labeled as such.
-
-c. Political Servers may be official or unofficial.
-
-d. MultiPixel retains full oversight and may:
-   i. Impose additional rules.
-   ii. Require moderation standards.
-   iii. Require age restrictions.
-   iv. Require transparency and logging.
-   v. Revoke approval at any time.
-
-e. Political content is prohibited on all non-political Servers.
-
-9. Online Safety and Behavior
-
-The following are strictly prohibited:
-
-a. Harassment, bullying, hate speech, or targeted abuse.
-
-b. Extremist, violent, or illegal content.
-
-c. Adult content, sexual content, or grooming behavior.
-
-d. Encouraging self-harm or dangerous acts.
-
-e. Stalking, doxxing, or revealing private information.
-
-10. Asset Protection
-
-a. Users may not extract, export, scrape, or reuse any assets, including:
-   textures, models, audio, animations, UI, maps, or other content.
-
-b. Users may not recreate MultiPixel assets in a similar style for use in
-   other games or engines.
-
-c. Users may not use MultiPixel assets in AI training or generation.
-
-d. Video content (gameplay, reviews, commentary, exposés) is allowed.
-
-11. Client Modification Rules
-
-a. Users may not:
-   i. Create custom launchers.
-   ii. Create custom clients.
-   iii. Modify executable code.
-   iv. Modify network packets.
-   v. Reverse engineer protocols.
-   vi. Use proxies to alter traffic.
-   vii. Use packet sniffers or replay tools.
-   viii. Use automation tools or bots.
-   ix. Bypass anti-cheat or DRM.
-
-12. Server Data and Telemetry
-
-a. MultiPixel may collect:
-   i. Which Servers a player joins.
-   ii. When they join.
-   iii. Chat messages.
-   iv. Usage data.
-
-b. This data is used to optimize user experience and improve safety.
-
-c. Approved Servers may collect:
-   i. Join/leave logs.
-   ii. Chat logs.
-
-d. Servers may NOT collect:
-   i. Personal data.
-   ii. Payment information.
-   iii. Sensitive data.
-
-13. Mod Quality and Safety
-
-a. Mods must not:
-   i. Break the Software.
-   ii. Introduce vulnerabilities.
-   iii. Interfere with anti-cheat.
-   iv. Modify executable code.
-   v. Modify network packets.
-   vi. Harm performance.
-   vii. Contain malware or harmful code.
-
-14. Server Monetization Rules
-
-Allowed:
-a. Lootboxes.
-b. In-game currency.
-c. Roles (VIP, cosmetic ranks).
-
-Prohibited:
-d. Gambling.
-e. Crypto/NFTs.
-f. Selling progression.
-g. Selling admin/mod roles.
-h. Pay-to-win mechanics (unless approved).
-
-15. Enforcement Tools
-
-MultiPixel reserves the right to:
-
-a. Audit Server revenue.
-b. Audit Mod revenue.
-c. Impose fines or tariffs.
-d. Pursue legal action.
-e. Revoke approvals.
-f. Ban Servers.
-g. Issue cease-and-desist orders.
-h. Block IPs or accounts.
-i. Enforce DMCA.
-j. Terminate licenses instantly.
-
-16. Branding and Presentation
-
-a. Unofficial Servers must display “Unofficial Server”.
-
-b. Unofficial Mods must display “Unofficial Mod”.
-
-c. Users may not use the names:
-   “Raptor4”, “Raptor4mc”, “MultiPixel”, or “Relimintor”
-   in:
-   i. domain names,
-   ii. social media handles,
-   iii. server names,
-   iv. community names,
-   without explicit approval.
-
-d. Users may not use MultiPixel logos without approval.
-
-e. Users may not claim official partnership without approval.
-
-17. DMCA
-
-MultiPixel may issue DMCA takedowns for any unauthorized use.
-
-18. Warranty Disclaimer
-
-THE SOFTWARE IS PROVIDED “AS IS,” WITHOUT WARRANTY OF ANY KIND.
-
-19. Governing Law
-
-This License is governed by the laws of Sweden.
-
-20. Jurisdiction
-
-All disputes shall be resolved exclusively in the courts of Dalarna, Sweden.
-
-21. Termination
-
-Any violation terminates this License immediately.
-
-22. Severability
-
-If any provision is invalid, the rest remains in effect.
-
-All rights not expressly granted are reserved by MultiPixel.
+© Relimintor (Raptor4 / MultiPixel) — All Rights Reserved.
