@@ -433,5 +433,60 @@ i. Developers are strongly encouraged to use official MultiPixel inbuilt
 j. All Mods must comply with the latest version of the Mod Approval
    Requirements.
 
+25. Mod Audit Requirements
+
+a. All Mods may be audited at any time. Developers must fully cooperate
+   with all audit requests, including providing required materials,
+   documentation, and information. Audits ensure compliance with safety,
+   data, monetization, and content rules.
+
+b. MultiPixel may conduct routine audits, triggered audits, or full
+   investigative audits. Triggered or investigative audits may occur in
+   response to user reports, suspicious behavior, unusual data or
+   monetization patterns, performance anomalies, or suspected violations.
+
+c. The scope of an audit may include review of source code, compiled code,
+   assets, data collection behavior, telemetry behavior, monetization
+   systems, sponsorships, network traffic, performance, content, safety
+   compliance, documentation, and server‑side integrations.
+
+d. Developers must provide all required materials upon request, including
+   source code (if applicable), binaries, assets, documentation, data
+   collection details, telemetry configuration, monetization configuration,
+   sponsorship agreements, update logs, version history, and integration
+   details. Failure to provide complete and accurate information is a
+   severe violation.
+
+e. Audit outcomes may include findings of compliance, compliance with
+   warnings, minor non‑compliance, major non‑compliance, or severe
+   violations. Enforcement actions follow the Mod Violation and Penalty
+   systems referenced in Section 15.
+
+f. A Mod may be immediately suspended if malware, backdoors, unauthorized
+   telemetry, undisclosed personal data collection, extremist content,
+   sexual content involving minors, gambling systems, crypto/NFT systems,
+   pay‑to‑win systems, or attempts to bypass security, approval, or audits
+   are detected. Suspension is immediate and non‑negotiable.
+
+g. If violations are found, developers must fix issues, resubmit updated
+   versions, provide updated documentation, and undergo follow‑up audits if
+   required. Failure to remediate may escalate penalties.
+
+h. Audit details are confidential between MultiPixel and the developer,
+   except that enforcement actions such as removals, suspensions, or bans
+   may be made public.
+
+i. Refusal to cooperate with an audit constitutes a severe violation and
+   may result in immediate suspension, removal from the Mod Marketplace,
+   permanent bans, legal action, or license termination.
+
+j. Developers are strongly encouraged to use official MultiPixel inbuilt
+   systems for data handling, telemetry, storage, transmission, and
+   analytics to reduce compliance risk and simplify audits. Third‑party
+   systems may be approved only under strict conditions.
+
+k. All Mods must comply with the latest version of the Mod Audit
+   Requirements.
+
 
 All rights not expressly granted are reserved by MultiPixel.
