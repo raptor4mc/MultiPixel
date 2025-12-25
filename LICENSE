@@ -204,6 +204,10 @@ a. Users may not:
    vii. Use packet sniffers or replay tools.
    viii. Use automation tools or bots.
    ix. Bypass anti-cheat or DRM.
+   x. The Software may verify Mod approval status at runtime. Any Mod that lacks
+valid approval, signature, or authorization may be automatically blocked,
+disabled, or reported by the Software. Attempts to load unapproved Mods
+constitute a violation of this License.
 
 12. Server Data and Telemetry
 
