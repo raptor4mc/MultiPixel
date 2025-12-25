@@ -32,61 +32,100 @@ A short in-game summary is provided separately.
 0. Definitions
 
 a. “Software” means the MultiPixel game, engine, tools, launchers, assets,
-   data, and all related components provided by MultiPixel.
+   data, libraries, APIs, protocols, file formats, runtime systems, and all
+   related components, technologies, and materials provided by MultiPixel,
+   whether in source, binary, compiled, or intermediate form.
 
-b. “User” means any individual who lawfully obtains and uses the Software.
+b. “User” means any individual or entity that lawfully obtains, installs,
+   accesses, or uses the Software under this License. A User remains bound
+   by this License regardless of jurisdiction, device, or method of access.
 
-c. “Mod(s)” means any modification, plugin, add-on, or derivative work
-   created by a User that is based on or interacts with the Software,
-   including API-only Mods.
+c. “Mod(s)” means any modification, plugin, add‑on, extension, script,
+   patch, content pack, or derivative work created by a User that is based
+   on, interacts with, or depends on the Software, including API‑only Mods
+   and Mods that do not contain MultiPixel code but rely on MultiPixel
+   systems, behavior, or functionality.
 
-d. “Server” means any multiplayer, online, or networked instance that uses
-   the Software, including unofficial or community-hosted servers.
+d. “Server” means any multiplayer, online, networked, hosted, or otherwise
+   shared instance that uses the Software, including official, unofficial,
+   private, public, community‑hosted, or third‑party‑operated Servers,
+   regardless of scale, accessibility, or monetization status.
 
-e. “Gross revenue” means all monetary payments received before any deductions,
-including donations, subscriptions, item sales, advertisements,
-sponsorships, and cryptocurrency transactions that have a verifiable
-market value at the time of the transaction. Non‑monetary barter or
-informal exchanges are excluded unless their fair market value is
-documented and recorded by the Server operator.
+e. “Gross revenue” means all monetary or monetary‑equivalent payments
+   received before any deductions, including donations, subscriptions,
+   item sales, access fees, advertisements, sponsorships, brand deals,
+   affiliate payments, and cryptocurrency transactions with verifiable
+   market value at the time of the transaction. Non‑monetary barter or
+   informal exchanges are excluded unless their fair market value is
+   documented and recorded by the Server operator or Mod developer.
 
-f. “Political content” means content primarily focused on real-world
-political parties, elections, ideologies, legislation, or public policy.
+f. “Political content” means any content, communication, gameplay mechanic,
+   or system primarily focused on real‑world political parties, elections,
+   ideologies, legislation, public policy, political advocacy, or attempts
+   to influence political opinions or real‑world political outcomes.
 
-g. “Private use” means use of the Software by an individual who has lawfully
-obtained a license. Private use does not permit transferring, sharing,
-uploading, sending, exchanging, or distributing the Software, its source
-code, its binaries, or any modified or unmodified version of it to any
-other person, including other licensed Users. Viewing or demonstrating the
-Software to others is allowed, but all copies, builds, and code must remain
-strictly private and may not be provided to any third party without
-explicit written approval from MultiPixel. MultiPixel may approve private 
-collaborative development on a case-by-case basis.
-
+g. “Private use” means use of the Software by an individual who has
+   lawfully obtained a license, solely for personal, non‑commercial,
+   non‑public purposes. Private use does not permit transferring, sharing,
+   uploading, sending, exchanging, publishing, distributing, or otherwise
+   providing the Software, its source code, its binaries, or any modified
+   or unmodified version of it to any other person, including other
+   licensed Users. Viewing or demonstrating the Software to others is
+   permitted only if all copies, builds, and code remain strictly private.
+   MultiPixel may approve private collaborative development on a
+   case‑by‑case basis, and such approval must be explicit, written, and
+   granted prior to any collaboration.
 
 
 1. Nature of License (No Ownership Transfer)
 
 a. The Software is licensed, not sold. MultiPixel retains all rights, title,
-   and interest in and to the Software.
+   and interest in and to the Software, including all intellectual property
+   rights, proprietary rights, and all copies, derivatives, and expressions
+   thereof, whether modified or unmodified.
 
-b. MultiPixel grants the User a limited, personal, non-exclusive,
-   non-transferable, non-sublicensable, revocable license to install and
-   use the Software for personal, non-commercial purposes.
+b. Subject to full compliance with this License, MultiPixel grants the User
+   a limited, personal, non-exclusive, non-transferable, non-sublicensable,
+   revocable license to install and use the Software solely for personal,
+   non-commercial, private purposes. All other uses are prohibited unless
+   expressly authorized in writing by MultiPixel.
 
-c. No rights are granted except those expressly stated in this License.
+c. No rights, licenses, or permissions are granted to the User except those
+   expressly stated in this License. Any rights not expressly granted are
+   reserved by MultiPixel.
+
+d. This License does not grant the User any ownership interest in the
+   Software, any entitlement to updates, or any right to continued access.
+   MultiPixel may modify, restrict, or discontinue the Software at any time.
 
 2. Grant of Rights
 
-a. The User may:
-   i. Install and run the Software for personal use.
-   ii. View and study the source code where made available.
-   iii. Modify the source code for personal, private use only.
+a. The User may, subject to all restrictions in this License:
+   i. Install and run the Software for personal, private use.
+   ii. View and study the source code where and only where MultiPixel has
+       made such code available for inspection.
+   iii. Modify the source code strictly for personal, private use, provided
+        that all modified versions remain private and are never shared,
+        distributed, uploaded, published, or made accessible to any third
+        party without explicit written approval from MultiPixel.
 
-b. The User may NOT:
-   i. Copy, reuse, or reimplement any part of the Software.
-   ii. Translate or port the Software to another language or engine.
-   iii. Use the Software as reference for another game or engine.
+b. The User may NOT, under any circumstances:
+   i. Copy, reuse, reproduce, reimplement, or adapt any part of the
+      Software for use outside the Software, including for other games,
+      engines, tools, or projects.
+   ii. Translate, port, or convert the Software, its source code, or any
+       component thereof to another programming language, platform, engine,
+       framework, or environment.
+   iii. Use the Software, its source code, its architecture, its design, or
+        its behavior as reference material, inspiration, or a development
+        baseline for any other game, engine, tool, framework, or software
+        project, whether commercial or non-commercial.
+   iv. Circumvent, bypass, or attempt to bypass any technical, security,
+       or licensing mechanism implemented by MultiPixel.
+
+c. Any use of the Software outside the rights granted in this Section is a
+   violation of this License and may result in immediate termination,
+   enforcement action, and legal remedies.
 
 3. Modding Permission
 
