@@ -381,4 +381,53 @@ g. In the event of any conflict between this License and any Governance
 
 If any provision is invalid, the rest remains in effect.
 
+24. Mod Approval Requirements
+
+a. All Mods must be submitted for approval before they may be uploaded,
+   shared, distributed, published, monetized, or used on any public Server.
+   No Mod may bypass the approval system.
+
+b. All Mods require approval regardless of size, purpose, content,
+   complexity, monetization status, or distribution method. This requirement
+   exists to prevent malware, backdoors, unauthorized telemetry, exploits,
+   unsafe content, prohibited monetization, and impersonation of official
+   features.
+
+c. Mods are reviewed under different risk tiers, including fast‑track
+   cosmetic reviews, standard gameplay reviews, and full reviews for
+   monetized, networked, data‑collecting, political, or engine‑altering
+   Mods.
+
+d. All Mod submissions must include required information such as Mod name,
+   description, category, files, source code (if applicable), changelog,
+   monetization details, data‑collection details, safety considerations,
+   and developer identity.
+
+e. Mods will be automatically denied if they contain malware, backdoors,
+   unauthorized telemetry, undisclosed data collection, gambling systems,
+   crypto/NFT monetization, extremist content, hate speech, sexual content
+   involving minors, attempts to bypass engine security, or attempts to
+   impersonate official MultiPixel content.
+
+f. Approval outcomes may include approval, conditional approval, denial,
+   return for revision, or suspension pending investigation.
+
+g. Approval may expire if the Mod is not updated for major engine versions,
+   changes ownership, introduces new monetization or data collection, or
+   undergoes major redesign. Renewal requires resubmission and updated
+   compliance review.
+
+h. Distributing or operating a Mod without approval is a severe violation
+   and may result in removal from the Mod Marketplace, monetization bans,
+   delisting, legal action, or license termination.
+
+i. Developers are strongly encouraged to use official MultiPixel inbuilt
+   systems for data handling, telemetry, storage, transmission, and
+   analytics to ensure compliance and reduce audit requirements. Third‑party
+   services may be approved only under strict conditions.
+
+j. All Mods must comply with the latest version of the Mod Approval
+   Requirements.
+
+
 All rights not expressly granted are reserved by MultiPixel.
