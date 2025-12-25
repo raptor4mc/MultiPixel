@@ -231,9 +231,12 @@ a. Users may not:
    viii. Use automation tools or bots.
    ix. Bypass anti-cheat or DRM.
    x. The Software may verify Mod approval status at runtime. Any Mod that lacks
-valid approval, signature, or authorization may be automatically blocked,
-disabled, or reported by the Software. Attempts to load unapproved Mods
-constitute a violation of this License.
+   valid approval, signature, or authorization may be automatically blocked,
+   disabled, or reported by the Software. Attempts to load unapproved Mods
+   constitute a violation of this License.
+   xi. Users may not attach, inject, hook, or interface any external process,
+    library, or tool with the Software for the purpose of modifying,
+    influencing, or observing its runtime behavior.
 
 12. Server Data and Telemetry
 
