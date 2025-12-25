@@ -488,5 +488,73 @@ j. Developers are strongly encouraged to use official MultiPixel inbuilt
 k. All Mods must comply with the latest version of the Mod Audit
    Requirements.
 
+26. Mod Compliance Requirements
+
+a. All Mods must comply with this License, all safety standards, all data
+   and telemetry rules, all monetization rules, all content restrictions,
+   all audit requirements, and all technical and operational requirements
+   established by MultiPixel. Mods must maintain compatibility, stability,
+   and security at all times.
+
+b. Mods must not violate the License, introduce unsafe or harmful content,
+   introduce malicious or deceptive behavior, bypass engine security, or
+   impersonate official MultiPixel content.
+
+c. All Mods require approval before they may be uploaded, shared,
+   distributed, published, monetized, or used on any public Server. No Mod
+   may bypass the approval system.
+
+d. Mods must meet all technical requirements, including use of supported
+   APIs, stable engine features, performance standards, safe threading,
+   safe resource usage, and avoidance of deprecated functions, memory
+   leaks, unauthorized file access, or any modification of protected
+   systems.
+
+e. Mods must meet all security requirements, including being free of
+   malware, backdoors, unauthorized telemetry, obfuscated malicious code,
+   or any behavior that weakens engine protections. Mods may not collect
+   personal data, transmit data without disclosure, access external servers
+   without approval, or modify security settings.
+
+f. Mods must meet all content requirements, including avoidance of harmful,
+   illegal, extremist, hateful, or deceptive content, and avoidance of any
+   sexual content involving minors or unsafe gameplay mechanics.
+
+g. Mods must meet all monetization requirements, including disclosure of
+   all monetization methods, use of approved payment platforms, and
+   avoidance of pay‑to‑win systems, gambling systems, or crypto/NFT
+   monetization.
+
+h. Mods must meet all data and telemetry requirements, including disclosure
+   of all data collection, use of approved telemetry methods, compliance
+   with retention and deletion rules, and avoidance of personal or
+   sensitive data collection.
+
+i. Mods must meet all safety requirements, including avoidance of harmful
+   gameplay, unsafe mechanics, harassment systems, bypassing safety
+   filters, or enabling predatory behavior.
+
+j. Mods must meet all operational requirements, including maintaining
+   stability, compatibility, documentation, update logs, versioning, and
+   support for major engine updates. Mods must not cause crashes, data
+   corruption, or intentional performance degradation.
+
+k. Mods must meet all distribution requirements, including use of approved
+   distribution channels and accurate descriptions, tags, warnings, and
+   version information. Mods may not misrepresent features, hide
+   monetization or data collection, or impersonate official content.
+
+l. Violations of these requirements may result in removal from the Mod
+   Marketplace, suspension of approval, monetization bans, delisting, legal
+   action, or license termination.
+
+m. Developers are strongly encouraged to use official MultiPixel inbuilt
+   systems for data handling, telemetry, storage, transmission, and
+   analytics. Third‑party systems may be approved only under strict
+   conditions.
+
+n. All Mods must comply with the latest version of the Mod Compliance
+   Requirements.
+
 
 All rights not expressly granted are reserved by MultiPixel.
