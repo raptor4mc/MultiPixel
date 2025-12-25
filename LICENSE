@@ -271,7 +271,19 @@ All disputes shall be resolved exclusively in the courts of Dalarna, Sweden.
 
 Any violation terminates this License immediately.
 
-22. Severability
+22. Incorporation of Governance Framework
+
+a. The MultiPixel Governance Framework — including all folders, files, subfolders, documents, standards, policies, procedures, and rules contained within the “Governance” directory of the official MultiPixel repository — is hereby incorporated by reference into this License and forms a legally binding part of it.
+
+b. All Users, Mod creators, Server operators, and any party interacting with the Software are required to comply with all Governance documents in full.
+
+c. In the event of any conflict between this License and any Governance document:
+i. This License governs broad rights, restrictions, and ownership.
+ii. The Governance documents govern detailed requirements, technical standards, operational rules, compliance procedures, and enforcement mechanisms.
+
+d. MultiPixel may update Governance documents at any time. Continued use of the Software constitutes acceptance of all updates.
+
+23. Severability
 
 If any provision is invalid, the rest remains in effect.
 
