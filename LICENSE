@@ -792,5 +792,70 @@ l. Developers are strongly encouraged to use official MultiPixel inbuilt
 m. All Mods must comply with the latest version of the Third‑Party
    Services, External Integrations, and External Transmission Rules.
 
+30. Mod Monetization Requirements
+
+a. All monetized Mods require explicit written approval from MultiPixel.
+   No Mod may generate revenue of any kind without approval. Mod
+   monetization must follow the principles of fairness, transparency,
+   user protection, and non‑harmful design. Monetization must never
+   introduce pay‑to‑win mechanics, gambling systems, crypto/NFT systems,
+   deceptive practices, hidden monetization, or any form of data‑selling.
+
+b. The following monetization methods may be approved if they comply with
+   all safety, data, and fairness requirements: cosmetic sales including
+   skins, textures, models, animations, sound packs, and cosmetic‑only
+   items; content packs including new blocks, items, mobs, biomes,
+   structures, and worldgen features; non‑competitive expansions including
+   new gameplay systems, story content, or adventure content; voluntary
+   donations and cosmetic‑only supporter perks; cosmetic or content‑access
+   subscriptions; and sponsorships or brand partnerships that are fully
+   disclosed and do not affect gameplay fairness.
+
+c. The following monetization methods are strictly prohibited and
+   constitute an automatic severe violation: pay‑to‑win systems including
+   the sale of weapons, armor, stat boosts, progression, or competitive
+   advantages; gambling systems including loot boxes, chance‑based rewards,
+   slot‑machine mechanics, roulette mechanics, or gacha systems; crypto or
+   NFT monetization including blockchain items, tokens, or crypto‑based
+   progression; data monetization including the sale of user data,
+   analytics, behavioral data, or tracking data; dark patterns including
+   disguised purchases, forced purchases, manipulative UI, or misleading
+   pricing; unapproved payment platforms or marketplaces; and any
+   monetization conducted without explicit approval.
+
+d. All monetized Mods must follow the official revenue share. Unless
+   otherwise approved, MultiPixel receives thirty percent (30%) of all
+   gross revenue and the developer receives seventy percent (70%). Voluntary
+   donations that provide no perks incur no platform fee; donations that
+   unlock cosmetic perks are subject to the standard revenue share. If a
+   Mod enables monetization on a Server, both Mod and Server revenue share
+   rules apply.
+
+e. All monetized Mods must provide clear and accurate disclosures of all
+   monetization methods, prices, subscription terms, sponsorships, data
+   collection, and external services used. Disclosures must be visible,
+   honest, and complete. Hidden monetization is a severe violation.
+
+f. All transactions must use approved payment platforms, be logged
+   accurately, stored securely, and remain fully auditable. Mods must not
+   store payment data, process payments directly, or use insecure payment
+   methods.
+
+g. Monetized Mods must provide complete monetization documentation upon
+   request, including transaction logs, revenue reports, payment platform
+   logs, monetization configuration, and sponsorship agreements. Refusal to
+   provide monetization data is a severe violation.
+
+h. Violations of these monetization requirements may result in removal from
+   the Mod Marketplace, suspension of monetization, permanent monetization
+   bans, delisting, legal action, or license termination.
+
+i. Developers are strongly encouraged to use official MultiPixel inbuilt
+   systems for monetization, payment processing, and revenue reporting.
+   Third‑party systems may be approved only under strict conditions.
+
+j. All monetized Mods must comply with the latest version of the Mod
+   Monetization Requirements.
+
 
 All rights not expressly granted are reserved by MultiPixel.
