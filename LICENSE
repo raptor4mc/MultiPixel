@@ -130,8 +130,13 @@ b. If approved:
    iii. MultiPixel may request revenue reports at any time.
    iv. MultiPixel may revoke approval at any time.
 
-c. MultiPixel may impose fines, tariffs, or pursue legal action for
-   unapproved monetization.
+c. MultiPixel may pursue legal action for unapproved monetization and may
+   require the Server operator to pay liquidated damages. Liquidated
+   damages represent a reasonable pre-estimate of the harm caused by
+   unauthorized commercial activity and are owed immediately upon breach.
+   These damages are compensatory, not punitive, and the operator agrees
+   they are fair and enforceable.
+
 
 8. Political Servers
 
@@ -305,7 +310,9 @@ c. Upon termination, the User’s account is locked. The User has thirty (30)
       i. A statement explaining why the termination was incorrect or
          unjustified.
      ii. The account email used in-game.
-    iii. The account password for verification.
+   iii. A valid account recovery credential, such as a Security Token,
+     Recovery Code, or Original Transaction ID generated at account
+     creation. MultiPixel will never request a password for verification.
 
 d. If MultiPixel determines the User was innocent or the violation was
    misapplied, the account may be restored. If no recovery request is
