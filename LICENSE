@@ -648,6 +648,74 @@ i. Developers are strongly encouraged to use official MultiPixel inbuilt
 j. All Mods must comply with the latest version of the Mod Content and
    Ethical Standards.
 
+28. Mod Data, Telemetry, and Privacy Requirements
+
+a. All Mods must comply with all data, telemetry, and privacy requirements
+   established by MultiPixel. Mods must follow the principles of minimal
+   data collection, transparency, user protection, and secure handling of
+   all approved data. Mods must not collect personal data, sensitive data,
+   unauthorized telemetry, external tracking information, or transmit data
+   without approval.
+
+b. The following categories of data collection are strictly prohibited and
+   constitute an automatic severe violation: personal data such as names,
+   email addresses, phone numbers, physical addresses, social media
+   accounts, or real‑world identity information; sensitive data such as
+   age, gender, political views, religious beliefs, biometric data, or
+   financial information; tracking or fingerprinting data such as hardware
+   identifiers, IP addresses, device fingerprints, cross‑server tracking
+   IDs, or behavioral fingerprints; payment data such as credit card
+   numbers, bank information, or payment credentials; and any telemetry
+   collected without disclosure or approval.
+
+c. Mods may collect limited, non‑personal data only with explicit approval
+   and only if fully disclosed. Allowed data includes gameplay data such as
+   item usage, progression, statistics, and mod‑specific settings; technical
+   data such as error logs, performance metrics, and compatibility
+   information; and anonymized, non‑personal telemetry. All allowed data
+   must be minimal, anonymized, disclosed, approved, and securely stored.
+
+d. Mods must provide clear and accurate disclosures describing what data is
+   collected, why it is collected, how it is used, how long it is stored,
+   whether it is transmitted or shared, and whether collection is required
+   or optional. Hidden or undisclosed data collection is a severe violation.
+
+e. Mods must store all approved data securely, use encryption where
+   applicable, avoid storing unnecessary data, follow retention limits, and
+   delete data when no longer needed. Mods must not store data in plaintext,
+   in public or unprotected locations, or for longer than necessary.
+
+f. Mods must use only approved transmission methods, transmit only approved
+   data, use secure connections, and disclose all transmission behavior.
+   Mods must not transmit data secretly, transmit data to unknown or
+   personal servers, or transmit data without approval.
+
+g. Mods must define retention periods, delete data when no longer required,
+   delete data upon user request where applicable, and delete all stored
+   data when approval expires or the Mod is removed. Mods must not retain
+   data indefinitely or after approval termination.
+
+h. Mods interacting with multiplayer Servers must comply with all Server
+   data rules and must not collect Server logs, Server metrics, player
+   lists, chat logs, moderation data, or any information that monitors,
+   tracks, or fingerprints players.
+
+i. Developers must provide complete data documentation upon request,
+   including data collection behavior, telemetry configuration, storage
+   methods, transmission methods, retention policies, and deletion
+   procedures. Refusal to provide data information is a severe violation.
+
+j. Violations of these data, telemetry, and privacy requirements may result
+   in removal from the Mod Marketplace, suspension of approval, permanent
+   bans, legal action, or license termination.
+
+k. Developers are strongly encouraged to use official MultiPixel inbuilt
+   systems for data handling, telemetry, storage, transmission, and
+   analytics. Third‑party systems may be approved only under strict
+   conditions.
+
+l. All Mods must comply with the latest version of the Mod Data, Telemetry,
+   and Privacy Requirements.
 
 
 All rights not expressly granted are reserved by MultiPixel.
