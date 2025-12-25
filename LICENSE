@@ -193,7 +193,14 @@ b. Users may not reproduce, recreate, or adapt any MultiPixel assets,
    restriction applies to specific expressions of the assets, not to
    general artistic style.
 
-c. Users may not use MultiPixel assets in AI training or generation.
+c. Users may not use any MultiPixel assets, source code, logic, algorithms,
+   data structures, file formats, engine behavior, or any other component
+   of the Software in any form of AI training, dataset creation, machine
+   learning processing, embedding extraction, or generative model input.
+   Users may not use the Software to fine‑tune, condition, guide, or
+   otherwise influence any AI system, nor may they generate AI‑produced
+   content that imitates, replicates, or derives from MultiPixel code,
+   assets, or functionality.
 
 d. Video content (gameplay, reviews, commentary, exposés) is allowed.
 
