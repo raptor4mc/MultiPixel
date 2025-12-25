@@ -1,1 +1,15 @@
+body {
+    margin: 0;
+    overflow: hidden;
+    background-color: #050505; /* Deep black/gray */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    font-family: 'Courier New', Courier, monospace;
+}
 
+canvas {
+    display: block;
+    touch-action: none; /* Prevent scrolling on touch */
+}
