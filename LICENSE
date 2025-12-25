@@ -617,8 +617,13 @@ f. Mods containing sensitive or intense content must require explicit
 
 g. Mods used in multiplayer must not enable harassment, griefing, bypassing
    moderation, disabling safety filters, unlogged actions, or unfair
-   advantages. Multiplayer Mods must respect server rules, moderation
-   systems, and fairness requirements.
+   advantages. For the purposes of this License, “logged actions” means
+   actions recorded through the official MultiPixel Logging API or stored
+   in logs that are accessible to MultiPixel upon request. Logging to
+   private, hidden, encrypted, or developer‑controlled files that are not
+   accessible to MultiPixel does not satisfy this requirement. Multiplayer
+   Mods must respect server rules, moderation systems, and fairness
+   requirements.
 
 h. Violations of these content and ethical standards may result in removal
    from the Mod Marketplace, suspension of approval, permanent bans, legal
