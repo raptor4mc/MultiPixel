@@ -357,23 +357,28 @@ a. Audit Server revenue.
 b. Audit Mod revenue.
 
 c. Require the User to pay liquidated damages for violations involving
-   unauthorized monetization, unauthorized Server operation, or any other
-   prohibited commercial activity. Liquidated damages are calculated as
-   follows:
+      unauthorized monetization, unauthorized Server operation, or any other
+      prohibited commercial activity. These liquidated damages are intended
+      solely as a reasonable and proportionate pre‑estimate of the harm
+      caused by such violations, including but not limited to: the
+      administrative burden of forensic auditing, investigation costs,
+      revenue tracing, enforcement actions, platform integrity protection,
+      and brand dilution resulting from unauthorized commercial activity.
+      Liquidated damages are calculated as follows:
 
-      i. For revenue-based violations: liquidated damages equal three (3)
+      i. For revenue‑based violations: liquidated damages equal three (3)
          times the unpaid revenue share owed to MultiPixel, or the
          documented fair market value of the transaction, whichever is
-         greater.
+         greater. This multiplier reflects the typical administrative and
+         investigative costs associated with uncovering concealed revenue
+         and restoring ecosystem integrity, and is not intended as a
+         punitive measure.
 
-     ii. For non-revenue commercial violations: liquidated damages equal a
-         fixed amount defined per violation category in the Governance
-         Framework, not to exceed a reasonable estimate of the harm caused.
+      ii. For non‑revenue commercial violations: liquidated damages equal a
+          fixed amount defined by MultiPixel that reflects a reasonable
+          pre‑estimate of the administrative, investigative, and brand
+          protection costs associated with the violation.
 
-    iii. These liquidated damages represent a reasonable pre-estimate of
-         the harm caused by such violations and are compensatory, not
-         punitive. The User agrees they are fair, enforceable, and owed
-         immediately upon breach.
 
 
 d. Pursue legal action.
@@ -1347,10 +1352,26 @@ a. Enforcement actions include:
    vi. license termination
 
 34.11 Liquidated Damages and Revenue Recovery
-a. For unpaid revenue share: three (3) times the unpaid amount or fair market value,
-   whichever is greater.
-b. For non‑revenue violations: fixed damages defined by MultiPixel.
-c. Liquidated damages are compensatory and owed immediately upon breach.
+
+a. For unpaid revenue share, the User must pay liquidated damages equal to
+   three (3) times the unpaid amount or the documented fair market value of
+   the transaction, whichever is greater. This multiplier represents a
+   reasonable and proportionate pre‑estimate of the administrative,
+   investigative, auditing, enforcement, and brand‑protection costs
+   typically incurred when addressing concealed or unauthorized
+   monetization. It is not intended as a punitive measure.
+
+b. For non‑revenue commercial violations, the User must pay a fixed amount
+   defined by MultiPixel that reflects a reasonable pre‑estimate of the
+   administrative, investigative, and ecosystem‑protection costs associated
+   with the violation. This amount is compensatory and proportionate to the
+   expected harm.
+
+c. All liquidated damages under this Section are compensatory in nature,
+   represent a genuine pre‑estimate of foreseeable harm, and are owed
+   immediately upon breach. They are intended to ensure that MultiPixel is
+   not financially disadvantaged by unauthorized commercial activity or the
+   costs of enforcing this License.
 
 34.12 Termination and Post‑Termination Obligations
 a. All monetization must cease immediately upon termination.
