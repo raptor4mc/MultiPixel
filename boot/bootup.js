@@ -3,6 +3,10 @@ const ctx = canvas.getContext('2d');
 
 let width, height;
 let particles = [];
+// Cached polygon canvases
+let cachePentagon = null;
+let cacheHexagon = null;
+let cacheSquare = null;
 
 // Configuration
 const FONT_SIZE = 80;
@@ -132,6 +136,25 @@ function resetSequence() {
 function update() {
     const now = Date.now();
     const deltaTime = (now - startTime) / 1000;
+
+    //Helper function
+    function createPolygonCache(radius, sides, offsetAngle, strokeStyle, lineWidth, shadowColor, shadowBlur) {
+    const size = radius * 2 + shadowBlur * 4;
+    const off = document.createElement("canvas");
+    off.width = size;
+    off.height = size;
+    const octx = off.getContext("2d");
+
+    octx.translate(size / 2, size / 2);
+    octx.shadowColor = shadowColor;
+    octx.shadowBlur = shadowBlur;
+    octx.strokeStyle = strokeStyle;
+    octx.lineWidth = lineWidth;
+
+    drawPolygon(octx, radius, sides, offsetAngle);
+
+    return off;
+}
 
     // --- State machine ---
 
@@ -337,6 +360,12 @@ function update() {
     }
 
     else if (currentPhase === PHASES.CORE_UP) {
+       if (!cachePentagon) {
+    cachePentagon = createPolygonCache(150 * 1.1, 5, Math.PI / 10, CORE_GLOW_DARK, 3, CORE_GLOW_DARK, 20);
+    cacheHexagon = createPolygonCache(150 * 0.9, 6, Math.PI / 6, CORE_GLOW_LIGHT, 4, CORE_GLOW_LIGHT, 10);
+    cacheSquare  = createPolygonCache(150 * 0.7, 4, Math.PI / 4, CORE_GLOW_LIGHT, 6, CORE_GLOW_LIGHT, 14);
+}
+
         let p = deltaTime;
         if (p >= 1) {
             p = 1;
@@ -346,7 +375,8 @@ function update() {
     }
 
   else if (currentPhase === PHASES.LOOP_LOADING) {
-    // Accumulate total loading time
+  
+      // Accumulate total loading time
     loadingTimer += deltaTime;
 
     // Light animation
@@ -426,44 +456,36 @@ function drawSentinelCore(centerX, centerY, scale) {
     const pulse = 0.9 + Math.sin(time * 2) * 0.1;
     const size = BASE_SIZE * pulse;
 
-    const rotationSquare = time * ROTATION_SQUARE;
-    const rotationPentagon = time * ROTATION_PENTAGON;
-    const rotationHexagon = time * ROTATION_HEXAGON;
+const rotationSquare = time * ROTATION_SQUARE;
+const rotationPentagon = time * ROTATION_PENTAGON;
+const rotationHexagon = time * ROTATION_HEXAGON;
 
     ctx.globalCompositeOperation = 'lighter';
+
+    // --- Cached polygon rendering (FPS boost) ---
 
     // Pentagon
     ctx.save();
     ctx.rotate(rotationPentagon);
-    const pentagonRadius = size * 1.1;
-    ctx.shadowColor = CORE_GLOW_DARK;
-    ctx.shadowBlur = 40;
-    ctx.strokeStyle = CORE_GLOW_DARK;
-    ctx.lineWidth = 3;
-    drawPolygon(ctx, pentagonRadius, 5, Math.PI / 10);
+    if (cachePentagon) {
+        ctx.drawImage(cachePentagon, -cachePentagon.width / 2, -cachePentagon.height / 2);
+    }
     ctx.restore();
 
     // Hexagon
     ctx.save();
     ctx.rotate(rotationHexagon);
-    const hexagonRadius = size * 0.9;
-    ctx.shadowColor = CORE_GLOW_LIGHT;
-    ctx.shadowBlur = 15;
-    ctx.strokeStyle = CORE_GLOW_LIGHT;
-    ctx.lineWidth = 4;
-    drawPolygon(ctx, hexagonRadius, 6, Math.PI / 6);
+    if (cacheHexagon) {
+        ctx.drawImage(cacheHexagon, -cacheHexagon.width / 2, -cacheHexagon.height / 2);
+    }
     ctx.restore();
 
     // Square
     ctx.save();
     ctx.rotate(rotationSquare);
-    const squareRadius = size * 0.7;
-    const squareVertices = getPolygonVertices(squareRadius, 4, Math.PI / 4);
-    ctx.shadowColor = CORE_GLOW_LIGHT;
-    ctx.shadowBlur = 20;
-    ctx.strokeStyle = CORE_GLOW_LIGHT;
-    ctx.lineWidth = 6;
-    drawPolygon(ctx, squareRadius, 4, Math.PI / 4);
+    if (cacheSquare) {
+        ctx.drawImage(cacheSquare, -cacheSquare.width / 2, -cacheSquare.height / 2);
+    }
     ctx.restore();
 
     // Static wires from square vertices
