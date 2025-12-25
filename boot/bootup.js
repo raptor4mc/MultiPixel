@@ -460,10 +460,6 @@ const rotationSquare = time * ROTATION_SQUARE;
 const rotationPentagon = time * ROTATION_PENTAGON;
 const rotationHexagon = time * ROTATION_HEXAGON;
 
-    const rotationSquare = time * ROTATION_SQUARE;
-const rotationPentagon = time * ROTATION_PENTAGON;
-const rotationHexagon = time * ROTATION_HEXAGON;
-
 // Recompute square vertices for wire animation
 const squareRadius = size * 0.7;
 const squareVertices = getPolygonVertices(squareRadius, 4, Math.PI / 4);
