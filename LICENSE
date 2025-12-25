@@ -857,5 +857,63 @@ i. Developers are strongly encouraged to use official MultiPixel inbuilt
 j. All monetized Mods must comply with the latest version of the Mod
    Monetization Requirements.
 
+31. Mod Violation Categories and Enforcement Classification
+
+a. All Mod violations within the MultiPixel ecosystem are classified into
+   three tiers: Minor Violations, Major Violations, and Severe Violations.
+   These categories determine enforcement actions, penalties, audit
+   requirements, and escalation procedures.
+
+b. Minor Violations are low‑impact issues that do not threaten user safety,
+   ecosystem integrity, or platform security. They typically involve
+   unintentional mistakes such as incorrect metadata, missing tags,
+   inaccurate descriptions, outdated submission materials, minor
+   compatibility issues, small performance inefficiencies, missing content
+   warnings, incomplete documentation, minor UI bugs, or non‑harmful
+   scripting errors. Minor Violations must be corrected within a reasonable
+   timeframe. Repeated Minor Violations may escalate to Major Violations.
+
+c. Major Violations are significant issues that impact gameplay fairness,
+   stability, transparency, or compliance, but do not involve malicious
+   intent. Examples include hidden or unapproved monetization, unapproved
+   data collection, misleading descriptions, significant performance
+   degradation, unbalanced gameplay systems, unfair competitive advantages,
+   bypassing minor safety systems, unauthorized external communication,
+   failure to disclose sponsorships or telemetry, or distributing updates
+   without approval. Major Violations require immediate correction and may
+   result in temporary suspension, full review, or triggered audits.
+   Repeated Major Violations may escalate to Severe Violations.
+
+d. Severe Violations are the highest category and involve behavior that
+   threatens user safety, platform security, legal compliance, or the
+   integrity of the ecosystem. Severe Violations include malware,
+   backdoors, unauthorized telemetry, data harvesting, personal data
+   collection, extremist or hateful content, sexual content involving
+   minors, gambling systems, crypto/NFT monetization, pay‑to‑win systems,
+   bypassing engine security, code obfuscation used to hide harmful
+   behavior, impersonating official MultiPixel content, distributing Mods
+   without approval, attempting to bypass the approval or audit systems,
+   tampering with platform infrastructure, or intentionally exploiting
+   vulnerabilities. Severe Violations require immediate removal and may
+   result in permanent bans, monetization revocation, legal action, license
+   termination, and mandatory full audits.
+
+e. Violations may escalate based on repeated offenses, refusal to fix
+   issues, attempts to hide violations, user harm, security impact, or
+   ecosystem impact. MultiPixel may reclassify any violation to a higher
+   tier if warranted.
+
+f. Developers are responsible for understanding all rules, maintaining
+   compliance, updating Mods promptly, disclosing all changes, and
+   cooperating fully with audits. Failure to cooperate may escalate any
+   violation to a higher tier.
+
+g. Enforcement actions may include warnings, suspensions, delisting,
+   monetization bans, permanent bans, legal action, or license termination,
+   as defined in the Governance Framework and Mod Penalty Tiers.
+
+h. All Mods must comply with the latest version of the Mod Violation
+   Categories and Enforcement Classification.
+
 
 All rights not expressly granted are reserved by MultiPixel.
