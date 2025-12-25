@@ -30,8 +30,11 @@ e. “Gross revenue” means all income generated before any deductions,
 f. “Political Server” means any Server where political topics are a primary
    or significant focus.
 
-g. “Private use” means use by a single individual only. It does NOT include
-   sharing with friends, groups, communities, or private circles.
+g. “Private use” means use of the Software by an individual who has lawfully
+obtained a license. Private use does not permit distribution of the
+Software, its source code, or its binaries to any other person who is not
+individually licensed. Viewing or demonstrating the Software to others is
+allowed, but transferring copies, builds, or code is strictly prohibited.
 
 1. Nature of License (No Ownership Transfer)
 
@@ -71,11 +74,19 @@ d. Mods must not remove or alter copyright notices.
 
 a. All Mods are derivative works of the Software.
 
-b. By creating a Mod, the User agrees that:
-   i. All rights to the Mod are automatically assigned to MultiPixel.
-   ii. MultiPixel may use, modify, publish, or distribute the Mod without
-       compensation or permission.
-   iii. The User waives all claims of ownership or authorship.
+b. By creating a Mod, the User grants MultiPixel a perpetual, irrevocable,
+   worldwide, exclusive, transferable, sublicensable license to use,
+   modify, adapt, reproduce, publish, distribute, and create derivative
+   works from the Mod for any purpose, without compensation or additional
+   permission.
+
+c. The User retains authorship of their Mod where applicable, but agrees
+   that MultiPixel’s licensed rights override any conflicting rights the
+   User may hold.
+
+d. The User waives any right to revoke or challenge this license, and
+   waives any claim for compensation, attribution, or control over how the
+   Mod is used by MultiPixel.
 
 5. Mod Monetization
 
@@ -87,8 +98,13 @@ b. If approved:
    iii. MultiPixel may request revenue reports at any time.
    iv. MultiPixel may revoke approval at any time.
 
-c. MultiPixel may impose fines, tariffs, or pursue legal action for
-   unapproved monetization.
+c. MultiPixel may pursue legal action for unapproved monetization and may
+   require the User to pay liquidated damages. Liquidated damages represent
+   a reasonable pre-estimate of the harm caused by unauthorized commercial
+   use of Mods and are owed immediately upon violation. These damages are
+   compensatory, not punitive, and the User agrees they are fair and
+   enforceable.
+
 
 6. Server Hosting
 
@@ -223,7 +239,14 @@ MultiPixel reserves the right to:
 
 a. Audit Server revenue.
 b. Audit Mod revenue.
-c. Impose fines or tariffs.
+
+c. Require the User to pay liquidated damages for violations involving
+   unauthorized monetization, unauthorized Server operation, or any other
+   prohibited commercial activity. Liquidated damages represent a reasonable
+   pre-estimate of the harm caused by such violations and are owed
+   immediately upon breach. These damages are compensatory, not punitive,
+   and the User agrees they are fair and enforceable.
+
 d. Pursue legal action.
 e. Revoke approvals.
 f. Ban Servers.
@@ -267,21 +290,61 @@ This License is governed by the laws of Sweden.
 
 All disputes shall be resolved exclusively in the courts of Dalarna, Sweden.
 
-21. Termination
+a. MultiPixel will notify the User of any minor or non-malicious violation.
+   The User has seven (7) days from the date of notice to cure the
+   violation. If the violation is cured within this period, the License
+   remains in effect.
 
-Any violation terminates this License immediately.
+b. Serious violations involving security, cheating, monetization fraud,
+   data abuse, or intentional harm may result in immediate termination
+   without a cure period.
+
+c. Upon termination, the User’s account is locked. The User has thirty (30)
+   days to submit a recovery request through the in‑game mail system
+   (e.g., username@multipixel.game) including:
+      i. A statement explaining why the termination was incorrect or
+         unjustified.
+     ii. The account email used in-game.
+    iii. The account password for verification.
+
+d. If MultiPixel determines the User was innocent or the violation was
+   misapplied, the account may be restored. If no recovery request is
+   submitted within thirty (30) days, the termination becomes permanent.
 
 22. Incorporation of Governance Framework
 
-a. The MultiPixel Governance Framework — including all folders, files, subfolders, documents, standards, policies, procedures, and rules contained within the “Governance” directory of the official MultiPixel repository — is hereby incorporated by reference into this License and forms a legally binding part of it.
+a. The MultiPixel Governance Framework — including all folders, files,
+   subfolders, documents, standards, policies, procedures, and rules
+   contained within the “Governance” directory of the official MultiPixel
+   repository — is hereby incorporated by reference into this License and
+   forms a legally binding part of it.
 
-b. All Users, Mod creators, Server operators, and any party interacting with the Software are required to comply with all Governance documents in full.
+b. All Users, Mod creators, Server operators, and any party interacting
+   with the Software are required to comply with all Governance documents
+   in full.
 
-c. In the event of any conflict between this License and any Governance document:
-i. This License governs broad rights, restrictions, and ownership.
-ii. The Governance documents govern detailed requirements, technical standards, operational rules, compliance procedures, and enforcement mechanisms.
+c. All Governance documents must include a clear version number
+   (e.g., “Governance v1.4”). Users are bound to the version in effect at
+   the time they use the Software or operate a Server or Mod.
 
-d. MultiPixel may update Governance documents at any time. Continued use of the Software constitutes acceptance of all updates.
+d. MultiPixel will maintain a public changelog of Governance updates. Each
+   update will specify its version number and effective date.
+
+e. Except for emergency security updates, all Governance updates take
+   effect thirty (30) days after being posted. Continued use of the
+   Software after the effective date constitutes acceptance of the updated
+   Governance version.
+
+f. Emergency updates addressing security, safety, or legal compliance may
+   take effect immediately upon posting. MultiPixel will identify such
+   updates clearly in the changelog.
+
+g. In the event of any conflict between this License and any Governance
+   document:
+      i. This License governs broad rights, restrictions, and ownership.
+     ii. The Governance documents govern detailed requirements, technical
+         standards, operational rules, compliance procedures, and
+         enforcement mechanisms.
 
 23. Severability
 
