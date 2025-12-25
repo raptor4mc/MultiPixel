@@ -394,7 +394,7 @@ function update() {
     }
 
     // Exit after 3 seconds
-    if (loadingTimer > 3) {
+    if (loadingTimer > 10) {
         window.location.href = "../game/main.html";
         return;
     }
