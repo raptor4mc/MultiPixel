@@ -986,5 +986,74 @@ i. Developers may appeal Tier 1 and Tier 2 penalties. Tier 3 penalties are
 j. All Mods must comply with the latest version of the Mod Penalty Tiers
    and Enforcement Actions.
 
+33. Mod Safety Standards and User Protection Requirements
+
+a. All Mods must comply with all safety standards established by MultiPixel.
+   Mods must prioritize user safety, fairness, transparency, and non‑harmful
+   gameplay. Mods must not endanger users, enable predatory behavior,
+   introduce harmful mechanics, encourage harassment or abuse, or include
+   illegal or extremist content.
+
+b. The following content and behavior are strictly prohibited and constitute
+   an automatic severe violation: sexual content involving minors, extremist
+   content, hate speech, targeted harassment, doxxing or personal
+   information, threats or violence against real individuals, mechanics that
+   encourage self‑harm, mechanics that simulate abuse, mechanics that enable
+   predatory behavior, mechanics that trap or isolate players without
+   consent, psychological manipulation including fear‑based coercion,
+   forced participation in disturbing content, deceptive or manipulative UI,
+   dark patterns, and real‑world extremist political content.
+
+c. Certain content is allowed only with full review and explicit approval.
+   Restricted content includes mature themes such as mild horror, mild
+   violence, or dark fantasy; non‑extremist political content including
+   fictional political systems or educational political references; and
+   competitive gameplay systems such as PvP, combat mechanics, or
+   competitive challenges. Restricted content must not encourage harassment,
+   create unfair advantages, or enable bullying or abuse, and may require
+   warnings, opt‑in systems, or additional safety measures.
+
+d. Mods must include appropriate safety mechanisms. Mods must provide clear
+   and accurate warnings for mature themes, horror content, flashing lights,
+   loud or sudden audio, intense combat, or political content. Mods
+   containing sensitive content must require explicit opt‑in, allow players
+   to disable sensitive features, and provide safe alternatives. Mods must
+   respect parental controls, age restrictions, and content filters.
+
+e. Mods used in multiplayer environments must prevent harassment, abuse,
+   griefing, exploitation, and unfair advantages. Mods must not bypass
+   server moderation, disable safety filters, enable unlogged actions, or
+   create unmoderated communication channels.
+
+f. Mods must comply with all data safety requirements, including avoiding
+   personal or sensitive data collection, disclosing all telemetry, using
+   approved data systems, following retention and deletion rules, and
+   avoiding tracking or fingerprinting users. Mods must not store data
+   insecurely or transmit data without approval.
+
+g. Mods must comply with all technical safety requirements, including
+   avoiding crashes, data corruption, unsafe memory usage, infinite loops,
+   excessive CPU/GPU usage, unsafe threading, or unauthorized file access.
+   Mods must not modify engine binaries, bypass sandboxing, inject harmful
+   code, or weaken security systems.
+
+h. Mods must comply with all community safety requirements, including
+   avoiding mechanics that encourage harassment, bullying, discrimination,
+   exploitation, or unsafe behavior. Mods must promote fair play and
+   respectful interaction.
+
+i. Developers must provide safety documentation upon request, including
+   content warnings, gameplay descriptions, data collection details, and
+   risk assessments where applicable. Refusal to provide safety information
+   is a severe violation.
+
+j. Violations of these safety standards may result in removal from the Mod
+   Marketplace, suspension of approval, permanent bans, legal action, or
+   license termination, as defined in the Mod Violation Categories and Mod
+   Penalty Tiers.
+
+k. All Mods must comply with the latest version of the Mod Safety Standards
+   and User Protection Requirements.
+
 
 All rights not expressly granted are reserved by MultiPixel.
