@@ -1055,5 +1055,254 @@ j. Violations of these safety standards may result in removal from the Mod
 k. All Mods must comply with the latest version of the Mod Safety Standards
    and User Protection Requirements.
 
+34. Unified Monetization Framework and Revenue Governance
+Version 3.0 — Fortress++ Edition
+© Relimintor (Raptor4 / MultiPixel) — All Rights Reserved.
+
+This Section replaces Sections 5, 7, and 14 of this License in their entirety.
+All monetization within the MultiPixel ecosystem is governed exclusively by this Section.
+
+34.0 Purpose and Scope
+a. This Section establishes the exclusive, comprehensive, and authoritative rules governing
+   all monetization activities within the MultiPixel ecosystem. It supersedes and replaces
+   all prior monetization provisions, including Sections 5, 7, and 14 of this License.
+b. This Section applies to all Users, Mod developers, Server operators, Marketplace
+   participants, sponsors, advertisers, business partners, and any party engaging in
+   revenue‑generating activity involving the Software.
+c. No monetization of any kind is permitted unless expressly authorized under this Section.
+
+34.1 Definitions
+For the purposes of this Section:
+a. “Monetization” means any activity that generates or attempts to generate revenue,
+   financial value, economic benefit, or commercial advantage, whether direct or indirect.
+b. “Revenue” means all monetary or monetary‑equivalent value received from monetization.
+c. “Gross revenue” means all revenue before deductions of any kind.
+d. “Cosmetic item” means any item, effect, or feature that does not alter gameplay,
+   progression, stats, combat, difficulty, or competitive balance.
+e. “Content pack” means non‑competitive additions such as new blocks, items, mobs,
+   biomes, structures, or worldgen features.
+f. “Subscription” means any recurring payment granting access to cosmetic or non‑competitive
+   features.
+g. “Donation” means a voluntary payment that grants no gameplay advantage.
+h. “Sponsorship” means any financial or material support provided in exchange for
+   branding, placement, or acknowledgment.
+i. “Advertising” means any promotional content displayed within or around the Software.
+j. “Business integration” means any collaboration between a business entity and a Mod,
+   Server, or Marketplace product.
+k. “Prohibited monetization” means any monetization method listed in Section 34.4.
+l. “Dark patterns” means manipulative UI or design intended to coerce purchases.
+m. “Gambling” means any chance‑based reward system, including lootboxes, roulettes,
+   gacha, or randomized paid rewards.
+n. “Crypto/NFT” means any blockchain‑based item, token, asset, or monetization system.
+o. “Unapproved payment platform” means any payment processor not explicitly authorized
+   by MultiPixel.
+p. “Monetization documentation” means all logs, reports, agreements, and records required
+   under this Section.
+q. “Monetization audit” means any review conducted by MultiPixel to verify compliance.
+
+34.2 General Monetization Principles
+a. Monetization must be fair, transparent, non‑deceptive, and non‑harmful.
+b. Monetization must never provide gameplay advantages, progression boosts, stat boosts,
+   combat advantages, or competitive benefits.
+c. Monetization must never involve gambling, crypto/NFT systems, dark patterns, or
+   manipulative design.
+d. Monetization must never target minors or vulnerable users.
+e. Monetization must comply with all safety, data, telemetry, content, and operational
+   requirements defined in Sections 26–33.
+f. Monetization must never involve the sale, transfer, or misuse of user data.
+
+34.3 Allowed Monetization Methods
+The following monetization methods are permitted only if fully compliant with this Section.
+
+34.3.1 Donations
+a. Donations must be voluntary and must not grant gameplay advantages.
+b. Allowed incentives:
+   i. cosmetic badges
+   ii. cosmetic titles
+   iii. cosmetic‑only supporter icons
+   iv. public thank‑you messages
+c. Prohibited:
+   i. donation ranks with gameplay perks
+   ii. pay‑to‑skip systems
+   iii. donation‑based lootboxes
+
+34.3.2 Subscriptions
+a. Subscriptions may provide cosmetic or quality‑of‑life benefits only.
+b. Allowed perks:
+   i. cosmetic titles
+   ii. cosmetic trails, particles, or effects
+   iii. cosmetic‑only VIP areas
+   iv. cosmetic pets
+   v. cosmetic UI themes
+c. Prohibited:
+   i. XP boosts
+   ii. stat boosts
+   iii. resource multipliers
+   iv. priority gameplay advantages
+
+34.3.3 Cosmetic Items
+a. Cosmetic items must not affect gameplay, stats, damage, health, or progression.
+b. Allowed categories:
+   i. skins
+   ii. outfits
+   iii. emotes
+   iv. animations
+   v. particle effects
+   vi. trails
+   vii. banners
+   viii. cosmetic pets
+   ix. cosmetic mounts
+   x. cosmetic UI themes
+c. Prohibited:
+   i. altered hitboxes
+   ii. visibility‑obscuring cosmetics
+   iii. cosmetics mimicking official MultiPixel branding without approval
+
+34.3.4 Server Access Passes
+a. Allowed:
+   i. one‑time access fees
+   ii. monthly access subscriptions
+   iii. cosmetic‑only VIP areas
+b. Prohibited:
+   i. premium worlds with better loot
+   ii. paid‑only gameplay systems
+   iii. exclusive progression zones
+
+34.3.5 Sponsorships
+a. Sponsorships must be disclosed and must not influence gameplay.
+b. Allowed:
+   i. creator sponsorships
+   ii. server sponsorships
+   iii. mod sponsorships
+   iv. non‑intrusive brand placements
+c. Prohibited:
+   i. political sponsorships (unless explicitly approved)
+   ii. gameplay‑altering sponsorships
+   iii. misleading sponsorships
+
+34.3.6 Advertising
+a. Allowed:
+   i. banner ads in menus
+   ii. sponsor panels
+   iii. loading screen ads
+   iv. cosmetic‑only ad integrations
+b. Prohibited:
+   i. mid‑game popups
+   ii. forced video ads
+   iii. ads that block gameplay
+   iv. ads targeting minors
+
+34.3.7 Marketplace Sales
+a. Allowed:
+   i. approved Mods
+   ii. cosmetic assets
+   iii. cosmetic items
+   iv. cosmetic packs
+   v. sound packs
+   vi. UI themes
+   vii. non‑gameplay content
+b. Prohibited:
+   i. selling MultiPixel assets
+   ii. selling derivative works without approval
+   iii. selling gameplay advantages
+
+34.3.8 Business Integrations
+a. Allowed:
+   i. cosmetic brand partnerships
+   ii. cosmetic‑only integrations
+   iii. creator collaborations
+   iv. non‑gameplay business features
+b. Prohibited:
+   i. gambling integrations
+   ii. crypto/NFT integrations
+   iii. gameplay‑altering business features
+
+34.4 Prohibited Monetization Methods
+The following are strictly prohibited and constitute automatic severe violations:
+a. pay‑to‑win systems
+b. gambling systems, including lootboxes and chance‑based rewards
+c. crypto/NFT monetization
+d. data monetization or sale of user data
+e. dark patterns or manipulative UI
+f. forced purchases or disguised purchases
+g. hidden monetization
+h. unapproved payment platforms
+i. unapproved marketplaces
+j. monetization without explicit approval
+
+34.5 Revenue Share Rules
+a. Unless otherwise approved, MultiPixel receives thirty percent (30%) of all gross revenue.
+b. Donations with no perks incur no platform fee.
+c. Donations with cosmetic perks are subject to the standard revenue share.
+d. Server monetization follows the same revenue share rules as Mod monetization.
+e. Marketplace sales are subject to the same revenue share unless explicitly exempted.
+f. Sponsorship revenue may be subject to revenue share if the sponsorship is integrated
+   into the Software.
+
+34.6 Monetization Disclosures
+a. All monetization must be fully disclosed, including:
+   i. pricing
+   ii. subscription terms
+   iii. sponsorships
+   iv. advertising
+   v. data collection
+   vi. external services
+b. Hidden monetization is a severe violation.
+
+34.7 Payment Platform Requirements
+a. Only approved payment platforms may be used.
+b. Mods and Servers may not process payments directly.
+c. Payment data must never be stored.
+d. Crypto payments are prohibited.
+
+34.8 Monetization Documentation Requirements
+a. Developers must maintain:
+   i. transaction logs
+   ii. revenue reports
+   iii. payment platform logs
+   iv. sponsorship agreements
+   v. monetization configuration
+b. Documentation must be provided upon request.
+
+34.9 Monetization Audit Requirements
+a. MultiPixel may conduct routine, triggered, or forensic audits.
+b. Developers must fully cooperate.
+c. Failure to cooperate is a severe violation.
+d. MultiPixel may suspend monetization during audits.
+
+34.10 Monetization Enforcement
+a. Enforcement actions include:
+   i. monetization freezes
+   ii. monetization suspensions
+   iii. permanent monetization bans
+   iv. marketplace removal
+   v. legal action
+   vi. license termination
+
+34.11 Liquidated Damages and Revenue Recovery
+a. For unpaid revenue share: three (3) times the unpaid amount or fair market value,
+   whichever is greater.
+b. For non‑revenue violations: fixed damages defined by MultiPixel.
+c. Liquidated damages are compensatory and owed immediately upon breach.
+
+34.12 Termination and Post‑Termination Obligations
+a. All monetization must cease immediately upon termination.
+b. All monetization data must be preserved for audit.
+c. All stored data must be deleted according to retention rules.
+d. Revenue reconciliation must be completed.
+
+34.13 Cross‑References
+This Section must be interpreted in conjunction with:
+a. Section 26 (Mod Compliance)
+b. Section 27 (Content and Ethics)
+c. Section 28 (Data and Telemetry)
+d. Section 29 (Third‑Party Services)
+e. Section 30 (Mod Monetization Requirements)
+f. Section 31 (Violation Categories)
+g. Section 32 (Penalty Tiers)
+h. Section 33 (Safety Standards)
+
+All rights not expressly granted are reserved by MultiPixel.
+
 
 All rights not expressly granted are reserved by MultiPixel.
