@@ -915,5 +915,76 @@ g. Enforcement actions may include warnings, suspensions, delisting,
 h. All Mods must comply with the latest version of the Mod Violation
    Categories and Enforcement Classification.
 
+32. Mod Penalty Tiers and Enforcement Actions
+
+a. All Mod violations are subject to the penalty system established by
+   MultiPixel. Penalties are divided into three tiers—Minor, Major, and
+   Severe—based on the severity of the violation, the risk posed to users
+   or the ecosystem, and the developer’s compliance history.
+
+b. Tier 1 (Minor Penalties) applies to Minor Violations that do not
+   threaten user safety, platform security, or ecosystem integrity. Minor
+   Violations include issues such as incorrect metadata, missing tags,
+   inaccurate descriptions, minor compatibility issues, missing content
+   warnings, incomplete documentation, minor UI bugs, or non‑harmful
+   scripting errors. Penalties may include warning notices, required fixes
+   within a set timeframe, temporary listing pauses, or required
+   resubmission. Minor Violations may escalate to Tier 2 if repeated or
+   left unaddressed.
+
+c. Tier 2 (Major Penalties) applies to Major Violations that impact
+   fairness, transparency, stability, or compliance but do not involve
+   malicious intent. Major Violations include hidden or unapproved
+   monetization, unapproved data collection, misleading descriptions,
+   significant performance degradation, unbalanced gameplay systems,
+   unauthorized external communication, failure to disclose telemetry or
+   sponsorships, or distributing updates without approval. Penalties may
+   include immediate suspension, temporary removal from the Mod
+   Marketplace, forced rollback to a previous approved version,
+   monetization freezes, mandatory audits, or probation periods. Major
+   Violations may escalate to Tier 3 if repeated or if they cause user harm
+   or ecosystem impact.
+
+d. Tier 3 (Severe Penalties) applies to Severe Violations that threaten
+   user safety, platform security, legal compliance, or the integrity of
+   the ecosystem. Severe Violations include malware, backdoors,
+   unauthorized telemetry, data harvesting, personal data collection,
+   extremist or hateful content, sexual content involving minors, gambling
+   systems, crypto/NFT monetization, pay‑to‑win systems, bypassing engine
+   security, code obfuscation used to hide harmful behavior, impersonating
+   official MultiPixel content, distributing Mods without approval,
+   bypassing the approval or audit systems, tampering with platform
+   infrastructure, or intentionally exploiting vulnerabilities. Penalties
+   may include immediate removal, permanent Mod bans, permanent developer
+   bans, permanent monetization bans, revocation of all approvals, full
+   ecosystem audits, legal action, or license termination. Severe
+   Violations are subject to zero tolerance.
+
+e. Penalties may apply to the developer account, not only the Mod. Account‑
+   level penalties may include probation, temporary suspension, permanent
+   suspension, permanent bans, removal of all Mods, or revocation of all
+   monetization rights. Account penalties may be imposed when multiple Mods
+   violate rules, when violations repeat, or when the developer acts
+   maliciously or attempts to bypass enforcement.
+
+f. Monetization penalties may include monetization freezes, monetization
+   suspensions, permanent monetization bans, revenue clawbacks in cases of
+   fraud, or removal from the Mod Marketplace.
+
+g. Audit‑related penalties may include immediate suspension of all Mods,
+   forced removal from the marketplace, permanent bans, or legal action if
+   the developer refuses to cooperate with audits or attempts to obstruct
+   audit processes.
+
+h. Violations escalate automatically based on severity, repetition, intent,
+   user harm, ecosystem impact, or developer cooperation. MultiPixel may
+   reclassify any violation to a higher tier if warranted.
+
+i. Developers may appeal Tier 1 and Tier 2 penalties. Tier 3 penalties are
+   not eligible for appeal except in cases of proven error.
+
+j. All Mods must comply with the latest version of the Mod Penalty Tiers
+   and Enforcement Actions.
+
 
 All rights not expressly granted are reserved by MultiPixel.
