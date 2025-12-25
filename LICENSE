@@ -556,71 +556,12 @@ m. Developers are strongly encouraged to use official MultiPixel inbuilt
 n. All Mods must comply with the latest version of the Mod Compliance
    Requirements.
 
-27. Mod Content Restrictions
+27. Mod Content and Ethical Standards
 
-a. All Mods must comply with all content restrictions established by
-   MultiPixel. Mods must prioritize user safety, fairness, non‑harmful
-   content, and must not include illegal, extremist, hateful, abusive,
-   deceptive, or otherwise harmful material.
-
-b. The following content is strictly prohibited and constitutes an
-   automatic severe violation: sexual content involving minors, child
-   exploitation, real‑world illegal activity, doxxing or personal
-   information, threats or targeted violence, extremist symbols or
-   ideologies, hate speech, discriminatory content, harassment systems,
-   stalking or tracking mechanics, forced interaction systems, mechanics
-   that trap players without consent, simulated abuse, content encouraging
-   self‑harm or dangerous behavior, manipulative or coercive mechanics,
-   dark patterns, pay‑to‑win mechanics, gambling systems, crypto/NFT
-   systems, malicious traps, malware, backdoors, unauthorized telemetry,
-   hidden data collection, or obfuscation used to hide harmful behavior.
-
-c. Certain content is restricted and may be allowed only with full review
-   and explicit approval. Restricted content includes mature themes such as
-   mild horror, mild violence, dark fantasy, or non‑graphic combat;
-   non‑extremist political content; intense gameplay content such as
-   high‑difficulty combat, survival mechanics, intense audio/visual
-   effects, or jump scares; and competitive systems such as PvP, ranked
-   systems, or competitive challenges. Restricted content may require
-   warnings, opt‑in systems, accessibility options, or additional safety
-   measures.
-
-d. Allowed content includes cosmetic content, gameplay additions,
-   quality‑of‑life features, and creative content, provided such content
-   complies with all safety, data, monetization, and approval rules.
-
-e. Mods must provide clear and accurate warnings for horror content,
-   flashing lights, loud or sudden audio, mature themes, political content,
-   or intense combat. Warnings must be visible, accurate, and honest.
-
-f. Mods containing sensitive or intense content must require explicit
-   player opt‑in, allow disabling sensitive features, and provide safe
-   alternatives. Players must never be forced into disturbing content,
-   political content, intense horror, or unsafe mechanics.
-
-g. Mods used in multiplayer must not enable harassment, griefing, bypassing
-   moderation, disabling safety filters, unlogged actions, or unfair
-   advantages. Multiplayer Mods must respect server rules, moderation
-   systems, and fairness requirements.
-
-h. Violations of these content restrictions may result in removal from the
-   Mod Marketplace, suspension of approval, permanent bans, legal action,
-   or license termination.
-
-i. Developers are strongly encouraged to use official MultiPixel inbuilt
-   systems for data handling, telemetry, storage, transmission, and
-   analytics. Third‑party systems may be approved only under strict
-   conditions.
-
-j. All Mods must comply with the latest version of the Mod Content
-   Restrictions.
-
-28. Mod Content Restrictions
-
-a. All Mods must comply with all content restrictions established by
-   MultiPixel. Mods must prioritize user safety, fairness, and non‑harmful
-   content, and must not include illegal, extremist, hateful, abusive,
-   deceptive, or otherwise harmful material.
+a. All Mods must comply with all content and ethical standards established
+   by MultiPixel. Mods must prioritize user safety, fairness, and
+   non‑harmful content, and must not include illegal, extremist, hateful,
+   abusive, deceptive, or otherwise harmful material.
 
 b. The following content is strictly prohibited and constitutes an
    automatic severe violation: sexual content involving minors, child
@@ -661,17 +602,17 @@ g. Mods used in multiplayer must not enable harassment, griefing, bypassing
    advantages. Multiplayer Mods must respect server rules, moderation
    systems, and fairness requirements.
 
-h. Violations of these content restrictions may result in removal from the
-   Mod Marketplace, suspension of approval, permanent bans, legal action,
-   or license termination.
+h. Violations of these content and ethical standards may result in removal
+   from the Mod Marketplace, suspension of approval, permanent bans, legal
+   action, or license termination.
 
 i. Developers are strongly encouraged to use official MultiPixel inbuilt
    systems for data handling, telemetry, storage, transmission, and
    analytics. Third‑party systems may be approved only under strict
    conditions.
 
-j. All Mods must comply with the latest version of the Mod Content
-   Restrictions.
+j. All Mods must comply with the latest version of the Mod Content and
+   Ethical Standards.
 
 
 All rights not expressly granted are reserved by MultiPixel.
