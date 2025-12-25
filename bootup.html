@@ -359,8 +359,18 @@
             coreScale = p;
         }
         else if (currentPhase === PHASES.LOOP_LOADING) {
-            letterLightTimer += deltaTime;
-            if (letterLightTimer > 0.05) { 
+    letterLightTimer += deltaTime;
+
+    // your existing loading animation logic...
+
+    // After 3 seconds, exit to main menu
+    if (deltaTime > 3) {
+        currentPhase = PHASES.EXITING;
+        goToMainMenu();
+        return;
+    }
+}
+
                 // Only 7 letters in "LOADING"
                 letterLightIndex = (letterLightIndex + 1) % 7; 
                 letterLightTimer = 0;
@@ -780,11 +790,15 @@
         ctx.globalCompositeOperation = 'source-over'; 
     }
 
-    function loop() {
-        update();
-        draw();
+   function loop() {
+    update();
+    draw();
+
+    if (currentPhase !== PHASES.EXITING) {
         requestAnimationFrame(loop);
     }
+}
+
 
     init();
 
