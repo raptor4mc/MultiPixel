@@ -717,5 +717,80 @@ k. Developers are strongly encouraged to use official MultiPixel inbuilt
 l. All Mods must comply with the latest version of the Mod Data, Telemetry,
    and Privacy Requirements.
 
+29. Third‑Party Services, External Integrations, and External Transmission Rules
+
+a. All Mods must comply with all rules governing third‑party services,
+   external APIs, cloud platforms, analytics tools, SDKs, and any external
+   integrations. Mods must not communicate with, transmit data to, or rely
+   on any third‑party service except as explicitly disclosed and approved
+   by MultiPixel.
+
+b. Third‑party services are classified into categories including approved,
+   conditional, restricted, and prohibited services. Mods may only use
+   approved or conditionally approved services, and only for the purposes
+   disclosed in the Mod submission. Use of prohibited services, including
+   analytics platforms, advertising networks, fingerprinting services,
+   personal data processors, unapproved cloud platforms, or any hidden or
+   undisclosed service, is strictly forbidden.
+
+c. Mods may only share minimal, non‑personal, non‑sensitive data with
+   approved third‑party services, and only for the specific purpose
+   disclosed and approved. Mods must not share personal data, sensitive
+   data, IP addresses, device fingerprints, behavioral fingerprints,
+   cross‑server identifiers, chat logs, moderation logs, authentication
+   tokens, payment information, or any other prohibited data.
+
+d. All third‑party services must be fully disclosed in the Mod submission,
+   including service name, provider, purpose, data shared, storage
+   behavior, transmission behavior, retention behavior, security measures,
+   and risk assessment. Failure to disclose any third‑party service is a
+   severe violation.
+
+e. All third‑party integrations must follow strict security requirements,
+   including encrypted transmission, secure authentication, least‑privilege
+   access control, approved endpoints, and complete logging of all external
+   transmissions. Mods must not use plaintext transmission, hardcoded
+   secrets, dynamic DNS, hidden endpoints, or obfuscated domains.
+
+f. Third‑party storage must comply with all MultiPixel data storage and
+   retention rules. Only minimal gameplay or technical data may be stored
+   externally, and only in encrypted form. Personal data, sensitive data,
+   fingerprinting data, or any prohibited data may not be stored on any
+   third‑party system.
+
+g. All external transmissions must use approved endpoints, secure
+   connections, and disclosed behavior. Mods must not transmit data
+   secretly, transmit data to unknown or personal servers, use covert
+   channels, or transmit any data that enables behavioral tracking or
+   fingerprinting.
+
+h. Third‑party services must follow strict retention and deletion rules,
+   including defined retention periods, deletion upon Mod removal or
+   approval revocation, and proof of deletion upon request. Retaining data
+   beyond approved limits is prohibited.
+
+i. All third‑party integrations are subject to routine, triggered, and
+   forensic audits. Developers must provide complete documentation,
+   including API documentation, endpoint lists, transmission logs, storage
+   documentation, and security documentation. Refusal to cooperate with an
+   audit is a severe violation.
+
+j. If a third‑party service is breached, the developer must immediately
+   report the breach, disable the integration, isolate the Mod, preserve
+   logs, remediate the issue, and undergo a mandatory follow‑up audit.
+   Failure to report or remediate a breach is a critical violation.
+
+k. Violations of these third‑party rules may result in removal from the Mod
+   Marketplace, suspension of approval, permanent bans, legal action,
+   license termination, or penalties defined in the Governance Framework.
+
+l. Developers are strongly encouraged to use official MultiPixel inbuilt
+   systems for data handling, telemetry, storage, transmission, and
+   analytics. Third‑party systems may be approved only under strict
+   conditions.
+
+m. All Mods must comply with the latest version of the Third‑Party
+   Services, External Integrations, and External Transmission Rules.
+
 
 All rights not expressly granted are reserved by MultiPixel.
