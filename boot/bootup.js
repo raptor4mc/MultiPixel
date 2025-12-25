@@ -47,6 +47,8 @@ const PHASES = {
 let currentPhase = PHASES.START;
 let startTime = 0;
 
+let loadingTimer = 0;
+
 let coreScale = 0;
 let letterLightIndex = 0;
 let letterLightTimer = 0;
@@ -343,22 +345,30 @@ function update() {
         coreScale = p;
     }
 
-    else if (currentPhase === PHASES.LOOP_LOADING) {
-        letterLightTimer += deltaTime;
+  else if (currentPhase === PHASES.LOOP_LOADING) {
+    // Accumulate total loading time
+    loadingTimer += deltaTime;
 
-        if (letterLightTimer > 0.1) {
-            letterLightIndex = (letterLightIndex + 1) % 7; // "LOADING"
-            letterLightTimer = 0;
-        }
-
-        coreScale = 1;
-
-        if (Math.random() < 0.2) {
-            const x = width / 2 + (Math.random() - 0.5) * 40;
-            const y = height / 2 + Math.random() * 20;
-            spawnSparkle(x, y);
-        }
+    // Light animation
+    letterLightTimer += deltaTime;
+    if (letterLightTimer > 0.1) {
+        letterLightIndex = (letterLightIndex + 1) % 7;
+        letterLightTimer = 0;
     }
+
+    // Sparkles (reduced for performance)
+    if (Math.random() < 0.05) {
+        const x = width / 2 + (Math.random() - 0.5) * 40;
+        const y = height / 2 + Math.random() * 20;
+        spawnSparkle(x, y);
+    }
+
+    // Exit after 3 seconds
+    if (loadingTimer > 3) {
+        window.location.href = "../game/main.html";
+        return;
+    }
+}
 
     updateParticles();
 }
