@@ -23,9 +23,12 @@ c. “Mod(s)” means any modification, plugin, add-on, or derivative work
 d. “Server” means any multiplayer, online, or networked instance that uses
    the Software, including unofficial or community-hosted servers.
 
-e. “Gross revenue” means all income generated before any deductions,
-   including donations, subscriptions, item sales, advertisements,
-   sponsorships, crypto, barter, or anything of value.
+e. “Gross revenue” means all monetary payments received before any deductions,
+including donations, subscriptions, item sales, advertisements,
+sponsorships, and cryptocurrency transactions that have a verifiable
+market value at the time of the transaction. Non‑monetary barter or
+informal exchanges are excluded unless their fair market value is
+documented and recorded by the Server operator.
 
 f. “Political Server” means any Server where political topics are a primary
    or significant focus.
@@ -66,7 +69,12 @@ a. Users may create Mods for personal, private use.
 b. Mods may not be distributed, uploaded, shared, or monetized without
    explicit written approval from MultiPixel.
 
-c. All Mods, including API-only Mods, are derivative works.
+c. All Mods, including API-only Mods, are considered derivative works of the
+   Software to the fullest extent permitted by law. To the extent that any
+   Mod is not classified as a derivative work under applicable law, the User
+   hereby grants MultiPixel the same perpetual, irrevocable, worldwide,
+   exclusive license rights described in Section 4 as a condition of using
+   the Software’s API or interacting with the Software in any way.
 
 d. Mods must not remove or alter copyright notices.
 
@@ -174,8 +182,11 @@ e. Stalking, doxxing, or revealing private information.
 a. Users may not extract, export, scrape, or reuse any assets, including:
    textures, models, audio, animations, UI, maps, or other content.
 
-b. Users may not recreate MultiPixel assets in a similar style for use in
-   other games or engines.
+b. Users may not reproduce, recreate, or adapt any MultiPixel assets,
+   including textures, models, animations, audio, UI elements, or other
+   protected expressions, for use in other games or engines. This
+   restriction applies to specific expressions of the assets, not to
+   general artistic style.
 
 c. Users may not use MultiPixel assets in AI training or generation.
 
@@ -247,10 +258,23 @@ b. Audit Mod revenue.
 
 c. Require the User to pay liquidated damages for violations involving
    unauthorized monetization, unauthorized Server operation, or any other
-   prohibited commercial activity. Liquidated damages represent a reasonable
-   pre-estimate of the harm caused by such violations and are owed
-   immediately upon breach. These damages are compensatory, not punitive,
-   and the User agrees they are fair and enforceable.
+   prohibited commercial activity. Liquidated damages are calculated as
+   follows:
+
+      i. For revenue-based violations: liquidated damages equal three (3)
+         times the unpaid revenue share owed to MultiPixel, or the
+         documented fair market value of the transaction, whichever is
+         greater.
+
+     ii. For non-revenue commercial violations: liquidated damages equal a
+         fixed amount defined per violation category in the Governance
+         Framework, not to exceed a reasonable estimate of the harm caused.
+
+    iii. These liquidated damages represent a reasonable pre-estimate of
+         the harm caused by such violations and are compensatory, not
+         punitive. The User agrees they are fair, enforceable, and owed
+         immediately upon breach.
+
 
 d. Pursue legal action.
 e. Revoke approvals.
