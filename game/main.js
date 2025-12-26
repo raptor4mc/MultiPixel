@@ -192,11 +192,11 @@ function triggerAction(name) {
     // After a short delay, navigate if a page exists
     setTimeout(() => {
         const routes = {
-            "SinglePlayer": "game/singleplayer/singleplayer.html",
-            "MultiPlayer": "game/multiplayer/multiplayer.html",
-            "Coding": "game/coding/coding.html",
-            "Mods": "game/mods/mods.html",
-            "Credits": "game/credits/credits.html"
+            "SinglePlayer": "singleplayer/singleplayer.html",
+            "MultiPlayer": "multiplayer/multiplayer.html",
+            "Coding": "coding/coding.html",
+            "Mods": "mods/mods.html",
+            "Credits": "credits/credits.html"
         };
 
         if (routes[name]) {
