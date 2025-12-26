@@ -1,56 +1,57 @@
 :root {
-    --bg-dark: #121212;
-    --bg-editor: #1e1e1e;
-    --sidebar: #252526;
-    --accent: #00ff95;
-    --border: #333;
-    --text: #cccccc;
-    --log-text: #858585; /* Duller color for terminal logs */
+    --bg-dark: #0f1115;
+    --sidebar-bg: #181c24;
+    --editor-bg: #1e2227;
+    --accent-blue: #3d8aff;
+    --text-main: #abb2bf;
+    --border: #2c313a;
 }
 
-body, html { height: 100%; margin: 0; overflow: hidden; background: var(--bg-dark); color: var(--text); font-family: 'Segoe UI', sans-serif; }
+body, html { height: 100%; margin: 0; overflow: hidden; background: var(--bg-dark); color: var(--text-main); font-family: 'Segoe UI', sans-serif; }
 
-.workbench { display: flex; height: 100vh; }
+/* Top Nav */
+.top-nav { height: 35px; background: #21252b; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-bottom: 1px solid var(--border); font-size: 12px; }
+.search-bar { background: #181c24; border: 1px solid var(--border); border-radius: 4px; padding: 2px 80px; color: #848da1; }
+.share-btn { background: var(--accent-blue); color: white; border: none; padding: 4px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; }
 
-/* Activity Bar & Sidebar */
-.activity-bar { width: 50px; background: #333; display: flex; flex-direction: column; align-items: center; padding-top: 15px; gap: 20px; }
-.sidebar { width: 180px; background: var(--sidebar); border-right: 1px solid var(--border); }
+.workbench { display: flex; height: calc(100vh - 57px); }
 
-/* Center Zone: Editor and Terminal */
-.center-zone { flex: 2; display: flex; flex-direction: column; border-right: 1px solid var(--border); }
-#editor { flex: 1; background: var(--bg-editor); border: none; color: #9cdcfe; padding: 20px; font-family: 'Consolas', monospace; font-size: 16px; outline: none; resize: none; }
+/* Activity Bar */
+.activity-bar { width: 48px; background: #21252b; display: flex; flex-direction: column; align-items: center; padding-top: 10px; gap: 20px; color: #636d83; border-right: 1px solid var(--border); }
+.activity-bar .active { color: white; border-left: 2px solid white; width: 100%; text-align: center; }
+.activity-bottom { margin-top: auto; padding-bottom: 15px; font-size: 20px; }
 
-/* The Terminal (System Logs Only) */
-.terminal { height: 200px; background: #000; border-top: 2px solid var(--border); overflow-y: auto; display: flex; flex-direction: column; }
-.terminal-header { padding: 5px 10px; font-size: 11px; color: var(--log-text); background: #1a1a1a; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; }
-#output { padding: 10px; font-family: 'Consolas', monospace; color: var(--log-text); font-size: 12px; flex: 1; }
+/* Sidebar */
+.sidebar { width: 220px; background: var(--sidebar-bg); border-right: 1px solid var(--border); }
+.sidebar-label { padding: 10px; font-size: 11px; font-weight: bold; }
+.folder { padding: 5px 10px; font-size: 12px; font-weight: bold; }
+.file-item { padding: 4px 25px; font-size: 13px; color: #848da1; cursor: pointer; }
+.file-item.active { background: #2c313a; color: white; }
 
-/* Right Zone: Game Stage & Variable Monitor */
-.stage-zone { flex: 1.5; background: #2d2d2d; display: flex; flex-direction: column; }
-.stage-header { padding: 10px; font-size: 12px; font-weight: bold; background: #252526; border-bottom: 1px solid var(--border); }
+/* Center Zone */
+.center-zone { flex: 2; display: flex; flex-direction: column; background: var(--editor-bg); }
+.editor-header { height: 35px; background: #21252b; display: flex; }
+.editor-tab { padding: 8px 20px; font-size: 12px; background: var(--editor-bg); border-right: 1px solid var(--border); border-top: 1px solid var(--accent-blue); }
 
-/* The Game View (Where visuals and SAY happen) */
-#game-canvas { 
-    flex: 1; background: #000; position: relative; margin: 15px; 
-    border: 2px solid #444; overflow: hidden; 
-    display: flex; flex-direction: column; justify-content: center; align-items: center;
-}
+#editor { flex: 1; background: transparent; border: none; color: #d19a66; padding: 20px; font-family: 'Consolas', monospace; font-size: 14px; outline: none; resize: none; }
 
-/* SAY command text style */
-#game-story-text {
-    position: absolute; bottom: 20px; left: 20px; right: 20px;
-    color: #fff; font-size: 22px; font-weight: bold; text-align: center;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.8); z-index: 10;
-}
+/* Terminal */
+.terminal-zone { height: 250px; background: #181c24; border-top: 1px solid var(--border); padding: 0 20px; }
+.terminal-tabs { font-size: 11px; padding: 10px 0; border-bottom: 1px solid var(--border); margin-bottom: 10px; display: flex; gap: 20px; color: #636d83; }
+.terminal-tabs .active { color: white; border-bottom: 1px solid white; padding-bottom: 8px; }
+.prompt { color: var(--accent-blue); }
+.branch { color: #c678dd; }
 
-.inspector { height: 150px; background: var(--sidebar); border-top: 1px solid var(--border); padding: 10px; overflow-y: auto; }
-#var-monitor { font-family: monospace; color: var(--accent); font-size: 13px; line-height: 1.6; }
+/* Right View */
+.stage-zone { flex: 1.5; background: #1e2227; display: flex; flex-direction: column; border-left: 1px solid var(--border); }
+.stage-url-bar { background: #21252b; padding: 5px 15px; display: flex; gap: 10px; align-items: center; border-bottom: 1px solid var(--border); }
+.stage-url-bar input { background: #181c24; border: 1px solid var(--border); color: white; border-radius: 4px; flex: 1; padding: 2px 10px; font-size: 11px; }
 
-/* Sprite/Player */
-#player { font-size: 60px; position: absolute; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 5; }
+#game-canvas { flex: 1; background: #000; margin: 20px; border-radius: 8px; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden;}
+#game-story-text { position: absolute; bottom: 30px; color: white; font-size: 24px; text-align: center; width: 100%; }
+
+/* Status Bar */
+.status-bar { height: 22px; background: var(--accent-blue); color: white; display: flex; justify-content: space-between; align-items: center; padding: 0 10px; font-size: 11px; position: fixed; bottom: 0; width: 100%; }
+
 .hidden { display: none; }
-
-/* Utilities */
-.tabs { height: 35px; background: #2d2d2d; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; border-bottom: 1px solid var(--border); }
-.btn-run { background: var(--accent); color: black; border: none; padding: 4px 15px; border-radius: 3px; cursor: pointer; font-weight: bold; }
-.section-title { padding-bottom: 5px; font-weight: bold; font-size: 11px; color: #858585; text-transform: uppercase; }
+#player { font-size: 80px; position: absolute; }
