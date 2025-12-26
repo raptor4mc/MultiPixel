@@ -188,7 +188,23 @@ function triggerAction(name) {
     modalDesc.textContent = `Initializing ${name} module...`;
     modal.classList.add('show');
     isModalOpen = true;
+
+    // After a short delay, navigate if a page exists
+    setTimeout(() => {
+        const routes = {
+            "SinglePlayer": "game/singleplayer/singleplayer.html",
+            "MultiPlayer": "game/multiplayer/multiplayer.html",
+            "Coding": "game/coding/coding.html",
+            "Mods": "game/mods/mods.html",
+            "Credits": "game/credits/credits.html"
+        };
+
+        if (routes[name]) {
+            window.location.href = routes[name];
+        }
+    }, 800); // gives time for modal animation
 }
+
 
 window.openProfile = function () {
     triggerAction("User Profile");
