@@ -163,10 +163,13 @@ const phaseTime = (now - startTime) / 1000;
 
     // --- State machine ---
 
-    if (currentPhase === PHASES.START) {
-        if (phaseTime > 1.5) {
-            currentPhase = PHASES.COLLAPSE;
-            startTime = now;
+   if (currentPhase === PHASES.START) {
+    if (phaseTime > 1.5) {
+        currentPhase = PHASES.COLLAPSE;
+        startTime = now;
+
+        AudioManager.play("swooshDevour");
+
 
             const R = letters.find(l => l.role === 'main-R');
             const M = letters.find(l => l.role === 'main-M');
@@ -227,12 +230,13 @@ const phaseTime = (now - startTime) / 1000;
         });
     }
 
-    else if (currentPhase === PHASES.MOVE_AND_MORPH) {
-        let p = phaseTime / 1.5;
-        if (p > 1) {
-            p = 1;
-            currentPhase = PHASES.EXPAND;
-            startTime = now;
+ else if (currentPhase === PHASES.MOVE_AND_MORPH) {
+    let p = phaseTime / 1.5;
+    if (p > 1) {
+        p = 1;
+        currentPhase = PHASES.EXPAND;
+        startTime = now;
+        AudioManager.play("swooshExpand");
 
             const M = letters.find(l => l.role === 'main-M');
             const P = letters.find(l => l.role === 'main-R');
@@ -279,6 +283,7 @@ const phaseTime = (now - startTime) / 1000;
             if (R.char === 'R') {
                 R.char = 'P';
                 spawnParticles(centerR, R.y, COLOR_SECONDARY, 150);
+                AudioManager.play("clickMorph");
             }
             R.color = COLOR_SECONDARY;
         } else {
@@ -325,6 +330,7 @@ const phaseTime = (now - startTime) / 1000;
 
     else if (currentPhase === PHASES.WAIT_STATIC) {
         if (phaseTime > 2.0) {
+            AudioManager.play("impactDunDuuuu");
             currentPhase = PHASES.FADE_OUT;
             startTime = now;
 
