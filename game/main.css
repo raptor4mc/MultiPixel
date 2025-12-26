@@ -75,9 +75,10 @@ body.unblur {
     justify-content: center;
     align-items: center;
     overflow: visible;
+    perspective: 1200px; /* required for 3D tilt */
 }
 
-/* Shared card style */
+/* Outer card (movement layer) */
 .menu-card {
     position: absolute;
     width: 240px;
@@ -100,7 +101,20 @@ body.unblur {
         transform 0.38s cubic-bezier(.22,.61,.36,1),
         opacity 0.38s cubic-bezier(.22,.61,.36,1),
         scale 0.38s cubic-bezier(.22,.61,.36,1),
-        filter 0.38s cubic-bezier(.22,.61,.36,1);
+        filter 0.38s cubic-bezier(.22,.61,.36,1),
+        box-shadow 0.38s cubic-bezier(.22,.61,.36,1);
+}
+
+/* Inner card (tilt layer) */
+.card-inner {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    transform-style: preserve-3d;
+    transition: transform 0.25s ease;
 }
 
 /* Center card (big, sharp, on top) */
@@ -109,6 +123,7 @@ body.unblur {
     z-index: 3;
     filter: blur(0px);
     opacity: 1;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
 }
 
 /* Side cards (smaller, slightly blurred, behind) */
@@ -117,6 +132,7 @@ body.unblur {
     opacity: 0.55;
     filter: blur(1.5px);
     z-index: 1;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
 }
 
 /* Positioning (60–70% visible) */
@@ -136,4 +152,6 @@ body.unblur {
 #menu-label {
     font-size: 28px;
     letter-spacing: 1px;
+    text-align: center;
 }
+
