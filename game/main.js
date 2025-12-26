@@ -9,10 +9,15 @@ class MenuController {
         this.index = 0;
         this.isAnimating = false;
 
-        // Elements
+        // Elements (outer cards)
         this.leftBox   = document.getElementById("menu-left");
         this.centerBox = document.getElementById("menu-center");
         this.rightBox  = document.getElementById("menu-right");
+
+        // Inner tilt layer
+        this.centerInner = this.centerBox.querySelector(".card-inner");
+
+        // Label
         this.centerLabel = document.getElementById("menu-label");
 
         // Audio
@@ -49,9 +54,9 @@ class MenuController {
         const left  = (this.index - 1 + len) % len;
         const right = (this.index + 1) % len;
 
-        this.leftBox.textContent = this.options[left];
+        this.leftBox.querySelector(".card-inner").textContent = this.options[left];
         this.centerLabel.textContent = this.options[this.index];
-        this.rightBox.textContent = this.options[right];
+        this.rightBox.querySelector(".card-inner").textContent = this.options[right];
     }
 
     // -----------------------------
@@ -61,22 +66,20 @@ class MenuController {
         if (this.isAnimating) return;
         this.isAnimating = true;
 
-        // Direction: -1 = left, +1 = right
         const dur = 380;
 
         if (direction === -1) {
-            // Move left: everything shifts left
+            // Move left
             this.leftBox.style.transform   = "translateX(-420px)";
             this.centerBox.style.transform = "translateX(-210px)";
             this.rightBox.style.transform  = "translateX(0px)";
         } else {
-            // Move right: everything shifts right
+            // Move right
             this.leftBox.style.transform   = "translateX(0px)";
             this.centerBox.style.transform = "translateX(210px)";
             this.rightBox.style.transform  = "translateX(420px)";
         }
 
-        // Play movement sound
         this.playMoveSound();
 
         setTimeout(() => {
@@ -88,7 +91,7 @@ class MenuController {
                 this.index = (this.index + 1) % len;
             }
 
-            // Snap back to base positions
+            // Reset positions
             this.leftBox.style.transform   = "translateX(-210px)";
             this.centerBox.style.transform = "translateX(0)";
             this.rightBox.style.transform  = "translateX(210px)";
@@ -111,9 +114,9 @@ class MenuController {
     // -----------------------------
     setupTilt() {
         const row = document.getElementById("menu-row");
+        const inner = this.centerInner;
 
-        // subtle tilt only on the center card
-        const maxTilt = 6; // degrees
+        const maxTilt = 6;  // degrees
         const maxShift = 10; // px
 
         row.addEventListener("pointermove", (e) => {
@@ -129,12 +132,12 @@ class MenuController {
             const shiftX = normX * maxShift;
             const shiftY = normY * maxShift;
 
-            this.centerBox.style.transform =
-                `translateX(0px) translate(${shiftX}px, ${shiftY}px) rotateX(${tiltX}deg) rotateY(${tiltY}deg)`;
+            inner.style.transform =
+                `translate(${shiftX}px, ${shiftY}px) rotateX(${tiltX}deg) rotateY(${tiltY}deg)`;
         });
 
         row.addEventListener("pointerleave", () => {
-            this.centerBox.style.transform = "translateX(0)";
+            inner.style.transform = "translate(0,0) rotateX(0) rotateY(0)";
         });
     }
 
@@ -146,13 +149,9 @@ class MenuController {
         window.addEventListener("keydown", (e) => {
             if (this.isAnimating) return;
 
-            if (e.key === "ArrowLeft") {
-                this.rotateLeft();
-            } else if (e.key === "ArrowRight") {
-                this.rotateRight();
-            } else if (e.key === "Enter") {
-                this.selectCurrent();
-            }
+            if (e.key === "ArrowLeft") this.rotateLeft();
+            else if (e.key === "ArrowRight") this.rotateRight();
+            else if (e.key === "Enter") this.selectCurrent();
         });
 
         // Pointer / swipe
@@ -170,7 +169,7 @@ class MenuController {
             const dt = performance.now() - this.startTime;
 
             const minDistance = 60;
-            const minSpeed = 0.4; // px/ms
+            const minSpeed = 0.4;
 
             const speed = Math.abs(dx) / dt;
 
@@ -200,12 +199,9 @@ class MenuController {
     // -----------------------------
     playMoveSound() {
         try {
-            // restart if already playing
             this.moveSound.currentTime = 0;
             this.moveSound.play();
-        } catch (e) {
-            // ignore if autoplay blocked
-        }
+        } catch (e) {}
     }
 
     // -----------------------------
@@ -214,24 +210,13 @@ class MenuController {
     selectCurrent() {
         const selected = this.options[this.index];
 
-        // small visual feedback: scale pulse
+        // Pulse animation
         this.centerBox.style.scale = 1.28;
         setTimeout(() => {
             this.centerBox.style.scale = 1.22;
         }, 120);
 
-        // hook for your logic
-        switch (selected) {
-            case "Singleplayer":
-                console.log("Singleplayer selected");
-                break;
-            case "Multiplayer":
-                console.log("Multiplayer selected");
-                break;
-            case "Credits":
-                console.log("Credits selected");
-                break;
-        }
+        console.log(selected + " selected");
     }
 }
 
