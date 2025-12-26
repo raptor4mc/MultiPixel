@@ -407,6 +407,9 @@ const phaseTime = (now - startTime) / 1000;
 
     // Exit after 3 seconds
     if (loadingTimer > 10) {
+      
+        AudioManager.stopAll();
+
         window.location.href = "../game/main.html";
         return;
     }
