@@ -4,99 +4,130 @@
 window.addEventListener("load", () => {
     setTimeout(() => {
         document.body.classList.add("unblur");
-    }, 250); // slight delay for cinematic effect
+    }, 100); // fast cinematic unblur
 });
 
 
 // ---------------------------------------------
-// SWIPEABLE MENU CARDS
+// MENU OPTIONS (in circular order)
 // ---------------------------------------------
-const container = document.getElementById("menu-container");
-const cards = Array.from(document.querySelectorAll(".menu-card"));
+const options = [
+    "Singleplayer",
+    "Multiplayer",
+    "Credits"
+];
 
-let startX = 0;
-let currentOffset = 0;     // which card index we are centered on
-let isDragging = false;
+// Index of the currently selected option
+let index = 0;
 
 
-// Helper: update card positions + active state
-function updateCardPositions() {
-    const cardWidth = 260; // card width + gap
-    container.style.transform =
-        `translate(calc(-50% + ${currentOffset * -cardWidth}px), -50%)`;
+// ---------------------------------------------
+// ELEMENT REFERENCES
+// ---------------------------------------------
+const centerLabel = document.getElementById("menu-label");
 
-    cards.forEach((card, index) => {
-        card.classList.toggle("active", index === -currentOffset);
-    });
+const corners = {
+    tl: document.querySelector(".top-left"),
+    tr: document.querySelector(".top-right"),
+    bl: document.querySelector(".bottom-left"),
+    br: document.querySelector(".bottom-right")
+};
+
+
+// ---------------------------------------------
+// UPDATE UI BASED ON CURRENT INDEX
+// ---------------------------------------------
+function updateMenu() {
+    // Center label
+    centerLabel.textContent = options[index];
+
+    // Corner previews (next/previous options)
+    const left  = (index - 1 + options.length) % options.length;
+    const right = (index + 1) % options.length;
+
+    // Assign text to corners (optional: icons later)
+    corners.tl.textContent = options[left];
+    corners.bl.textContent = options[left];
+
+    corners.tr.textContent = options[right];
+    corners.br.textContent = options[right];
+}
+
+updateMenu();
+
+
+// ---------------------------------------------
+// ROTATION LOGIC
+// ---------------------------------------------
+function rotateLeft() {
+    index = (index - 1 + options.length) % options.length;
+    updateMenu();
+}
+
+function rotateRight() {
+    index = (index + 1) % options.length;
+    updateMenu();
 }
 
 
-// Pointer down
-container.addEventListener("pointerdown", e => {
+// ---------------------------------------------
+// KEYBOARD INPUT (PC)
+// ---------------------------------------------
+window.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowLeft") rotateLeft();
+    if (e.key === "ArrowRight") rotateRight();
+    if (e.key === "Enter") selectOption();
+});
+
+
+// ---------------------------------------------
+// TOUCH / SWIPE INPUT (MOBILE + PC)
+// ---------------------------------------------
+let startX = 0;
+let isSwiping = false;
+
+document.addEventListener("pointerdown", (e) => {
     startX = e.clientX;
-    isDragging = true;
+    isSwiping = true;
 });
 
-
-// Pointer move
-container.addEventListener("pointermove", e => {
-    if (!isDragging) return;
-
-    const dx = e.clientX - startX;
-    const cardWidth = 260;
-
-    container.style.transform =
-        `translate(calc(-50% + ${dx + currentOffset * -cardWidth}px), -50%)`;
+document.addEventListener("pointermove", (e) => {
+    if (!isSwiping) return;
 });
 
-
-// Pointer up
-container.addEventListener("pointerup", e => {
-    if (!isDragging) return;
-    isDragging = false;
+document.addEventListener("pointerup", (e) => {
+    if (!isSwiping) return;
+    isSwiping = false;
 
     const dx = e.clientX - startX;
 
-    // Swipe threshold
-    if (dx > 100) {
-        currentOffset += 1; // swipe right
-    } else if (dx < -100) {
-        currentOffset -= 1; // swipe left
+    if (dx > 80) rotateLeft();
+    else if (dx < -80) rotateRight();
+});
+
+
+// ---------------------------------------------
+// SELECT OPTION (ENTER or TAP CENTER)
+// ---------------------------------------------
+function selectOption() {
+    const selected = options[index];
+
+    switch (selected) {
+        case "Singleplayer":
+            console.log("Singleplayer selected");
+            break;
+
+        case "Multiplayer":
+            console.log("Multiplayer selected");
+            break;
+
+        case "Credits":
+            console.log("Credits selected");
+            break;
     }
+}
 
-    // Clamp offset
-    currentOffset = Math.max(currentOffset, -(cards.length - 1));
-    currentOffset = Math.min(currentOffset, 0);
-
-    updateCardPositions();
-});
-
-
-// ---------------------------------------------
-// CARD CLICK ACTIONS
-// ---------------------------------------------
-cards.forEach(card => {
-    card.addEventListener("click", () => {
-        const action = card.dataset.action;
-
-        switch (action) {
-            case "singleplayer":
-                console.log("Singleplayer selected");
-                // TODO: transition into game world
-                break;
-
-            case "multiplayer":
-                console.log("Multiplayer selected");
-                // TODO: open multiplayer menu
-                break;
-
-            case "credits":
-                console.log("Credits selected");
-                // TODO: show credits screen
-                break;
-        }
-    });
-});
+document.getElementById("menu-center").addEventListener("click", selectOption);
 
 
 // ---------------------------------------------
@@ -104,16 +135,8 @@ cards.forEach(card => {
 // ---------------------------------------------
 document.getElementById("settings-btn").addEventListener("click", () => {
     console.log("Settings clicked");
-    // TODO: open settings menu
 });
 
 document.getElementById("profile-btn").addEventListener("click", () => {
     console.log("Profile clicked");
-    // TODO: open profile screen
 });
-
-
-// ---------------------------------------------
-// INITIAL STATE
-// ---------------------------------------------
-updateCardPositions();
