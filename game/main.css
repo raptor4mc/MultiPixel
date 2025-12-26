@@ -22,13 +22,12 @@ body {
     transition: filter 0.6s ease;
 }
 
-/* When JS adds this class, the blur fades away */
 body.unblur {
     filter: blur(0px);
 }
 
 /* ------------------------------
-   TOP BAR (settings + profile)
+   TOP BAR
 ------------------------------ */
 
 #top-bar {
@@ -57,7 +56,6 @@ body.unblur {
     transform: scale(1.08);
 }
 
-/* Replace these with your actual icon paths */
 #settings-btn {
     background-image: url("icons/settings.png");
 }
@@ -67,68 +65,49 @@ body.unblur {
 }
 
 /* ------------------------------
-   MENU WHEEL LAYOUT
+   HORIZONTAL MENU ROW (oOo)
 ------------------------------ */
 
-#menu-wheel {
-    position: relative;
-    width: 420px;
-    height: 420px;
+#menu-row {
     display: flex;
-    justify-content: center;
     align-items: center;
+    gap: 40px;
 }
 
 /* ------------------------------
-   CORNER SQUARES
+   SMALL SQUARES (left + right)
 ------------------------------ */
 
-.corner {
-    position: absolute;
-    width: 120px;
-    height: 120px;
+.menu-small {
+    width: 140px;
+    height: 140px;
 
-    /* Glass effect */
     background: rgba(255, 255, 255, 0.10);
     backdrop-filter: blur(12px) saturate(180%);
     -webkit-backdrop-filter: blur(12px) saturate(180%);
     border-radius: 14px;
     border: 1px solid rgba(255, 255, 255, 0.18);
 
-    opacity: 0.55;
-    transition: opacity 0.3s ease;
-}
+    display: flex;
+    justify-content: center;
+    align-items: center;
 
-/* Corner positions */
-.top-left {
-    top: 0;
-    left: 0;
-}
+    font-family: "Segoe UI", sans-serif;
+    font-size: 18px;
+    color: white;
+    opacity: 0.6;
 
-.top-right {
-    top: 0;
-    right: 0;
-}
-
-.bottom-left {
-    bottom: 0;
-    left: 0;
-}
-
-.bottom-right {
-    bottom: 0;
-    right: 0;
+    transition: opacity 0.25s ease, transform 0.25s ease;
 }
 
 /* ------------------------------
-   CENTER SQUARE (active option)
+   CENTER BIG SQUARE
 ------------------------------ */
 
-#menu-center {
+.menu-big {
     width: 240px;
     height: 240px;
 
-    /* Stronger glass effect */
     background: rgba(255, 255, 255, 0.16);
     backdrop-filter: blur(16px) saturate(200%);
     -webkit-backdrop-filter: blur(16px) saturate(200%);
@@ -139,7 +118,7 @@ body.unblur {
     justify-content: center;
     align-items: center;
 
-    transition: transform 0.25s ease;
+    transition: transform 0.25s ease, opacity 0.25s ease;
 }
 
 #menu-label {
@@ -152,18 +131,25 @@ body.unblur {
 }
 
 /* ------------------------------
-   OPTIONAL: CROSSHAIR OR FUTURE UI
+   SWITCH ANIMATIONS
 ------------------------------ */
 
-#crosshair {
-    position: absolute;
-    width: 20px;
-    height: 20px;
-    border: 2px solid white;
-    border-radius: 50%;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    opacity: 0.2;
-    pointer-events: none;
+.menu-big.animate-left {
+    animation: slideLeft 0.25s ease;
+}
+
+.menu-big.animate-right {
+    animation: slideRight 0.25s ease;
+}
+
+@keyframes slideLeft {
+    0%   { transform: translateX(0); opacity: 1; }
+    50%  { transform: translateX(-40px); opacity: 0.4; }
+    100% { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideRight {
+    0%   { transform: translateX(0); opacity: 1; }
+    50%  { transform: translateX(40px); opacity: 0.4; }
+    100% { transform: translateX(0); opacity: 1; }
 }
