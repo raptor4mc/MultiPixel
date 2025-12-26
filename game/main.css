@@ -19,7 +19,7 @@ body {
 
     /* Start blurred */
     filter: blur(25px);
-    transition: filter 1.6s ease;
+    transition: filter 0.6s ease;
 }
 
 /* When JS adds this class, the blur fades away */
