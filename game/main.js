@@ -4,7 +4,7 @@
 window.addEventListener("load", () => {
     setTimeout(() => {
         document.body.classList.add("unblur");
-    }, 100); // fast cinematic unblur
+    }, 100);
 });
 
 
@@ -17,61 +17,59 @@ const options = [
     "Credits"
 ];
 
-// Index of the currently selected option
 let index = 0;
 
 
 // ---------------------------------------------
 // ELEMENT REFERENCES
 // ---------------------------------------------
+const leftBox   = document.getElementById("menu-left");
+const centerBox = document.getElementById("menu-center");
+const rightBox  = document.getElementById("menu-right");
 const centerLabel = document.getElementById("menu-label");
-
-const corners = {
-    tl: document.querySelector(".top-left"),
-    tr: document.querySelector(".top-right"),
-    bl: document.querySelector(".bottom-left"),
-    br: document.querySelector(".bottom-right")
-};
 
 
 // ---------------------------------------------
 // UPDATE UI BASED ON CURRENT INDEX
 // ---------------------------------------------
 function updateMenu() {
-    // Center label
-    centerLabel.textContent = options[index];
-
-    // Corner previews (next/previous options)
     const left  = (index - 1 + options.length) % options.length;
     const right = (index + 1) % options.length;
 
-    // Assign text to corners (optional: icons later)
-    corners.tl.textContent = options[left];
-    corners.bl.textContent = options[left];
-
-    corners.tr.textContent = options[right];
-    corners.br.textContent = options[right];
+    leftBox.textContent = options[left];
+    centerLabel.textContent = options[index];
+    rightBox.textContent = options[right];
 }
 
 updateMenu();
 
 
 // ---------------------------------------------
-// ROTATION LOGIC
+// ROTATION LOGIC + ANIMATION
 // ---------------------------------------------
 function rotateLeft() {
+    centerBox.classList.remove("animate-right");
+    centerBox.classList.add("animate-left");
+
     index = (index - 1 + options.length) % options.length;
     updateMenu();
+
+    setTimeout(() => centerBox.classList.remove("animate-left"), 250);
 }
 
 function rotateRight() {
+    centerBox.classList.remove("animate-left");
+    centerBox.classList.add("animate-right");
+
     index = (index + 1) % options.length;
     updateMenu();
+
+    setTimeout(() => centerBox.classList.remove("animate-right"), 250);
 }
 
 
 // ---------------------------------------------
-// KEYBOARD INPUT (PC)
+// KEYBOARD INPUT
 // ---------------------------------------------
 window.addEventListener("keydown", (e) => {
     if (e.key === "ArrowLeft") rotateLeft();
@@ -81,7 +79,7 @@ window.addEventListener("keydown", (e) => {
 
 
 // ---------------------------------------------
-// TOUCH / SWIPE INPUT (MOBILE + PC)
+// SWIPE INPUT
 // ---------------------------------------------
 let startX = 0;
 let isSwiping = false;
@@ -89,10 +87,6 @@ let isSwiping = false;
 document.addEventListener("pointerdown", (e) => {
     startX = e.clientX;
     isSwiping = true;
-});
-
-document.addEventListener("pointermove", (e) => {
-    if (!isSwiping) return;
 });
 
 document.addEventListener("pointerup", (e) => {
@@ -107,7 +101,7 @@ document.addEventListener("pointerup", (e) => {
 
 
 // ---------------------------------------------
-// SELECT OPTION (ENTER or TAP CENTER)
+// SELECT OPTION
 // ---------------------------------------------
 function selectOption() {
     const selected = options[index];
@@ -127,7 +121,7 @@ function selectOption() {
     }
 }
 
-document.getElementById("menu-center").addEventListener("click", selectOption);
+centerBox.addEventListener("click", selectOption);
 
 
 // ---------------------------------------------
