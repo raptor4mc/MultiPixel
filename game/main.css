@@ -1,157 +1,117 @@
-/* ------------------------------
-   GLOBAL STYLES
------------------------------- */
-
-* {
+body {
     margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+    overflow: hidden;
+    background-color: #050505;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    user-select: none;
 }
 
-body {
+#canvas-container {
     width: 100vw;
     height: 100vh;
-    overflow: hidden;
-    background: linear-gradient(135deg, #0a0a0a, #1a1a1a);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-
-    filter: blur(25px);
-    transition: filter 0.6s ease;
-}
-
-body.unblur {
-    filter: blur(0px);
-}
-
-/* ------------------------------
-   TOP BAR
------------------------------- */
-
-#top-bar {
     position: absolute;
-    top: 20px;
+    inset: 0;
+    z-index: 1;
+}
+
+#ui-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.label {
+    position: absolute;
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 300;
+    font-size: 1rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    transform: translate(-50%, -50%);
+    transition: all 0.3s;
+    white-space: nowrap;
+}
+
+.label.active {
+    color: #fff;
+    font-size: 1.5rem;
+    font-weight: 700;
+    text-shadow: 0 0 10px rgba(0,255,255,.8);
+}
+
+.hud-icon {
+    position: absolute;
+    width: 48px;
+    height: 48px;
+    fill: #444;
+    cursor: pointer;
+    z-index: 10;
+    transition: fill .3s, transform .3s;
+}
+
+.hud-icon:hover {
+    fill: #00ffff;
+    transform: scale(1.1);
+}
+
+.hud-icon.clicked {
+    animation: spinGrow .5s ease-out forwards;
+}
+
+@keyframes spinGrow {
+    0% { transform: rotate(0) scale(1); }
+    50% { transform: rotate(180deg) scale(1.4); }
+    100% { transform: rotate(360deg) scale(1); }
+}
+
+#profile-icon { top: 30px; left: 30px; }
+#settings-icon { top: 30px; right: 30px; }
+
+#instructions {
+    position: absolute;
+    bottom: 30px;
     width: 100%;
-    display: flex;
-    justify-content: space-between;
-    padding: 0 25px;
+    text-align: center;
+    color: #666;
+    font-size: .9rem;
+}
+
+.key {
+    border: 1px solid #444;
+    border-radius: 4px;
+    padding: 2px 6px;
+    background: #111;
+    color: #aaa;
+}
+
+#modal {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(.8);
+    background: rgba(10,10,10,.95);
+    border: 1px solid #333;
+    padding: 40px;
+    border-radius: 8px;
+    color: white;
+    opacity: 0;
+    pointer-events: none;
+    transition: .3s;
     z-index: 20;
 }
 
-.icon {
-    width: 42px;
-    height: 42px;
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
+#modal.show {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+    pointer-events: auto;
+}
+
+#modal h2 { color: #00ffff; }
+#modal button {
+    background: transparent;
+    border: 1px solid #00ffff;
+    color: #00ffff;
+    padding: 8px 20px;
     cursor: pointer;
-    opacity: 0.85;
-    transition: opacity 0.2s ease, transform 0.2s ease;
 }
-
-.icon:hover {
-    opacity: 1;
-    transform: scale(1.08);
-}
-
-#settings-btn {
-    background-image: url("icons/settings.png");
-}
-
-#profile-btn {
-    background-image: url("icons/profile.png");
-}
-
-/* ------------------------------
-   CINEMATIC CAROUSEL
------------------------------- */
-
-#menu-row {
-    position: relative;
-    width: 760px;
-    height: 260px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    overflow: visible;
-    perspective: 1200px; /* required for 3D tilt */
-}
-
-/* Outer card (movement layer) */
-.menu-card {
-    position: absolute;
-    width: 240px;
-    height: 240px;
-
-    background: rgba(255, 255, 255, 0.12);
-    backdrop-filter: blur(18px) saturate(200%);
-    border-radius: 22px;
-    border: 1px solid rgba(255, 255, 255, 0.25);
-
-    display: flex;
-    justify-content: center;
-    align-items: center;
-
-    font-family: "Segoe UI", sans-serif;
-    color: white;
-    user-select: none;
-
-    transition:
-        transform 0.38s cubic-bezier(.22,.61,.36,1),
-        opacity 0.38s cubic-bezier(.22,.61,.36,1),
-        scale 0.38s cubic-bezier(.22,.61,.36,1),
-        filter 0.38s cubic-bezier(.22,.61,.36,1),
-        box-shadow 0.38s cubic-bezier(.22,.61,.36,1);
-}
-
-/* Inner card (tilt layer) */
-.card-inner {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-
-    transform-style: preserve-3d;
-    transition: transform 0.25s ease;
-}
-
-/* Center card (big, sharp, on top) */
-.big {
-    scale: 1.22;
-    z-index: 3;
-    filter: blur(0px);
-    opacity: 1;
-    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
-}
-
-/* Side cards (smaller, slightly blurred, behind) */
-.menu-card:not(.big) {
-    scale: 0.82;
-    opacity: 0.55;
-    filter: blur(1.5px);
-    z-index: 1;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
-}
-
-/* Positioning (60–70% visible) */
-#menu-left {
-    transform: translateX(-210px);
-}
-
-#menu-center {
-    transform: translateX(0);
-}
-
-#menu-right {
-    transform: translateX(210px);
-}
-
-/* Label */
-#menu-label {
-    font-size: 28px;
-    letter-spacing: 1px;
-    text-align: center;
-}
-
