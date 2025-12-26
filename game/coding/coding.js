@@ -1,114 +1,104 @@
-// --- CONFIGURATION ---
-const SupremeSettings = {
-    safetyMode: true,      // Q6: Prevents changing types (e.g., Number to String)
-    caseSensitive: true,   // Q7: 'SAY' != 'say'
-    strictValues: true,    // Q8: Variables must have a value
-    requireSemicolons: true // Q2: Setting for semicolon enforcement
+let SupremeSettings = {
+    safetyMode: true,
+    caseSensitive: true,
+    requireSemicolons: true
 };
 
-let Memory = {}; // Stores variable values
-let MemoryTypes = {}; // Stores variable types for Safety Mode
+let Memory = {};
 
-// --- THE CORE FUNCTIONS ---
+// --- UI FUNCTIONS ---
+
+function toggleSettings() {
+    document.getElementById('settings-menu').classList.toggle('hidden');
+}
+
+function updateSettings() {
+    SupremeSettings.safetyMode = document.getElementById('safety-toggle').checked;
+    SupremeSettings.requireSemicolons = document.getElementById('semi-toggle').checked;
+    SupremeSettings.caseSensitive = document.getElementById('case-toggle').checked;
+    printToTerminal("System: Settings Updated.");
+}
+
+function clearTerminal() {
+    document.getElementById('output').innerHTML = "";
+    bootMultiRaptor();
+}
+
+// --- ENGINE FUNCTIONS ---
 
 function stripComments(code) {
-    // Q9: Removes #/# comment #*
     return code.replace(/#\/#[\s\S]*?#\*/g, "");
 }
 
 function printToTerminal(text, isError = false) {
     const outputDiv = document.getElementById('output');
-    const color = isError ? "#ff4444" : "#00ff00";
-    outputDiv.innerHTML += `<span style="color: ${color}">> ${text}</span><br>`;
+    const color = isError ? "#ff4444" : "#00ff95";
+    outputDiv.innerHTML += `<div style="color: ${color}; margin-bottom: 4px;">> ${text}</div>`;
+    outputDiv.scrollTop = outputDiv.scrollHeight; 
 }
 
 function runCode() {
     const editor = document.getElementById('editor');
-    let rawInput = editor.value;
-    let cleanInput = stripComments(rawInput);
-    let lines = cleanInput.split('\n');
+    let lines = stripComments(editor.value).split('\n');
     
-    document.getElementById('output').innerHTML = ""; // Clear terminal
-    Memory = {}; // Reset memory for fresh run
+    printToTerminal("--- Running MultiRaptor Script ---");
+    Memory = {}; 
 
     for (let i = 0; i < lines.length; i++) {
         let lineNum = i + 1;
         let lineText = lines[i].trim();
-
         if (lineText === "") continue;
 
         try {
-            // Check for semicolons if setting is ON
             if (SupremeSettings.requireSemicolons && !lineText.endsWith(';')) {
                 throw new Error("Missing semicolon ';'");
             }
-
-            // Remove semicolon for processing
-            let command = lineText.replace(';', '');
+            let command = lineText.replace(/;$/, ''); // Removes only the last semicolon
             executeLine(command);
-
         } catch (err) {
-            // Q10: Report line number and specific error without crashing
             printToTerminal(`ERROR [Line ${lineNum}]: ${err.message}`, true);
-            printToTerminal(`   Target: "${lineText}"`, true);
         }
     }
 }
 
 function executeLine(line) {
-    const tokens = line.split(' ');
-    const action = tokens[0];
-
-    // COMMAND: SAY
-    if (action === "SAY") {
-        const message = tokens.slice(1).join(' ');
-        printToTerminal(message);
-    } 
+    const tokens = line.split(/\s+/); // Splits by any whitespace
+    let action = tokens[0];
     
-    // COMMAND: SET (Variables)
-    else if (action === "SET") {
-        // Syntax: SET name = value
+    // Q7: Case Sensitivity Check
+    if (!SupremeSettings.caseSensitive) {
+        action = action.toUpperCase();
+    }
+
+    if (action === "SAY" || action === "say") {
+        printToTerminal(tokens.slice(1).join(' '));
+    } 
+    else if (action === "SET" || action === "set") {
         let name = tokens[1];
         let value = tokens[3];
-
-        // Try to determine if it's a number or string
         let processedValue = isNaN(value) ? value : Number(value);
-        let currentType = typeof processedValue;
 
-        // Safety Mode Check
         if (SupremeSettings.safetyMode && Memory[name] !== undefined) {
-            let originalType = typeof Memory[name];
-            if (originalType !== currentType) {
-                throw new Error(`Safety Violation: Cannot change '${name}' from ${originalType} to ${currentType}`);
+            if (typeof Memory[name] !== typeof processedValue) {
+                throw new Error(`Type Mismatch: ${name} is a ${typeof Memory[name]}`);
             }
         }
-
         Memory[name] = processedValue;
-        printToTerminal(`System: ${name} is now ${processedValue}`);
+        printToTerminal(`${name} = ${processedValue}`);
     }
-    
+    else if (action === "HELP") {
+        printToTerminal("Commands: SAY [text]; SET [var] = [val]; HELP;");
+    }
     else {
         throw new Error(`Unknown command '${action}'`);
     }
 }
-function bootMultiRaptor() {
-    const outputDiv = document.getElementById('output');
-    
-    const welcomeMessage = `
-******************************************
-* WELCOME TO MULTIRAPTOR v1.0      *
-* The World's Most Flexible Engine    *
-******************************************
-STATUS: 
-- Safety Mode: ${SupremeSettings.safetyMode ? "ON (Shields Up)" : "OFF (Lawless)"}
-- Case Sensitive: ${SupremeSettings.caseSensitive ? "YES" : "NO"}
-- Semicolons: ${SupremeSettings.requireSemicolons ? "REQUIRED" : "OPTIONAL"}
 
-Type 'HELP' to see commands or write your code!
-------------------------------------------`;
-    
-    printToTerminal(welcomeMessage);
+function bootMultiRaptor() {
+    printToTerminal(`******************************************`);
+    printToTerminal(`* MULTIRAPTOR ENGINE ONLINE v1.0         *`);
+    printToTerminal(`******************************************`);
+    printToTerminal(`Ready for input...`);
 }
 
-// Call this at the very end of your script
 window.onload = bootMultiRaptor;
