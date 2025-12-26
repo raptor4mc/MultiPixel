@@ -9,9 +9,9 @@ export const AudioManager = {
         impactDunDuuuu: new Audio("audio/impact_dunduuuu.mp3"),
 
         // Loops
-        loadingMusic: new Audio("audio/loading_music_loop.mp3"),
-        coreHum: new Audio("audio/core_hum_loop.mp3"),
-        loadingTick: new Audio("audio/loading_tick.mp3")
+        //loadingMusic: new Audio("audio/loading_music_loop.mp3"),
+        //coreHum: new Audio("audio/core_hum_loop.mp3"),
+        //loadingTick: new Audio("audio/loading_tick.mp3")
     },
 
     // Play a one-shot sound
