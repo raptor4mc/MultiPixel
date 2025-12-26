@@ -91,3 +91,24 @@ function executeLine(line) {
         throw new Error(`Unknown command '${action}'`);
     }
 }
+function bootMultiRaptor() {
+    const outputDiv = document.getElementById('output');
+    
+    const welcomeMessage = `
+******************************************
+* WELCOME TO MULTIRAPTOR v1.0      *
+* The World's Most Flexible Engine    *
+******************************************
+STATUS: 
+- Safety Mode: ${SupremeSettings.safetyMode ? "ON (Shields Up)" : "OFF (Lawless)"}
+- Case Sensitive: ${SupremeSettings.caseSensitive ? "YES" : "NO"}
+- Semicolons: ${SupremeSettings.requireSemicolons ? "REQUIRED" : "OPTIONAL"}
+
+Type 'HELP' to see commands or write your code!
+------------------------------------------`;
+    
+    printToTerminal(welcomeMessage);
+}
+
+// Call this at the very end of your script
+window.onload = bootMultiRaptor;
