@@ -1,0 +1,11 @@
+body {
+    margin: 0;
+    overflow: hidden;
+    background: #0e0e0e;
+    filter: blur(20px);
+    transition: filter 1.5s ease;
+}
+
+body.unblur {
+    filter: blur(0px);
+}
