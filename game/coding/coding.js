@@ -6,7 +6,16 @@ let SupremeSettings = {
 
 let Memory = {};
 
-// --- UI FUNCTIONS ---
+// --- SYSTEM FUNCTIONS ---
+
+function saveLocal() {
+    localStorage.setItem('multiRaptorCode', document.getElementById('editor').value);
+}
+
+function loadLocal() {
+    const saved = localStorage.getItem('multiRaptorCode');
+    if (saved) document.getElementById('editor').value = saved;
+}
 
 function toggleSettings() {
     document.getElementById('settings-menu').classList.toggle('hidden');
@@ -16,89 +25,90 @@ function updateSettings() {
     SupremeSettings.safetyMode = document.getElementById('safety-toggle').checked;
     SupremeSettings.requireSemicolons = document.getElementById('semi-toggle').checked;
     SupremeSettings.caseSensitive = document.getElementById('case-toggle').checked;
-    printToTerminal("System: Settings Updated.");
-}
-
-function clearTerminal() {
-    document.getElementById('output').innerHTML = "";
-    bootMultiRaptor();
-}
-
-// --- ENGINE FUNCTIONS ---
-
-function stripComments(code) {
-    return code.replace(/#\/#[\s\S]*?#\*/g, "");
+    printToTerminal("System: Config Sync Successful.");
 }
 
 function printToTerminal(text, isError = false) {
     const outputDiv = document.getElementById('output');
-    const color = isError ? "#ff4444" : "#00ff95";
-    outputDiv.innerHTML += `<div style="color: ${color}; margin-bottom: 4px;">> ${text}</div>`;
-    outputDiv.scrollTop = outputDiv.scrollHeight; 
+    const color = isError ? "#f14c4c" : "#00ff95";
+    outputDiv.innerHTML += `<div style="color: ${color}">> ${text}</div>`;
+    outputDiv.scrollTop = outputDiv.scrollHeight;
 }
 
 function runCode() {
     const editor = document.getElementById('editor');
-    let lines = stripComments(editor.value).split('\n');
+    let code = editor.value.replace(/#\/#[\s\S]*?#\*/g, ""); // Strip comments
+    let lines = code.split('\n');
     
-    printToTerminal("--- Running MultiRaptor Script ---");
+    document.getElementById('output').innerHTML = "";
+    printToTerminal("MultiRaptor: Initializing Engine...");
     Memory = {}; 
 
     for (let i = 0; i < lines.length; i++) {
-        let lineNum = i + 1;
-        let lineText = lines[i].trim();
-        if (lineText === "") continue;
-
+        let line = lines[i].trim();
+        if (line === "") continue;
         try {
-            if (SupremeSettings.requireSemicolons && !lineText.endsWith(';')) {
-                throw new Error("Missing semicolon ';'");
-            }
-            let command = lineText.replace(/;$/, ''); // Removes only the last semicolon
-            executeLine(command);
+            if (SupremeSettings.requireSemicolons && !line.endsWith(';')) throw new Error("Missing ';'");
+            executeLine(line.replace(/;$/, ''), i + 1);
         } catch (err) {
-            printToTerminal(`ERROR [Line ${lineNum}]: ${err.message}`, true);
+            printToTerminal(`FATAL ERROR [Line ${i+1}]: ${err.message}`, true);
         }
     }
 }
 
-function executeLine(line) {
-    const tokens = line.split(/\s+/); // Splits by any whitespace
-    let action = tokens[0];
-    
-    // Q7: Case Sensitivity Check
-    if (!SupremeSettings.caseSensitive) {
-        action = action.toUpperCase();
-    }
+function executeLine(line, lineNum) {
+    const tokens = line.split(/\s+/);
+    let action = SupremeSettings.caseSensitive ? tokens[0] : tokens[0].toUpperCase();
 
-    if (action === "SAY" || action === "say") {
-        printToTerminal(tokens.slice(1).join(' '));
+    // 1. SAY: Print text or variables
+    if (action === "SAY") {
+        let content = tokens.slice(1).join(' ');
+        printToTerminal(Memory[content] !== undefined ? Memory[content] : content);
     } 
-    else if (action === "SET" || action === "set") {
+
+    // 2. SET: Variable with Basic Math Support
+    else if (action === "SET") {
         let name = tokens[1];
-        let value = tokens[3];
-        let processedValue = isNaN(value) ? value : Number(value);
+        let expression = tokens.slice(3).join(' '); // Everything after the '='
+        
+        // Simple Math Engine (handles 5 + 5 or 10 * 2)
+        let result;
+        try {
+            // Check if user is referencing another variable in math
+            for (let key in Memory) {
+                expression = expression.replace(new RegExp(key, 'g'), Memory[key]);
+            }
+            result = eval(expression); // Calculate the math
+        } catch {
+            result = isNaN(expression) ? expression : Number(expression);
+        }
 
         if (SupremeSettings.safetyMode && Memory[name] !== undefined) {
-            if (typeof Memory[name] !== typeof processedValue) {
-                throw new Error(`Type Mismatch: ${name} is a ${typeof Memory[name]}`);
-            }
+            if (typeof Memory[name] !== typeof result) throw new Error(`Safety: Cannot turn ${typeof Memory[name]} into ${typeof result}`);
         }
-        Memory[name] = processedValue;
-        printToTerminal(`${name} = ${processedValue}`);
+        Memory[name] = result;
     }
+
+    // 3. GET: User Input
+    else if (action === "GET") {
+        let name = tokens[1];
+        let val = prompt(`MultiRaptor Input Request for: ${name}`);
+        Memory[name] = isNaN(val) ? val : Number(val);
+    }
+
     else if (action === "HELP") {
-        printToTerminal("Commands: SAY [text]; SET [var] = [val]; HELP;");
+        printToTerminal("Commands: SAY [msg]; SET [var] = [math/val]; GET [var];");
     }
     else {
-        throw new Error(`Unknown command '${action}'`);
+        throw new Error(`Command '${action}' unknown.`);
     }
 }
 
-function bootMultiRaptor() {
-    printToTerminal(`******************************************`);
-    printToTerminal(`* MULTIRAPTOR ENGINE ONLINE v1.0         *`);
-    printToTerminal(`******************************************`);
-    printToTerminal(`Ready for input...`);
+function clearTerminal() {
+    document.getElementById('output').innerHTML = "";
 }
 
-window.onload = bootMultiRaptor;
+window.onload = () => {
+    loadLocal();
+    printToTerminal("MULTIRAPTOR WORKBENCH v1.0 ONLINE");
+};
