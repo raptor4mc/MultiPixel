@@ -1,226 +1,132 @@
-// ---------------------------------------------
-// MENU ENGINE
-// ---------------------------------------------
-
-class MenuController {
-    constructor() {
-        // Options and state
-        this.options = ["Singleplayer", "Multiplayer", "Credits"];
-        this.index = 0;
-        this.isAnimating = false;
-
-        // Elements (outer cards)
-        this.leftBox   = document.getElementById("menu-left");
-        this.centerBox = document.getElementById("menu-center");
-        this.rightBox  = document.getElementById("menu-right");
-
-        // Inner tilt layer
-        this.centerInner = this.centerBox.querySelector(".card-inner");
-
-        // Label
-        this.centerLabel = document.getElementById("menu-label");
-
-        // Audio
-        this.moveSound = new Audio("boot/audio/swoosh_devour.mp3");
-        this.moveSound.volume = 0.65;
-
-        // Swipe tracking
-        this.pointerActive = false;
-        this.startX = 0;
-        this.startTime = 0;
-
-        // Init
-        this.init();
+// === CONFIG ===
+const CONFIG = {
+    radius: 5.5,
+    baseScale: 1,
+    activeScale: 1.8,
+    colors: {
+        default: 0x444444,
+        active: 0x00ffff
     }
+};
 
-    init() {
-        // Unblur body
-        window.addEventListener("load", () => {
-            setTimeout(() => {
-                document.body.classList.add("unblur");
-            }, 100);
-        });
+const MENU_ITEMS = [
+    { name: "SinglePlayer" },
+    { name: "MultiPlayer" },
+    { name: "Coding" },
+    { name: "Mods" },
+    { name: "Credits" }
+];
 
-        this.updateContent();
-        this.bindInput();
-        this.setupTilt();
+let selectedIndex = 0;
+let isModalOpen = false;
+
+// === AUDIO ===
+const swoosh = document.getElementById("swoosh-audio");
+const playSwoosh = () => {
+    swoosh.currentTime = 0;
+    swoosh.play().catch(() => {});
+};
+
+// === THREE ===
+const container = document.getElementById("canvas-container");
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x050505, 0.04);
+
+const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 100);
+camera.position.set(0, 1, 10);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setSize(innerWidth, innerHeight);
+container.appendChild(renderer.domElement);
+
+scene.add(new THREE.AmbientLight(0x404040, 2));
+
+const group = new THREE.Group();
+scene.add(group);
+
+const uiLayer = document.getElementById("ui-layer");
+const geometry = new THREE.BoxGeometry(1.5, 1.5, 1.5);
+const angleStep = (Math.PI * 2) / MENU_ITEMS.length;
+
+const objects = [];
+const labels = [];
+
+const createLabel = text => {
+    const el = document.createElement("div");
+    el.className = "label";
+    el.textContent = text;
+    uiLayer.appendChild(el);
+    return el;
+};
+
+MENU_ITEMS.forEach((item, i) => {
+    const mesh = new THREE.Mesh(
+        geometry,
+        new THREE.MeshStandardMaterial({ color: CONFIG.colors.default })
+    );
+
+    const angle = i * angleStep;
+    mesh.position.set(
+        CONFIG.radius * Math.sin(angle),
+        0,
+        CONFIG.radius * Math.cos(angle)
+    );
+
+    mesh.rotation.y = Math.PI;
+    group.add(mesh);
+
+    objects.push(mesh);
+    labels.push(createLabel(item.name));
+});
+
+// === UI ===
+const modal = document.getElementById("modal");
+document.getElementById("close-modal").onclick = () => {
+    modal.classList.remove("show");
+    isModalOpen = false;
+};
+
+// === INPUT ===
+window.addEventListener("keydown", e => {
+    if (isModalOpen) return;
+
+    if (e.key === "ArrowRight") selectedIndex = (selectedIndex + 1) % objects.length;
+    if (e.key === "ArrowLeft") selectedIndex = (selectedIndex - 1 + objects.length) % objects.length;
+    if (e.key === "Enter") {
+        modal.classList.add("show");
+        isModalOpen = true;
     }
+    playSwoosh();
+});
 
-    // -----------------------------
-    // Content / layout
-    // -----------------------------
-    updateContent() {
-        const len = this.options.length;
-        const left  = (this.index - 1 + len) % len;
-        const right = (this.index + 1) % len;
+// === LOOP ===
+function animate() {
+    requestAnimationFrame(animate);
 
-        this.leftBox.querySelector(".card-inner").textContent = this.options[left];
-        this.centerLabel.textContent = this.options[this.index];
-        this.rightBox.querySelector(".card-inner").textContent = this.options[right];
-    }
+    group.rotation.y += (-selectedIndex * angleStep - group.rotation.y) * 0.1;
 
-    // -----------------------------
-    // Rotation
-    // -----------------------------
-    rotate(direction) {
-        if (this.isAnimating) return;
-        this.isAnimating = true;
+    objects.forEach((obj, i) => {
+        const active = i === selectedIndex;
+        const scale = active ? CONFIG.activeScale : CONFIG.baseScale;
+        obj.scale.lerp(new THREE.Vector3(scale, scale, scale), 0.1);
+        obj.material.color.lerp(
+            new THREE.Color(active ? CONFIG.colors.active : CONFIG.colors.default),
+            0.1
+        );
 
-        const dur = 380;
+        const pos = obj.getWorldPosition(new THREE.Vector3()).project(camera);
+        labels[i].classList.toggle("active", active);
+        labels[i].style.transform =
+            `translate(-50%, -50%) translate(${(pos.x * .5 + .5) * innerWidth}px, ${(pos.y * -.5 + .5) * innerHeight}px)`;
+    });
 
-        if (direction === -1) {
-            // Move left
-            this.leftBox.style.transform   = "translateX(-420px)";
-            this.centerBox.style.transform = "translateX(-210px)";
-            this.rightBox.style.transform  = "translateX(0px)";
-        } else {
-            // Move right
-            this.leftBox.style.transform   = "translateX(0px)";
-            this.centerBox.style.transform = "translateX(210px)";
-            this.rightBox.style.transform  = "translateX(420px)";
-        }
-
-        this.playMoveSound();
-
-        setTimeout(() => {
-            const len = this.options.length;
-
-            if (direction === -1) {
-                this.index = (this.index - 1 + len) % len;
-            } else {
-                this.index = (this.index + 1) % len;
-            }
-
-            // Reset positions
-            this.leftBox.style.transform   = "translateX(-210px)";
-            this.centerBox.style.transform = "translateX(0)";
-            this.rightBox.style.transform  = "translateX(210px)";
-
-            this.updateContent();
-            this.isAnimating = false;
-        }, dur);
-    }
-
-    rotateLeft() {
-        this.rotate(-1);
-    }
-
-    rotateRight() {
-        this.rotate(1);
-    }
-
-    // -----------------------------
-    // Tilt and parallax (subtle)
-    // -----------------------------
-    setupTilt() {
-        const row = document.getElementById("menu-row");
-        const inner = this.centerInner;
-
-        const maxTilt = 6;  // degrees
-        const maxShift = 10; // px
-
-        row.addEventListener("pointermove", (e) => {
-            const rect = row.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-
-            const normX = (x / rect.width) - 0.5;
-            const normY = (y / rect.height) - 0.5;
-
-            const tiltX = normY * -maxTilt;
-            const tiltY = normX * maxTilt;
-            const shiftX = normX * maxShift;
-            const shiftY = normY * maxShift;
-
-            inner.style.transform =
-                `translate(${shiftX}px, ${shiftY}px) rotateX(${tiltX}deg) rotateY(${tiltY}deg)`;
-        });
-
-        row.addEventListener("pointerleave", () => {
-            inner.style.transform = "translate(0,0) rotateX(0) rotateY(0)";
-        });
-    }
-
-    // -----------------------------
-    // Input binding
-    // -----------------------------
-    bindInput() {
-        // Keyboard
-        window.addEventListener("keydown", (e) => {
-            if (this.isAnimating) return;
-
-            if (e.key === "ArrowLeft") this.rotateLeft();
-            else if (e.key === "ArrowRight") this.rotateRight();
-            else if (e.key === "Enter") this.selectCurrent();
-        });
-
-        // Pointer / swipe
-        document.addEventListener("pointerdown", (e) => {
-            this.pointerActive = true;
-            this.startX = e.clientX;
-            this.startTime = performance.now();
-        });
-
-        document.addEventListener("pointerup", (e) => {
-            if (!this.pointerActive) return;
-            this.pointerActive = false;
-
-            const dx = e.clientX - this.startX;
-            const dt = performance.now() - this.startTime;
-
-            const minDistance = 60;
-            const minSpeed = 0.4;
-
-            const speed = Math.abs(dx) / dt;
-
-            if (Math.abs(dx) > minDistance && speed > minSpeed) {
-                if (dx > 0) this.rotateLeft();
-                else this.rotateRight();
-            }
-        });
-
-        // Center click = select
-        this.centerBox.addEventListener("click", () => {
-            this.selectCurrent();
-        });
-
-        // Top bar
-        document.getElementById("settings-btn").addEventListener("click", () => {
-            console.log("Settings clicked");
-        });
-
-        document.getElementById("profile-btn").addEventListener("click", () => {
-            console.log("Profile clicked");
-        });
-    }
-
-    // -----------------------------
-    // Audio
-    // -----------------------------
-    playMoveSound() {
-        try {
-            this.moveSound.currentTime = 0;
-            this.moveSound.play();
-        } catch (e) {}
-    }
-
-    // -----------------------------
-    // Selection
-    // -----------------------------
-    selectCurrent() {
-        const selected = this.options[this.index];
-
-        // Pulse animation
-        this.centerBox.style.scale = 1.28;
-        setTimeout(() => {
-            this.centerBox.style.scale = 1.22;
-        }, 120);
-
-        console.log(selected + " selected");
-    }
+    renderer.render(scene, camera);
 }
 
-// ---------------------------------------------
-// BOOTSTRAP
-// ---------------------------------------------
-const menu = new MenuController();
+animate();
+
+window.addEventListener("resize", () => {
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+});
