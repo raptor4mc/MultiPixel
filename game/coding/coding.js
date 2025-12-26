@@ -2,10 +2,15 @@ let SupremeSettings = { safetyMode: true, requireSemicolons: true };
 let Memory = {};
 
 // --- OUTPUT 1: System Terminal (Bottom) ---
+
 function printToTerminal(text, isError = false) {
     const outputDiv = document.getElementById('output');
-    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    outputDiv.innerHTML += `<div style="color: ${isError ? '#ff4444' : '#858585'}">[${time}] ${text}</div>`;
+    const time = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit' });
+    
+    // Terminal style logging
+    outputDiv.innerHTML += `<div><span style="color: #8b949e">[${time}]</span> <span style="color: ${isError ? '#ff7b72' : '#7ee787'}">${text}</span></div>`;
+    
+    // Keep scroll at bottom
     outputDiv.scrollTop = outputDiv.scrollHeight;
 }
 
