@@ -3,33 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <title>Main Menu</title>
+
+    <!-- Stylesheet -->
     <link rel="stylesheet" href="main.css">
 </head>
 
 <body>
 
-    <!-- Top Bar -->
-    <div id="top-bar">
-        <div id="settings-btn" class="icon"></div>
-        <div id="profile-btn" class="icon"></div>
+    <!-- UI Wrapper (allows fade-in, transitions, overlays later) -->
+    <div id="ui-root">
+
+        <!-- Top Bar -->
+        <header id="top-bar">
+            <button id="settings-btn" class="icon" aria-label="Settings"></button>
+            <button id="profile-btn" class="icon" aria-label="Profile"></button>
+        </header>
+
+        <!-- Cinematic Carousel -->
+        <main id="menu-row" role="menu">
+
+            <!-- Left Card -->
+            <div id="menu-left" class="menu-card" role="menuitem"></div>
+
+            <!-- Center Card (active) -->
+            <div id="menu-center" class="menu-card big" role="menuitem" aria-current="true">
+                <div id="menu-label">Singleplayer</div>
+            </div>
+
+            <!-- Right Card -->
+            <div id="menu-right" class="menu-card" role="menuitem"></div>
+
+        </main>
+
     </div>
 
-    <!-- Horizontal Menu -->
-    <div id="menu-row">
-
-        <!-- Left Card -->
-        <div id="menu-left" class="menu-card"></div>
-
-        <!-- Center Card -->
-        <div id="menu-center" class="menu-card big">
-            <div id="menu-label">Singleplayer</div>
-        </div>
-
-        <!-- Right Card -->
-        <div id="menu-right" class="menu-card"></div>
-
-    </div>
-
+    <!-- Script -->
     <script type="module" src="main.js"></script>
 </body>
 </html>
