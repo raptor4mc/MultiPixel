@@ -138,6 +138,7 @@ function update() {
     const now = Date.now();
     const deltaTime = (now - lastFrameTime) / 1000;
 lastFrameTime = now;
+const phaseTime = (now - startTime) / 1000;
 
     //Helper function
     function createPolygonCache(radius, sides, offsetAngle, strokeStyle, lineWidth, shadowColor, shadowBlur) {
@@ -161,7 +162,7 @@ lastFrameTime = now;
     // --- State machine ---
 
     if (currentPhase === PHASES.START) {
-        if (deltaTime > 1.5) {
+        if (phaseTime > 1.5) {
             currentPhase = PHASES.COLLAPSE;
             startTime = now;
 
@@ -182,7 +183,7 @@ lastFrameTime = now;
     }
 
     else if (currentPhase === PHASES.COLLAPSE) {
-        let p = deltaTime;
+        let p = phaseTime;
         if (p > 1) {
             p = 1;
             currentPhase = PHASES.MOVE_AND_MORPH;
@@ -225,7 +226,7 @@ lastFrameTime = now;
     }
 
     else if (currentPhase === PHASES.MOVE_AND_MORPH) {
-        let p = deltaTime / 1.5;
+        let p = phaseTime / 1.5;
         if (p > 1) {
             p = 1;
             currentPhase = PHASES.EXPAND;
@@ -300,7 +301,7 @@ lastFrameTime = now;
     }
 
     else if (currentPhase === PHASES.EXPAND) {
-        let p = deltaTime;
+        let p = phaseTime;
         if (p > 1) {
             p = 1;
             currentPhase = PHASES.WAIT_STATIC;
@@ -321,7 +322,7 @@ lastFrameTime = now;
     }
 
     else if (currentPhase === PHASES.WAIT_STATIC) {
-        if (deltaTime > 2.0) {
+        if (phaseTime > 2.0) {
             currentPhase = PHASES.FADE_OUT;
             startTime = now;
 
@@ -333,7 +334,7 @@ lastFrameTime = now;
     }
 
     else if (currentPhase === PHASES.FADE_OUT) {
-        let p = deltaTime / 2.0;
+        let p = phaseTime / 2.0;
         if (p > 1) {
             p = 1;
             currentPhase = PHASES.FADE_COMPLETE;
@@ -355,7 +356,7 @@ lastFrameTime = now;
     }
 
     else if (currentPhase === PHASES.FADE_COMPLETE) {
-        if (deltaTime > 0.5) {
+        if (phaseTime > 0.5) {
             currentPhase = PHASES.CORE_UP;
             startTime = now;
         }
@@ -368,7 +369,7 @@ lastFrameTime = now;
     cacheSquare  = createPolygonCache(150 * 0.7, 4, Math.PI / 4, CORE_GLOW_LIGHT, 6, CORE_GLOW_LIGHT, 14);
 }
 
-        let p = deltaTime;
+        let p = phaseTime;
         if (p >= 1) {
             p = 1;
             currentPhase = PHASES.LOOP_LOADING;
