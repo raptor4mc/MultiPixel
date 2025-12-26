@@ -1,14 +1,30 @@
-
 <!DOCTYPE html>
 <html>
 <head>
     <title>MultiRaptor IDE</title>
     <link rel="stylesheet" href="coding.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
-    <h1>Raptor Terminal</h1>
-    <textarea id="editor" placeholder="Enter Supreme code here..."></textarea>
-    <button onclick="runCode()">RUN CODE</button>
+    <div class="header">
+        <h1><i class="fas fa-dragon"></i> MULTIRAPTOR <span class="version">v1.0</span></h1>
+        <div id="settings-icon" onclick="toggleSettings()"><i class="fas fa-cog"></i></div>
+    </div>
+
+    <div id="settings-menu" class="hidden">
+        <h3>Engine Settings</h3>
+        <label><input type="checkbox" id="safety-toggle" checked onchange="updateSettings()"> Safety Mode</label><br>
+        <label><input type="checkbox" id="semi-toggle" checked onchange="updateSettings()"> Require Semicolons</label><br>
+        <label><input type="checkbox" id="case-toggle" checked onchange="updateSettings()"> Case Sensitive</label>
+    </div>
+
+    <textarea id="editor" spellcheck="false" placeholder="#/# Write your MultiRaptor code here #*"></textarea>
+    
+    <div class="controls">
+        <button onclick="runCode()"><i class="fas fa-play"></i> RUN CODE</button>
+        <button onclick="clearTerminal()" class="secondary">CLEAR</button>
+    </div>
+
     <div id="output"></div>
 
     <script src="coding.js"></script>
