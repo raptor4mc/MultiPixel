@@ -1,52 +1,64 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>MultiRaptor | Game Engine</title>
+    <title>MultiPixel | dev</title>
     <link rel="stylesheet" href="coding.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
+    <div class="top-nav">
+        <div class="nav-left"><i class="fas fa-bolt"></i> dev</div>
+        <div class="search-bar"><i class="fas fa-search"></i> MultiPixel</div>
+        <div class="nav-right"><button class="share-btn"><i class="fas fa-share-alt"></i> Share</button> <img src="https://via.placeholder.com/24" class="avatar"></div>
+    </div>
+
     <div class="workbench">
         <div class="activity-bar">
-            <i class="fas fa-code active"></i>
-            <i class="fas fa-ghost"></i> <i class="fas fa-cog" onclick="toggleSettings()"></i>
+            <i class="fas fa-copy active"></i>
+            <i class="fas fa-search"></i>
+            <i class="fas fa-code-branch"></i>
+            <i class="fas fa-cog" onclick="toggleSettings()"></i>
+            <div class="activity-bottom">
+                <i class="far fa-user-circle"></i>
+            </div>
         </div>
 
         <div class="sidebar">
-            <div class="section-title">PROJECT</div>
-            <div class="file active"><i class="fas fa-dragon"></i> game.mr</div>
+            <div class="sidebar-label">EXPLORER <i class="fas fa-ellipsis-h"></i></div>
+            <div class="folder"><i class="fas fa-chevron-down"></i> MULTIPIXEL</div>
+            <div class="file-list">
+                <div class="file-item"><i class="fas fa-chevron-right"></i> boot</div>
+                <div class="file-item"><i class="fas fa-chevron-right"></i> game</div>
+                <div class="file-item active"><i class="fab fa-html5"></i> index.html</div>
+                <div class="file-item"><i class="fas fa-file-alt"></i> LICENSE</div>
+                <div class="file-item"><i class="fas fa-info-circle"></i> README.md</div>
+            </div>
         </div>
 
-<div class="stage-zone">
-    <div class="stage-header">MULTIRAPTOR GAME VIEW</div>
-    <div id="game-canvas">
-        <div id="game-story-text"></div>
-        <div id="player" class="hidden">🐉</div>
-    </div>
-    <div class="inspector">
-        <div class="section-title">LIVE MEMORY (VARIABLES)</div>
-        <div id="var-monitor"></div>
-    </div>
-</div>
-        
         <div class="center-zone">
-            <div class="tabs">
-                <div class="tab active">game.mr</div>
-                <div class="actions">
-                    <button onclick="runCode()" class="btn-run"><i class="fas fa-play"></i> RUN</button>
-                </div>
+            <div class="editor-header">
+                <div class="editor-tab active">index.html <i class="fas fa-times"></i></div>
             </div>
             <textarea id="editor" spellcheck="false" oninput="saveLocal()"></textarea>
             
-            <div class="terminal">
-                <div class="terminal-header">TERMINAL <span onclick="clearTerminal()">Clear</span></div>
-                <div id="output"></div>
+            <div class="terminal-zone">
+                <div class="terminal-tabs">
+                    <span>PROBLEMS</span><span>OUTPUT</span><span class="active">TERMINAL</span><span>COMMENTS</span>
+                    <div class="term-icons"><i class="fas fa-plus"></i> <i class="fas fa-trash"></i></div>
+                </div>
+                <div id="output">
+                    <span class="prompt">~/raptor4mc/MultiPixel</span> <span class="branch">dev</span><br>
+                    <span class="cursor">> </span>
+                </div>
             </div>
         </div>
 
         <div class="stage-zone">
-            <div class="stage-header">GAME VIEW</div>
+            <div class="stage-url-bar">
+                <i class="fas fa-desktop"></i> <i class="fas fa-redo"></i> <input type="text" value="localhost:3000" readonly>
+            </div>
             <div id="game-canvas">
+                <div id="game-story-text"></div>
                 <div id="player" class="hidden">🐉</div>
             </div>
             <div class="inspector">
@@ -54,6 +66,11 @@
                 <div id="var-monitor"></div>
             </div>
         </div>
+    </div>
+
+    <div class="status-bar">
+        <div class="status-left"><i class="fas fa-times-circle"></i> 0 <i class="fas fa-exclamation-triangle"></i> 0</div>
+        <div class="status-right">Ln 1, Col 1 &nbsp; Spaces: 4 &nbsp; UTF-8 &nbsp; HTML</div>
     </div>
 
     <div id="settings-menu" class="hidden">
