@@ -1,11 +1,138 @@
-body {
+/* ------------------------------
+   GLOBAL STYLES
+------------------------------ */
+
+* {
     margin: 0;
-    overflow: hidden;
-    background: #0e0e0e;
-    filter: blur(20px);
-    transition: filter 1.5s ease;
+    padding: 0;
+    box-sizing: border-box;
 }
 
+body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: linear-gradient(135deg, #0a0a0a, #1a1a1a);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    /* Start blurred */
+    filter: blur(25px);
+    transition: filter 1.6s ease;
+}
+
+/* When JS adds this class, the blur fades away */
 body.unblur {
     filter: blur(0px);
+}
+
+/* ------------------------------
+   TOP BAR (settings + profile)
+------------------------------ */
+
+#top-bar {
+    position: absolute;
+    top: 20px;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 25px;
+    z-index: 10;
+}
+
+.icon {
+    width: 42px;
+    height: 42px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    cursor: pointer;
+    opacity: 0.85;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.icon:hover {
+    opacity: 1;
+    transform: scale(1.08);
+}
+
+/* Replace these with your actual icon paths */
+#settings-btn {
+    background-image: url("icons/settings.png");
+}
+
+#profile-btn {
+    background-image: url("icons/profile.png");
+}
+
+/* ------------------------------
+   MENU CARD CONTAINER
+------------------------------ */
+
+#menu-container {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    gap: 40px;
+    transition: transform 0.3s ease;
+    user-select: none;
+}
+
+/* ------------------------------
+   MENU CARDS (glass/water effect)
+------------------------------ */
+
+.menu-card {
+    width: 220px;
+    height: 280px;
+
+    /* Glass effect */
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(14px) saturate(180%);
+    -webkit-backdrop-filter: blur(14px) saturate(180%);
+    border-radius: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    font-family: "Segoe UI", sans-serif;
+    font-size: 22px;
+    color: white;
+    letter-spacing: 1px;
+
+    cursor: pointer;
+    transition: transform 0.25s ease, background 0.25s ease;
+}
+
+.menu-card:hover {
+    transform: scale(1.06);
+    background: rgba(255, 255, 255, 0.18);
+}
+
+/* When a card is "active" (centered) */
+.menu-card.active {
+    transform: scale(1.12);
+    background: rgba(255, 255, 255, 0.22);
+}
+
+/* ------------------------------
+   OPTIONAL: CROSSHAIR OR FUTURE UI
+------------------------------ */
+
+#crosshair {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border: 2px solid white;
+    border-radius: 50%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    opacity: 0.2;
+    pointer-events: none;
 }
