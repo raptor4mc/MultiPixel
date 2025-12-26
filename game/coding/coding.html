@@ -13,6 +13,23 @@
             <div class="nav-actions"><button class="btn-run" onclick="runCode()"><i class="fas fa-play"></i> Run</button></div>
         </header>
 
+<aside class="explorer">
+    <div class="section-label">EXPLORER</div>
+    <div class="tree-container" id="project-root">
+        <div class="item folder-root" onmouseenter="showActions(this)" onmouseleave="hideActions(this)">
+            <i class="fas fa-chevron-down"></i> 
+            <span>MULTIPIXEL</span>
+            <div class="item-actions">
+                <i class="fas fa-file-plus" title="New File" onclick="createNewItem('file')"></i>
+                <i class="fas fa-folder-plus" title="New Folder" onclick="createNewItem('folder')"></i>
+            </div>
+        </div>
+        <div id="file-tree" class="tree-items">
+            <div class="item file active"><i class="fab fa-js text-yellow"></i> game.mr</div>
+        </div>
+    </div>
+</aside>
+        
         <div class="main-split">
             <nav class="activity-bar">
                 <i class="fas fa-file active"></i>
