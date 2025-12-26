@@ -1,39 +1,36 @@
 :root {
-    --bg-darker: #121212;
-    --bg-main: #1e1e1e;
+    --bg-dark: #121212;
+    --bg-editor: #1e1e1e;
     --sidebar: #252526;
     --accent: #00ff95;
     --border: #333;
-    --text: #d4d4d4;
+    --text: #cccccc;
 }
 
-body, html { height: 100%; margin: 0; overflow: hidden; background: var(--bg-darker); color: var(--text); font-family: 'Segoe UI', sans-serif; }
+body, html { height: 100%; margin: 0; overflow: hidden; background: var(--bg-dark); color: var(--text); font-family: 'Segoe UI', sans-serif; }
 
 .workbench { display: flex; height: 100vh; }
 
-.activity-bar { width: 50px; background: #333; display: flex; flex-direction: column; align-items: center; padding-top: 15px; gap: 20px; color: #858585; }
-.activity-bar i.active { color: var(--accent); }
-.activity-bar i:hover { cursor: pointer; color: white; }
+/* Left bars */
+.activity-bar { width: 50px; background: #333; display: flex; flex-direction: column; align-items: center; padding-top: 15px; gap: 20px; }
+.sidebar { width: 180px; background: var(--sidebar); border-right: 1px solid var(--border); }
 
-.sidebar { width: 200px; background: var(--sidebar); border-right: 1px solid var(--border); }
-.section-title { padding: 10px; font-size: 11px; font-weight: bold; color: #858585; }
-.file { padding: 5px 20px; font-size: 13px; color: white; background: #37373d; }
+/* Center: Editor + Terminal */
+.center-zone { flex: 2; display: flex; flex-direction: column; border-right: 1px solid var(--border); }
+#editor { flex: 1; background: var(--bg-editor); border: none; color: #9cdcfe; padding: 20px; font-family: 'Consolas', monospace; font-size: 16px; outline: none; }
+.terminal { height: 200px; background: black; border-top: 2px solid var(--border); overflow-y: auto; }
 
-.editor-area { flex: 1; display: flex; flex-direction: column; }
-.tabs { height: 35px; background: #2d2d2d; display: flex; align-items: center; justify-content: space-between; padding-right: 10px; }
-.tab { padding: 8px 30px; background: var(--bg-main); font-size: 12px; border-top: 1px solid var(--accent); }
+/* Right: Game Stage */
+.stage-zone { flex: 1.5; background: #2d2d2d; display: flex; flex-direction: column; }
+#game-canvas { flex: 1; background: #000; position: relative; margin: 10px; border: 2px solid #444; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.inspector { height: 150px; background: var(--sidebar); border-top: 1px solid var(--border); padding: 10px; font-size: 12px; }
 
-#editor { 
-    flex: 1; background: var(--bg-main); border: none; color: #9cdcfe; 
-    padding: 20px; font-family: 'Consolas', monospace; font-size: 16px; 
-    resize: none; outline: none; line-height: 1.5;
-}
-
-.terminal { height: 30%; background: black; border-top: 2px solid var(--border); display: flex; flex-direction: column; }
-.terminal-header { padding: 5px 15px; font-size: 11px; color: #aaa; background: #1e1e1e; display: flex; justify-content: space-between; }
-.terminal-header .clear:hover { cursor: pointer; color: white; }
-#output { flex: 1; padding: 10px; overflow-y: auto; font-family: 'Consolas', monospace; font-size: 14px; }
-
-.btn-run { background: #28a745; color: white; border: none; padding: 4px 15px; border-radius: 3px; cursor: pointer; }
-#settings-menu { position: fixed; bottom: 60px; left: 60px; background: var(--sidebar); border: 1px solid var(--accent); padding: 15px; z-index: 1000; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+/* Animations */
+#player { font-size: 50px; position: absolute; transition: all 0.5s ease; }
 .hidden { display: none; }
+
+/* Components */
+.tabs { height: 35px; background: #2d2d2d; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; }
+.btn-run { background: var(--accent); color: black; border: none; padding: 4px 12px; border-radius: 3px; cursor: pointer; font-weight: bold; }
+#output { padding: 10px; font-family: monospace; color: var(--accent); font-size: 13px; }
+.section-title { padding: 5px; font-weight: bold; font-size: 11px; color: #858585; }
