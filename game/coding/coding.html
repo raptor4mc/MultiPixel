@@ -10,26 +10,11 @@
     <div class="app-container">
         <header class="navbar">
             <div class="repo-info"><i class="fas fa-code-branch"></i> main <span>MultiPixel / GameEngine</span></div>
-            <div class="nav-actions"><button class="btn-run" onclick="runCode()"><i class="fas fa-play"></i> Run</button></div>
+            <div class="nav-actions">
+                <button class="btn-run" onclick="runCode()"><i class="fas fa-play"></i> Run</button>
+            </div>
         </header>
 
-<aside class="explorer">
-    <div class="section-label">EXPLORER</div>
-    <div class="tree-container" id="project-root">
-        <div class="item folder-root" onmouseenter="showActions(this)" onmouseleave="hideActions(this)">
-            <i class="fas fa-chevron-down"></i> 
-            <span>MULTIPIXEL</span>
-            <div class="item-actions">
-                <i class="fas fa-file-plus" title="New File" onclick="createNewItem('file')"></i>
-                <i class="fas fa-folder-plus" title="New Folder" onclick="createNewItem('folder')"></i>
-            </div>
-        </div>
-        <div id="file-tree" class="tree-items">
-            <div class="item file active"><i class="fab fa-js text-yellow"></i> game.mr</div>
-        </div>
-    </div>
-</aside>
-        
         <div class="main-split">
             <nav class="activity-bar">
                 <i class="fas fa-file active"></i>
@@ -40,9 +25,20 @@
             </nav>
 
             <aside class="explorer">
-                <div class="section-label">FILES</div>
-                <div class="file active"><i class="fab fa-js text-yellow"></i> game.mr</div>
-                <div class="file"><i class="fab fa-css3 text-blue"></i> style.css</div>
+                <div class="section-label">EXPLORER</div>
+                <div class="tree-container" id="project-root">
+                    <div class="item folder-root">
+                        <i class="fas fa-chevron-down"></i> 
+                        <span>MULTIPIXEL</span>
+                        <div class="item-actions">
+                            <i class="fas fa-file-plus" title="New File" onclick="triggerNewItem('file')"></i>
+                            <i class="fas fa-folder-plus" title="New Folder" onclick="triggerNewItem('folder')"></i>
+                        </div>
+                    </div>
+                    <div id="file-tree" class="tree-items">
+                        <div class="item file active"><i class="fab fa-js text-yellow"></i> game.mr</div>
+                    </div>
+                </div>
             </aside>
 
             <section class="editor-column">
@@ -56,11 +52,19 @@
                         <span class="dock-tab active" onclick="switchDock('terminal')">TERMINAL</span>
                     </div>
                     <div id="dock-content">
-                        <div id="dock-problems" class="dock-panel hidden">No problems detected in workspace.</div>
-                        <div id="dock-output-log" class="dock-panel hidden">Engine output initialized...</div>
+                        <div id="dock-problems" class="dock-panel hidden">No problems detected.</div>
+                        <div id="dock-output-log" class="dock-panel hidden">Engine logs...</div>
                         <div id="dock-terminal" class="dock-panel">
-                            <span class="prompt">~/multi-pixel</span> <span class="branch">main</span><br>
-                            <div id="terminal-body"></div>
+                            <div class="terminal-welcome">
+                                <span class="raptor-logo">👟🦖</span> MultiRaptor Shell v1.0.0
+                            </div>
+                            <div id="terminal-history"></div>
+                            <div class="terminal-input-line">
+                                <span class="prompt">~/multi-pixel</span>
+                                <span class="branch">main</span>
+                                <span class="cursor-char">$</span>
+                                <input type="text" id="terminal-input" autofocus spellcheck="false">
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -70,7 +74,6 @@
                 <div class="viz-header">LIVE PREVIEW</div>
                 <div class="stage">
                     <canvas id="gameCanvas" width="400" height="500"></canvas>
-                    <div id="game-ui-overlay"></div>
                 </div>
                 <div class="inspector">
                     <div class="section-label">ENGINE VARIABLES</div>
