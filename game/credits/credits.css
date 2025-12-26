@@ -1,1 +1,101 @@
 
+/* Base styles for the entire scene */
+body {
+    font-family: 'Inter', sans-serif;
+    margin: 0;
+    overflow: hidden;
+    background-color: #000;
+}
+
+/* Fullscreen canvas for Three.js background */
+#three-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+/* Overlay container for the text credits */
+#credits-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    color: white;
+    padding-top: 20vh;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+/* Inner container for the actual scrolling content */
+#credits-content {
+    width: 80%;
+    max-width: 600px;
+    text-align: center;
+    line-height: 1.8;
+    transform: translateY(100vh);
+    transition: opacity 1s ease-in-out;
+    opacity: 0;
+}
+
+/* Scroll animation */
+@keyframes creditsScroll {
+    from { transform: translateY(100vh); }
+    to { transform: translateY(-100%); }
+}
+
+.intro-block-active {
+    font-size: 1.8rem;
+    opacity: 1;
+    transition: font-size 1s, opacity 1s, transform 1s;
+}
+
+.intro-block-scrolling {
+    font-size: 1.1rem;
+    line-height: 1.5;
+    transition: font-size 1s, opacity 1s, transform 1s;
+}
+
+.start-scroll {
+    animation: creditsScroll 80s linear forwards;
+    opacity: 1 !important;
+}
+
+.role {
+    display: block;
+    margin-top: 1.5rem;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #ccc;
+}
+
+.name {
+    display: block;
+    font-size: 1rem;
+    font-weight: 300;
+    margin-bottom: 2rem;
+}
+
+.credit-group {
+    margin-bottom: 3rem;
+    padding-top: 1rem;
+}
+
+@media (min-width: 768px) {
+    .intro-block-active {
+        font-size: 2.5rem;
+    }
+    .role {
+        font-size: 1.5rem;
+    }
+    .name {
+        font-size: 1.125rem;
+    }
+}
