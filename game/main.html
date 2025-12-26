@@ -2,48 +2,43 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Main Menu</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Carousel Menu</title>
 
-    <!-- Stylesheet -->
     <link rel="stylesheet" href="main.css">
 </head>
-
 <body>
 
-    <!-- UI Wrapper (allows fade-in, transitions, overlays later) -->
-    <div id="ui-root">
+    <div id="canvas-container"></div>
+    
+    <div id="ui-layer"></div>
 
-        <!-- Top Bar -->
-        <header id="top-bar">
-            <button id="settings-btn" class="icon" aria-label="Settings"></button>
-            <button id="profile-btn" class="icon" aria-label="Profile"></button>
-        </header>
+    <!-- HUD Icons -->
+    <svg id="profile-icon" class="hud-icon" viewBox="0 0 24 24">
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
+    </svg>
 
-        <!-- Cinematic Carousel -->
-        <main id="menu-row" role="menu">
+    <svg id="settings-icon" class="hud-icon" viewBox="0 0 24 24">
+        <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87c-0.12,0.21-0.08,0.47,0.12,0.61l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z"/>
+    </svg>
 
-            <!-- Left Card -->
-            <div id="menu-left" class="menu-card" role="menuitem">
-                <div class="card-inner"></div>
-            </div>
-
-            <!-- Center Card (active) -->
-            <div id="menu-center" class="menu-card big" role="menuitem" aria-current="true">
-                <div class="card-inner">
-                    <div id="menu-label">Singleplayer</div>
-                </div>
-            </div>
-
-            <!-- Right Card -->
-            <div id="menu-right" class="menu-card" role="menuitem">
-                <div class="card-inner"></div>
-            </div>
-
-        </main>
-
+    <div id="instructions">
+        Use <span class="key">&larr;</span> <span class="key">&rarr;</span> to spin |
+        <span class="key">Enter</span> to select
     </div>
 
-    <!-- Script -->
-    <script type="module" src="main.js"></script>
+    <div id="modal">
+        <h2 id="modal-title">Selected</h2>
+        <p id="modal-desc">Loading module...</p>
+        <button id="close-modal">Close</button>
+    </div>
+
+    <audio id="swoosh-audio">
+        <source src="boot/audio/swoosh_devour.mp3" type="audio/mpeg">
+    </audio>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="main.js"></script>
 </body>
 </html>
+
