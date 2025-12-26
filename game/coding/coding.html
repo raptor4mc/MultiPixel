@@ -1,31 +1,49 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>MultiRaptor IDE</title>
+    <title>MultiRaptor | Workbench</title>
     <link rel="stylesheet" href="coding.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
-    <div class="header">
-        <h1><i class="fas fa-dragon"></i> MULTIRAPTOR <span class="version">v1.0</span></h1>
-        <div id="settings-icon" onclick="toggleSettings()"><i class="fas fa-cog"></i></div>
+    <div class="workbench">
+        <div class="activity-bar">
+            <i class="fas fa-file-code active"></i>
+            <i class="fas fa-search"></i>
+            <i class="fas fa-cog" onclick="toggleSettings()"></i>
+        </div>
+
+        <div class="sidebar">
+            <div class="section-title">EXPLORER</div>
+            <div class="file active"><i class="fas fa-dragon"></i> main.mr</div>
+        </div>
+
+        <div class="editor-area">
+            <div class="tabs">
+                <div class="tab active">main.mr</div>
+                <div class="actions">
+                    <button onclick="runCode()" class="btn-run"><i class="fas fa-play"></i> RUN</button>
+                </div>
+            </div>
+            
+            <textarea id="editor" spellcheck="false" oninput="saveLocal()"></textarea>
+
+            <div class="terminal">
+                <div class="terminal-header">
+                    <span>OUTPUT / TERMINAL</span>
+                    <span class="clear" onclick="clearTerminal()">Clear</span>
+                </div>
+                <div id="output"></div>
+            </div>
+        </div>
     </div>
 
     <div id="settings-menu" class="hidden">
-        <h3>Engine Settings</h3>
-        <label><input type="checkbox" id="safety-toggle" checked onchange="updateSettings()"> Safety Mode</label><br>
-        <label><input type="checkbox" id="semi-toggle" checked onchange="updateSettings()"> Require Semicolons</label><br>
+        <h3><i class="fas fa-sliders-h"></i> ENGINE SETTINGS</h3>
+        <label><input type="checkbox" id="safety-toggle" checked onchange="updateSettings()"> Safety Mode</label>
+        <label><input type="checkbox" id="semi-toggle" checked onchange="updateSettings()"> Semicolons</label>
         <label><input type="checkbox" id="case-toggle" checked onchange="updateSettings()"> Case Sensitive</label>
     </div>
-
-    <textarea id="editor" spellcheck="false" placeholder="#/# Write your MultiRaptor code here #*"></textarea>
-    
-    <div class="controls">
-        <button onclick="runCode()"><i class="fas fa-play"></i> RUN CODE</button>
-        <button onclick="clearTerminal()" class="secondary">CLEAR</button>
-    </div>
-
-    <div id="output"></div>
 
     <script src="coding.js"></script>
 </body>
