@@ -1,6 +1,7 @@
 const canvas = document.getElementById('bootCanvas');
 const ctx = canvas.getContext('2d');
 
+let lastFrameTime = Date.now();
 let width, height;
 let particles = [];
 // Cached polygon canvases
