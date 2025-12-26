@@ -370,6 +370,7 @@ function update() {
         if (p >= 1) {
             p = 1;
             currentPhase = PHASES.LOOP_LOADING;
+            startTime = now;
         }
         coreScale = p;
     }
