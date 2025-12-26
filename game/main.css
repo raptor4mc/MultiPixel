@@ -10,13 +10,17 @@ body {
     width: 100vw;
     height: 100vh;
     position: absolute;
-    inset: 0;
+    top: 0;
+    left: 0;
     z-index: 1;
 }
 
 #ui-layer {
     position: absolute;
-    inset: 0;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
     z-index: 2;
     pointer-events: none;
 }
@@ -26,18 +30,22 @@ body {
     color: rgba(255, 255, 255, 0.6);
     font-weight: 300;
     font-size: 1rem;
-    letter-spacing: 2px;
     text-transform: uppercase;
+    letter-spacing: 2px;
     transform: translate(-50%, -50%);
-    transition: all 0.3s;
+    transition: color 0.3s, font-size 0.3s, text-shadow 0.3s, opacity 0.3s;
     white-space: nowrap;
+    max-width: 200px;
+    text-align: center;
 }
 
 .label.active {
     color: #fff;
     font-size: 1.5rem;
     font-weight: 700;
-    text-shadow: 0 0 10px rgba(0,255,255,.8);
+    text-shadow: 0 0 10px rgba(0, 255, 255, 0.8),
+                 0 0 20px rgba(0, 255, 255, 0.4);
+    z-index: 10;
 }
 
 .hud-icon {
@@ -46,8 +54,10 @@ body {
     height: 48px;
     fill: #444;
     cursor: pointer;
+    pointer-events: auto;
+    transition: fill 0.3s, transform 0.3s;
     z-index: 10;
-    transition: fill .3s, transform .3s;
+    filter: drop-shadow(0 0 5px rgba(0,0,0,0.5));
 }
 
 .hud-icon:hover {
@@ -56,13 +66,14 @@ body {
 }
 
 .hud-icon.clicked {
-    animation: spinGrow .5s ease-out forwards;
+    animation: spinGrow 0.5s ease-out forwards;
+    fill: #ffffff !important;
 }
 
 @keyframes spinGrow {
-    0% { transform: rotate(0) scale(1); }
-    50% { transform: rotate(180deg) scale(1.4); }
-    100% { transform: rotate(360deg) scale(1); }
+    0% { transform: scale(1.1) rotate(0deg); }
+    50% { transform: scale(1.4) rotate(180deg); }
+    100% { transform: scale(1) rotate(360deg); }
 }
 
 #profile-icon { top: 30px; left: 30px; }
@@ -74,31 +85,39 @@ body {
     width: 100%;
     text-align: center;
     color: #666;
-    font-size: .9rem;
+    font-size: 0.9rem;
+    z-index: 3;
+    pointer-events: none;
 }
 
 .key {
+    display: inline-block;
     border: 1px solid #444;
     border-radius: 4px;
     padding: 2px 6px;
+    margin: 0 2px;
     background: #111;
     color: #aaa;
+    font-size: 0.8rem;
 }
 
 #modal {
     position: absolute;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%) scale(.8);
-    background: rgba(10,10,10,.95);
+    transform: translate(-50%, -50%) scale(0.8);
+    background: rgba(10, 10, 10, 0.95);
     border: 1px solid #333;
     padding: 40px;
     border-radius: 8px;
+    text-align: center;
     color: white;
     opacity: 0;
     pointer-events: none;
-    transition: .3s;
+    transition: all 0.3s ease;
     z-index: 20;
+    box-shadow: 0 0 30px rgba(0,0,0,0.8);
+    min-width: 300px;
 }
 
 #modal.show {
@@ -107,11 +126,19 @@ body {
     pointer-events: auto;
 }
 
-#modal h2 { color: #00ffff; }
+#modal h2 { margin-top: 0; color: #00ffff; }
+#modal p { margin-bottom: 20px; }
+
 #modal button {
     background: transparent;
     border: 1px solid #00ffff;
     color: #00ffff;
     padding: 8px 20px;
     cursor: pointer;
+    transition: all 0.2s;
+}
+
+#modal button:hover {
+    background: #00ffff;
+    color: #000;
 }
