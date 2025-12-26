@@ -1,3 +1,5 @@
+import { AudioManager } from "./audio.js";
+
 const canvas = document.getElementById('bootCanvas');
 const ctx = canvas.getContext('2d');
 
