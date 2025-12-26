@@ -1,1 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Animated Credits Scene</title>
 
+    <!-- Tailwind CDN (unchanged) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Three.js (unchanged) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="credits.css">
+</head>
+<body>
+
+    <!-- Three.js Canvas for the animated background -->
+    <canvas id="three-canvas"></canvas>
+
+    <!-- Credits Text Overlay -->
+    <div id="credits-overlay">
+        <div id="credits-content">
+
+            <!-- INTRO BLOCK -->
+            <div id="intro-block" class="intro-block-active py-8">
+                <p>Coded and founded by</p>
+                <div class="h-0.5 w-1/3 bg-gray-600 mx-auto my-4 rounded-full"></div>
+                <div class="flex justify-center space-x-6 font-extrabold text-3xl md:text-5xl">
+                    <span class="text-red-500">Raptor4</span>
+                    <span class="text-blue-500">Eliminate404</span>
+                </div>
+            </div>
+
+            <!-- MAIN CREDITS -->
+            <div class="mt-24">
+                <div class="credit-group">
+                    <span class="role">Project Lead & Architect</span>
+                    <span class="name">Raptor4</span>
+                    <span class="name">Eliminate404</span>
+                </div>
+
+                <div class="credit-group">
+                    <span class="role">Engine Programmer</span>
+                    <span class="name">Jane Doe</span>
+                </div>
+
+                <div class="credit-group">
+                    <span class="role">Art Director</span>
+                    <span class="name">Alex Smith</span>
+                </div>
+
+                <div class="credit-group">
+                    <span class="role">Lead Designer</span>
+                    <span class="name">Sam Vella</span>
+                </div>
+
+                <div class="credit-group">
+                    <span class="role">Sound Design</span>
+                    <span class="name">Chris Cornell</span>
+                </div>
+
+                <div class="credit-group">
+                    <span class="role">Special Thanks</span>
+                    <span class="name">The Community</span>
+                    <span class="name">Our Families</span>
+                </div>
+
+                <div class="h-[100vh] flex items-center justify-center pt-32">
+                    <h1 class="text-3xl font-bold text-yellow-400">THE END</h1>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- JS (MODULE, unchanged behavior) -->
+    <script type="module" src="credits.js"></script>
+</body>
+</html>
