@@ -38,7 +38,7 @@ body.unblur {
     display: flex;
     justify-content: space-between;
     padding: 0 25px;
-    z-index: 10;
+    z-index: 20;
 }
 
 .icon {
@@ -67,57 +67,88 @@ body.unblur {
 }
 
 /* ------------------------------
-   MENU CARD CONTAINER
+   MENU WHEEL LAYOUT
 ------------------------------ */
 
-#menu-container {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+#menu-wheel {
+    position: relative;
+    width: 420px;
+    height: 420px;
     display: flex;
-    gap: 40px;
-    transition: transform 0.3s ease;
-    user-select: none;
+    justify-content: center;
+    align-items: center;
 }
 
 /* ------------------------------
-   MENU CARDS (glass/water effect)
+   CORNER SQUARES
 ------------------------------ */
 
-.menu-card {
-    width: 220px;
-    height: 280px;
+.corner {
+    position: absolute;
+    width: 120px;
+    height: 120px;
 
     /* Glass effect */
-    background: rgba(255, 255, 255, 0.12);
-    backdrop-filter: blur(14px) saturate(180%);
-    -webkit-backdrop-filter: blur(14px) saturate(180%);
+    background: rgba(255, 255, 255, 0.10);
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+
+    opacity: 0.55;
+    transition: opacity 0.3s ease;
+}
+
+/* Corner positions */
+.top-left {
+    top: 0;
+    left: 0;
+}
+
+.top-right {
+    top: 0;
+    right: 0;
+}
+
+.bottom-left {
+    bottom: 0;
+    left: 0;
+}
+
+.bottom-right {
+    bottom: 0;
+    right: 0;
+}
+
+/* ------------------------------
+   CENTER SQUARE (active option)
+------------------------------ */
+
+#menu-center {
+    width: 240px;
+    height: 240px;
+
+    /* Stronger glass effect */
+    background: rgba(255, 255, 255, 0.16);
+    backdrop-filter: blur(16px) saturate(200%);
+    -webkit-backdrop-filter: blur(16px) saturate(200%);
     border-radius: 18px;
-    border: 1px solid rgba(255, 255, 255, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.28);
 
     display: flex;
     justify-content: center;
     align-items: center;
 
+    transition: transform 0.25s ease;
+}
+
+#menu-label {
     font-family: "Segoe UI", sans-serif;
-    font-size: 22px;
+    font-size: 26px;
     color: white;
     letter-spacing: 1px;
-
-    cursor: pointer;
-    transition: transform 0.25s ease, background 0.25s ease;
-}
-
-.menu-card:hover {
-    transform: scale(1.06);
-    background: rgba(255, 255, 255, 0.18);
-}
-
-/* When a card is "active" (centered) */
-.menu-card.active {
-    transform: scale(1.12);
-    background: rgba(255, 255, 255, 0.22);
+    text-align: center;
+    user-select: none;
 }
 
 /* ------------------------------
