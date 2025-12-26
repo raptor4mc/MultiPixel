@@ -1,80 +1,90 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>MultiPixel | MultiRaptor Dev</title>
+    <title>MultiPixel | MultiRaptor</title>
     <link rel="stylesheet" href="coding.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
     <div class="app-shell">
         <header class="top-nav">
-            <div class="brand"><i class="fas fa-bolt"></i> dev</div>
-            <div class="search-box">MultiPixel</div>
-            <div class="user-actions">
-                <button class="share-btn">Share <i class="fas fa-chevron-down"></i></button>
-                <div class="avatar">MR</div>
+            <div class="nav-section"><i class="fas fa-bolt text-blue"></i> dev</div>
+            <div class="center-search"><i class="fas fa-search"></i> MultiPixel</div>
+            <div class="nav-section right">
+                <button class="btn-share">Share <i class="fas fa-chevron-down"></i></button>
+                <div class="user-avatar">MR</div>
             </div>
         </header>
 
-        <div class="main-content">
+        <main class="workbench">
             <nav class="activity-bar">
-                <i class="fas fa-copy active"></i>
-                <i class="fas fa-search"></i>
-                <i class="fas fa-code-branch"></i>
-                <i class="fas fa-play-circle" onclick="runCode()" title="Run MultiRaptor"></i>
+                <div class="icon active" onclick="switchSidebar('explorer')"><i class="fas fa-copy"></i></div>
+                <div class="icon" onclick="switchSidebar('search')"><i class="fas fa-search"></i></div>
+                <div class="icon" onclick="switchSidebar('git')"><i class="fas fa-code-branch"></i></div>
+                <div class="icon" onclick="switchSidebar('ports')"><i class="fas fa-plug"></i></div>
                 <div class="spacer"></div>
-                <i class="fas fa-cog" onclick="toggleSettings()"></i>
+                <div class="icon"><i class="fas fa-cog"></i></div>
             </nav>
 
-            <aside class="explorer">
-                <div class="label">EXPLORER</div>
-                <div class="folder active"><i class="fas fa-chevron-down"></i> MULTIPIXEL</div>
-                <div class="file-list">
-                    <div class="item folder-item"><i class="fas fa-chevron-right"></i> boot</div>
-                    <div class="item folder-item"><i class="fas fa-chevron-right"></i> game</div>
-                    <div class="item file-item active"><i class="fab fa-html5"></i> index.html</div>
-                    <div class="item file-item"><i class="fas fa-file-code"></i> coding.js</div>
+            <aside class="sidebar-content">
+                <div id="sidebar-explorer" class="side-panel">
+                    <div class="panel-header">EXPLORER <i class="fas fa-ellipsis-h"></i></div>
+                    <div class="tree-root"><i class="fas fa-chevron-down"></i> MULTIPIXEL</div>
+                    <div class="tree-items">
+                        <div class="item folder"><i class="fas fa-chevron-right"></i> boot</div>
+                        <div class="item folder"><i class="fas fa-chevron-right"></i> game</div>
+                        <div class="item file active"><i class="fab fa-js text-yellow"></i> coding.js</div>
+                        <div class="item file"><i class="fas fa-file-code text-blue"></i> coding.css</div>
+                    </div>
+                </div>
+                <div id="sidebar-search" class="side-panel hidden">
+                    <div class="panel-header">SEARCH</div>
+                    <input type="text" class="side-input" placeholder="Search...">
                 </div>
             </aside>
 
-            <section class="editor-pane">
-                <div class="tabs-row">
-                    <div class="tab active">index.html <i class="fas fa-times"></i></div>
+            <section class="code-zone">
+                <div class="tab-container" id="tab-bar">
+                    <div class="tab active">coding.js <i class="fas fa-times"></i></div>
+                    <div class="tab">coding.css <i class="fas fa-times"></i></div>
                 </div>
                 <textarea id="editor" spellcheck="false" oninput="saveLocal()"></textarea>
                 
-                <div class="terminal-container">
-                    <div class="terminal-tabs">
-                        <span>PROBLEMS</span><span>OUTPUT</span><span class="active">TERMINAL</span>
-                        <div class="term-ops"><i class="fas fa-plus"></i> <i class="fas fa-trash"></i></div>
+                <div class="terminal-area">
+                    <div class="terminal-nav">
+                        <span onclick="switchTerm('output')">OUTPUT</span>
+                        <span class="active" onclick="switchTerm('terminal')">TERMINAL</span>
+                        <div class="term-tools">
+                            <i class="fas fa-play" onclick="runCode()"></i>
+                            <i class="fas fa-plus"></i>
+                            <i class="fas fa-trash" onclick="clearTerminal()"></i>
+                        </div>
                     </div>
                     <div id="output">
-                        <span class="prompt">~/raptor4mc/MultiPixel</span> <span class="branch">dev</span><br>
-                        <span class="cursor">> </span>
+                        <span class="term-path">~/raptor4mc/MultiPixel</span> <span class="term-branch">dev</span><br>
+                        <span class="term-cursor">> </span>
                     </div>
                 </div>
             </section>
 
-            <section class="preview-pane">
-                <div class="browser-bar">
-                    <i class="fas fa-desktop"></i>
+            <section class="stage-zone">
+                <div class="browser-header">
                     <i class="fas fa-redo"></i>
-                    <div class="address-bar">localhost:3000</div>
+                    <div class="url-input">localhost:3000</div>
+                    <i class="fas fa-external-link-alt"></i>
                 </div>
                 <div id="game-canvas">
                     <div id="game-story-text"></div>
                     <div id="player" class="hidden">🐉</div>
                 </div>
             </section>
-        </div>
+        </main>
 
         <footer class="status-bar">
-            <div class="left"><i class="fas fa-times-circle"></i> 0 &nbsp; <i class="fas fa-exclamation-triangle"></i> 0</div>
-            <div class="right">Ln 1, Col 1 &nbsp; Spaces: 4 &nbsp; UTF-8 &nbsp; MultiRaptor</div>
+            <div class="status-left"><i class="fas fa-times-circle"></i> 0 &nbsp; <i class="fas fa-exclamation-triangle"></i> 0</div>
+            <div class="status-right">Ln 11, Col 8 &nbsp; UTF-8 &nbsp; JavaScript</div>
         </footer>
     </div>
-
     <script src="coding.js"></script>
 </body>
 </html>
