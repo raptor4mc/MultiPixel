@@ -136,7 +136,8 @@ function resetSequence() {
 
 function update() {
     const now = Date.now();
-    const deltaTime = (now - startTime) / 1000;
+    const deltaTime = (now - lastFrameTime) / 1000;
+lastFrameTime = now;
 
     //Helper function
     function createPolygonCache(radius, sides, offsetAngle, strokeStyle, lineWidth, shadowColor, shadowBlur) {
