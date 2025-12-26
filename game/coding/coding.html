@@ -1,82 +1,78 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>MultiPixel | dev</title>
+    <meta charset="UTF-8">
+    <title>MultiPixel | MultiRaptor Dev</title>
     <link rel="stylesheet" href="coding.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
-    <div class="top-nav">
-        <div class="nav-left"><i class="fas fa-bolt"></i> dev</div>
-        <div class="search-bar"><i class="fas fa-search"></i> MultiPixel</div>
-        <div class="nav-right"><button class="share-btn"><i class="fas fa-share-alt"></i> Share</button> <img src="https://via.placeholder.com/24" class="avatar"></div>
-    </div>
-
-    <div class="workbench">
-        <div class="activity-bar">
-            <i class="fas fa-copy active"></i>
-            <i class="fas fa-search"></i>
-            <i class="fas fa-code-branch"></i>
-            <i class="fas fa-cog" onclick="toggleSettings()"></i>
-            <div class="activity-bottom">
-                <i class="far fa-user-circle"></i>
+    <div class="app-shell">
+        <header class="top-nav">
+            <div class="brand"><i class="fas fa-bolt"></i> dev</div>
+            <div class="search-box">MultiPixel</div>
+            <div class="user-actions">
+                <button class="share-btn">Share <i class="fas fa-chevron-down"></i></button>
+                <div class="avatar">MR</div>
             </div>
-        </div>
+        </header>
 
-        <div class="sidebar">
-            <div class="sidebar-label">EXPLORER <i class="fas fa-ellipsis-h"></i></div>
-            <div class="folder"><i class="fas fa-chevron-down"></i> MULTIPIXEL</div>
-            <div class="file-list">
-                <div class="file-item"><i class="fas fa-chevron-right"></i> boot</div>
-                <div class="file-item"><i class="fas fa-chevron-right"></i> game</div>
-                <div class="file-item active"><i class="fab fa-html5"></i> index.html</div>
-                <div class="file-item"><i class="fas fa-file-alt"></i> LICENSE</div>
-                <div class="file-item"><i class="fas fa-info-circle"></i> README.md</div>
-            </div>
-        </div>
+        <div class="main-content">
+            <nav class="activity-bar">
+                <i class="fas fa-copy active"></i>
+                <i class="fas fa-search"></i>
+                <i class="fas fa-code-branch"></i>
+                <i class="fas fa-play-circle" onclick="runCode()" title="Run MultiRaptor"></i>
+                <div class="spacer"></div>
+                <i class="fas fa-cog" onclick="toggleSettings()"></i>
+            </nav>
 
-        <div class="center-zone">
-            <div class="editor-header">
-                <div class="editor-tab active">index.html <i class="fas fa-times"></i></div>
-            </div>
-            <textarea id="editor" spellcheck="false" oninput="saveLocal()"></textarea>
-            
-            <div class="terminal-zone">
-                <div class="terminal-tabs">
-                    <span>PROBLEMS</span><span>OUTPUT</span><span class="active">TERMINAL</span><span>COMMENTS</span>
-                    <div class="term-icons"><i class="fas fa-plus"></i> <i class="fas fa-trash"></i></div>
+            <aside class="explorer">
+                <div class="label">EXPLORER</div>
+                <div class="folder active"><i class="fas fa-chevron-down"></i> MULTIPIXEL</div>
+                <div class="file-list">
+                    <div class="item folder-item"><i class="fas fa-chevron-right"></i> boot</div>
+                    <div class="item folder-item"><i class="fas fa-chevron-right"></i> game</div>
+                    <div class="item file-item active"><i class="fab fa-html5"></i> index.html</div>
+                    <div class="item file-item"><i class="fas fa-file-code"></i> coding.js</div>
                 </div>
-                <div id="output">
-                    <span class="prompt">~/raptor4mc/MultiPixel</span> <span class="branch">dev</span><br>
-                    <span class="cursor">> </span>
+            </aside>
+
+            <section class="editor-pane">
+                <div class="tabs-row">
+                    <div class="tab active">index.html <i class="fas fa-times"></i></div>
                 </div>
-            </div>
+                <textarea id="editor" spellcheck="false" oninput="saveLocal()"></textarea>
+                
+                <div class="terminal-container">
+                    <div class="terminal-tabs">
+                        <span>PROBLEMS</span><span>OUTPUT</span><span class="active">TERMINAL</span>
+                        <div class="term-ops"><i class="fas fa-plus"></i> <i class="fas fa-trash"></i></div>
+                    </div>
+                    <div id="output">
+                        <span class="prompt">~/raptor4mc/MultiPixel</span> <span class="branch">dev</span><br>
+                        <span class="cursor">> </span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="preview-pane">
+                <div class="browser-bar">
+                    <i class="fas fa-desktop"></i>
+                    <i class="fas fa-redo"></i>
+                    <div class="address-bar">localhost:3000</div>
+                </div>
+                <div id="game-canvas">
+                    <div id="game-story-text"></div>
+                    <div id="player" class="hidden">🐉</div>
+                </div>
+            </section>
         </div>
 
-        <div class="stage-zone">
-            <div class="stage-url-bar">
-                <i class="fas fa-desktop"></i> <i class="fas fa-redo"></i> <input type="text" value="localhost:3000" readonly>
-            </div>
-            <div id="game-canvas">
-                <div id="game-story-text"></div>
-                <div id="player" class="hidden">🐉</div>
-            </div>
-            <div class="inspector">
-                <div class="section-title">VARIABLES</div>
-                <div id="var-monitor"></div>
-            </div>
-        </div>
-    </div>
-
-    <div class="status-bar">
-        <div class="status-left"><i class="fas fa-times-circle"></i> 0 <i class="fas fa-exclamation-triangle"></i> 0</div>
-        <div class="status-right">Ln 1, Col 1 &nbsp; Spaces: 4 &nbsp; UTF-8 &nbsp; HTML</div>
-    </div>
-
-    <div id="settings-menu" class="hidden">
-        <h3>ENGINE SETTINGS</h3>
-        <label><input type="checkbox" id="safety-toggle" checked onchange="updateSettings()"> Safety Mode</label>
-        <label><input type="checkbox" id="semi-toggle" checked onchange="updateSettings()"> Semicolons</label>
+        <footer class="status-bar">
+            <div class="left"><i class="fas fa-times-circle"></i> 0 &nbsp; <i class="fas fa-exclamation-triangle"></i> 0</div>
+            <div class="right">Ln 1, Col 1 &nbsp; Spaces: 4 &nbsp; UTF-8 &nbsp; MultiRaptor</div>
+        </footer>
     </div>
 
     <script src="coding.js"></script>
