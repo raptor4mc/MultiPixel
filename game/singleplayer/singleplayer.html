@@ -1,1 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Singleplayer</title>
+  <link rel="stylesheet" href="./singleplayer.css" />
+</head>
+<body>
 
+  <h1>Create World</h1>
+
+  <label>
+    World Name
+    <input id="worldName" placeholder="New World" />
+  </label>
+
+  <h2>Gamemode</h2>
+  <div id="gamemodeSelect" class="option-row">
+    <button data-gamemode="creative">Creative</button>
+    <button data-gamemode="survival">Survival</button>
+  </div>
+
+  <h2>Terrain</h2>
+  <div id="terrainSelect" class="option-row">
+    <button data-terrain="normal">Normal</button>
+    <button data-terrain="flat">Flat</button>
+  </div>
+
+  <button id="createWorld">Create World</button>
+
+  <script type="module" src="./singleplayer.js"></script>
+</body>
+</html>
