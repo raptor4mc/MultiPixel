@@ -3,31 +3,36 @@
 <head>
   <meta charset="UTF-8" />
   <title>Singleplayer</title>
-  <link rel="stylesheet" href="./singleplayer.css" />
+  <link rel="stylesheet" href="singleplayer.css">
 </head>
 <body>
 
+<div id="menu">
   <h1>Create World</h1>
 
-  <label>
-    World Name
-    <input id="worldName" placeholder="New World" />
-  </label>
+  <label>World Name</label>
+  <input id="worldName" placeholder="My World">
 
-  <h2>Gamemode</h2>
-  <div id="gamemodeSelect" class="option-row">
-    <button data-gamemode="creative">Creative</button>
-    <button data-gamemode="survival">Survival</button>
-  </div>
+  <label>Seed</label>
+  <input id="seed" placeholder="Random">
 
-  <h2>Terrain</h2>
-  <div id="terrainSelect" class="option-row">
-    <button data-terrain="normal">Normal</button>
-    <button data-terrain="flat">Flat</button>
-  </div>
+  <label>Gamemode</label>
+  <select id="gamemode">
+    <option value="survival">Survival</option>
+    <option value="creative">Creative</option>
+  </select>
 
-  <button id="createWorld">Create World</button>
+  <label>Terrain</label>
+  <select id="terrain">
+    <option value="normal">Normal</option>
+    <option value="flat">Flat</option>
+  </select>
 
-  <script type="module" src="./singleplayer.js"></script>
+  <button id="play">Create World</button>
+</div>
+
+<canvas id="game"></canvas>
+
+<script type="module" src="singleplayer.js"></script>
 </body>
 </html>
