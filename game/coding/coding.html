@@ -2,86 +2,36 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>MultiPixel | Repository</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MultiRaptor IDE</title>
     <link rel="stylesheet" href="coding.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/editor/editor.main.css">
 </head>
 <body>
-    <div class="app-container">
-        <header class="navbar">
-            <div class="repo-info"><i class="fas fa-code-branch"></i> main <span>MultiPixel / GameEngine</span></div>
-            <div class="nav-actions">
-                <button class="btn-run" onclick="runCode()"><i class="fas fa-play"></i> Run</button>
-            </div>
-        </header>
-
-        <div class="main-split">
-            <nav class="activity-bar">
-                <i class="fas fa-file active"></i>
-                <i class="fas fa-search"></i>
-                <i class="fas fa-project-diagram"></i>
-                <div class="spacer"></div>
-                <i class="fas fa-cog"></i>
-            </nav>
-
-            <aside class="explorer">
-                <div class="section-label">EXPLORER</div>
-                <div class="tree-container" id="project-root">
-                    <div class="item folder-root">
-                        <i class="fas fa-chevron-down"></i> 
-                        <span>MULTIPIXEL</span>
-                        <div class="item-actions">
-                            <i class="fas fa-file-plus" title="New File" onclick="triggerNewItem('file')"></i>
-                            <i class="fas fa-folder-plus" title="New Folder" onclick="triggerNewItem('folder')"></i>
-                        </div>
-                    </div>
-                    <div id="file-tree" class="tree-items">
-                        <div class="item file active"><i class="fab fa-js text-yellow"></i> game.mr</div>
-                    </div>
-                </div>
-            </aside>
-
-            <section class="editor-column">
-                <div class="editor-tabs"><div class="tab active">game.mr</div></div>
-                <textarea id="editor" spellcheck="false" oninput="saveLocal()"></textarea>
-                
-                <div class="bottom-dock">
-                    <div class="dock-header">
-                        <span class="dock-tab" onclick="switchDock('problems')">PROBLEMS</span>
-                        <span class="dock-tab" onclick="switchDock('output-log')">OUTPUT</span>
-                        <span class="dock-tab active" onclick="switchDock('terminal')">TERMINAL</span>
-                    </div>
-                    <div id="dock-content">
-                        <div id="dock-problems" class="dock-panel hidden">No problems detected.</div>
-                        <div id="dock-output-log" class="dock-panel hidden">Engine logs...</div>
-                        <div id="dock-terminal" class="dock-panel">
-                            <div class="terminal-welcome">
-                                <span class="raptor-logo">👟🦖</span> MultiRaptor Shell v1.0.0
-                            </div>
-                            <div id="terminal-history"></div>
-                            <div class="terminal-input-line">
-                                <span class="prompt">~/multi-pixel</span>
-                                <span class="branch">main</span>
-                                <span class="cursor-char">$</span>
-                                <input type="text" id="terminal-input" autofocus spellcheck="false">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <section class="visualizer-column">
-                <div class="viz-header">LIVE PREVIEW</div>
-                <div class="stage">
-                    <canvas id="gameCanvas" width="400" height="500"></canvas>
-                </div>
-                <div class="inspector">
-                    <div class="section-label">ENGINE VARIABLES</div>
-                    <div id="memory-view"></div>
-                </div>
-            </section>
+    <div id="header">
+        <h1>MultiRaptor IDE</h1>
+        <div>
+            <button id="new-repo">New Repo</button>
+            <button id="save">Commit</button>
         </div>
     </div>
+    <div id="main">
+        <div id="sidebar">
+            <h3>Repos</h3>
+            <div id="repos-list"></div>
+            <h3>Files</h3>
+            <div id="files-list"></div>
+        </div>
+        <div id="editor-container">
+            <div id="editor"></div>
+        </div>
+    </div>
+    <!-- Include terminal component -->
+    <div id="terminal-container">
+        <iframe src="terminal/terminal.html" width="100%" height="200" frameborder="0"></iframe>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
     <script src="coding.js"></script>
 </body>
 </html>
