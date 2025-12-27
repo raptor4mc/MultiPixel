@@ -1,10 +1,9 @@
-
 // Terminal logic
 const terminalOutput = document.getElementById('terminal-output');
 const terminalInput = document.getElementById('terminal-input');
-let packages = {}; // Mock packages
+let packages = {};
 
-// Wait for parent window data (from coding.js)
+// Wait for parent window data
 setTimeout(() => {
     const editor = window.parent.multiRaptorEditor;
     const repos = window.parent.multiRaptorRepos;
@@ -42,22 +41,4 @@ setTimeout(() => {
     terminalInput.onkeydown = (e) => {
         if (e.key === 'Enter') runCommand(terminalInput.value);
     };
-
-    // Simple MultiRaptor Interpreter
-    function interpretMultiRaptor(code) {
-        let output = '';
-        const lines = code.split('\n');
-        let vars = {};
-        for (let line of lines) {
-            line = line.trim();
-            if (line.startsWith('var ')) {
-                const [_, name, val] = line.match(/var (\w+) = (.+);/);
-                vars[name] = eval(val); // Simple eval for demo
-            } else if (line.startsWith('print(')) {
-                const expr = line.match(/print\$(.+)\$;/)[1];
-                output += eval(expr.replace(/\b\w+\b/g, m => vars[m] || m)) + '\n';
-            }
-        }
-        return output || 'Executed successfully.';
-    }
-}, 1000); // Delay to ensure parent data is loaded
+}, 1000);
