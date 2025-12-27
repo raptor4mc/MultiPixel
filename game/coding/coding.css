@@ -8,3 +8,4 @@ body { margin: 0; font-family: Arial, sans-serif; display: flex; flex-direction:
 .repo-item:hover { background: #ddd; }
 .file-item { margin-left: 20px; }
 button { margin: 5px; }
+#search-files { width: 100%; margin: 5px 0; }  /* New: For file search */
