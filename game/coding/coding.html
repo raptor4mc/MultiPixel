@@ -1,1827 +1,310 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MultiRaptor Integrated Development Environment (M.R.I.D.E.)</title>
-    <!-- Load Tailwind CSS -->
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MultiRaptor IDE (M.R.I.D.E.)</title>
+
+    <!-- Tailwind (as you already used) -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        /* Custom styles for the IDE experience (Classic Dark Theme) */
-        body {
-            font-family: 'Inter', monospace;
-            background-color: #0b0b0f; /* Very dark background */
-            height: 100vh;
-            overflow: hidden;
-        }
-        #ide-container {
-            display: flex;
-            height: calc(100vh - 4rem); /* Full viewport height minus header/padding */
-            max-width: 100%;
-            border: 1px solid #333; /* Subtle overall border */
-        }
-        .file-explorer {
-            width: 250px; 
-            min-width: 32px;
-            background-color: #1e1e1e; 
-            color: #d4d4d4;
-            overflow-y: auto;
-            border-right: 1px solid #3c3c3c;
-            transition: width 0.2s;
-            flex-shrink: 0;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        /* File Tree Styling */
-        #file-list {
-            padding-top: 0.5rem;
-            flex-grow: 1;
-            overflow-y: auto;
-        }
-        .file-tree-node {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0.4rem 1rem;
-            font-size: 0.875rem;
-            cursor: pointer;
-            transition: background-color 0.1s;
-        }
-        .file-tree-node:hover {
-            background-color: #2a2a2e; /* Subtle hover */
-        }
-        .file-tree-node.active-file {
-            background-color: #007acc; /* Classic Blue Highlight */
-            color: white;
-            font-weight: 600;
-        }
-        .file-content-area {
-            flex-grow: 1;
-            display: flex;
-            align-items: center;
-            overflow: hidden;
-            white-space: nowrap;
-        }
-        
-        .file-name {
-            overflow: hidden;
-            text-overflow: ellipsis;
-            padding-left: 4px; /* Space for icon */
-        }
-        
-        .folder-actions {
-            opacity: 0;
-            transition: opacity 0.2s;
-            display: flex;
-            align-items: center;
-            margin-left: 8px;
-        }
-        .file-tree-node:hover .folder-actions {
-            opacity: 1;
-        }
-        .folder-action-button {
-            padding: 2px;
-            margin-left: 4px;
-            color: #999;
-            transition: color 0.15s;
-        }
-        .folder-action-button:hover {
-            color: #fff;
-            background-color: #444;
-            border-radius: 4px;
-        }
 
-        .delete-file-button {
-            color: #777;
-            padding: 2px;
-            opacity: 0;
-            transition: opacity 0.15s, color 0.15s;
-            margin-left: 8px;
-        }
-        .file-tree-node:hover .delete-file-button {
-            opacity: 1;
-        }
-        .delete-file-button:hover {
-            color: #ff5555;
-            background-color: #442222;
-            border-radius: 4px;
-        }
+    <!-- Core IDE styles -->
+    <link rel="stylesheet" href="./coding.css" />
 
-        .toggle-arrow {
-            transition: transform 0.2s;
-            margin-right: 4px;
-            flex-shrink: 0;
-        }
-        .arrow-right {
-            transform: rotate(0deg);
-        }
-        .arrow-down {
-            transform: rotate(90deg);
-        }
-        
-        /* Indentation for tree view */
-        .indent-1 { padding-left: 0.5rem; }
-        .indent-2 { padding-left: 1.5rem; }
-        .indent-3 { padding-left: 2.5rem; }
-        .indent-4 { padding-left: 3.5rem; }
+    <!-- Themes -->
+    <link rel="stylesheet" href="./themes/dark.css" id="theme-dark" />
+    <link rel="stylesheet" href="./themes/light.css" id="theme-light" disabled />
+    <link rel="stylesheet" href="./themes/neon.css" id="theme-neon" disabled />
+  </head>
 
-
-        .main-content {
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-            background-color: #1e1e1e; 
-        }
-        
-        /* Resizer Bar Style */
-        .resizer-bar {
-            height: 5px;
-            background-color: #3c3c3c;
-            cursor: row-resize;
-            transition: background-color 0.15s;
-            flex-shrink: 0;
-        }
-        .resizer-bar:hover {
-            background-color: #007acc; 
-        }
-
-        .editor-container {
-            flex-shrink: 0;
-            min-height: 100px;
-            overflow: hidden;
-        }
-        .code-editor {
-            background-color: #1e1e1e;
-            color: #cccccc;
-            caret-color: white;
-            padding: 1rem 1.5rem; 
-            resize: none;
-            outline: none;
-            font-size: 0.875rem;
-            line-height: 1.5;
-            tab-size: 4;
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
-        .console-panel {
-            flex-shrink: 0;
-            min-height: 100px;
-            background-color: #0c0c0c; 
-            border-top: 1px solid #3c3c3c; 
-            display: flex;
-            flex-direction: column;
-        }
-        .console-tab-content {
-            flex-grow: 1;
-            font-size: 0.875rem;
-            line-height: 1.5;
-            overflow-y: auto;
-            white-space: pre-wrap;
-        }
-        .tab-button {
-            padding: 0.5rem 1rem;
-            cursor: pointer;
-            transition: all 0.15s ease-in-out;
-            background-color: #1e1e1e;
-            border: none;
-            color: #888;
-            border-bottom: 2px solid transparent;
-            font-weight: 500;
-        }
-        .tab-button.active {
-            color: #007acc; 
-            border-bottom: 2px solid #007acc;
-            background-color: #0c0c0c;
-        }
-        /* CLI Input Style */
-        .cli-input-wrapper {
-            background-color: #0c0c0c;
-            padding: 0.5rem 1rem;
-            display: flex;
-            flex-shrink: 0;
-            border-top: 1px solid #2d2d2d;
-        }
-        .cli-input-wrapper input {
-            background: none;
-            border: none;
-            outline: none;
-            color: white;
-            flex-grow: 1;
-            font-family: monospace;
-        }
-        
-        /* New accent for Run button */
-        .run-button-accent {
-            background-color: #007acc;
-            box-shadow: 0 2px 5px rgba(0, 122, 204, 0.4);
-        }
-        .run-button-accent:hover {
-            background-color: #005a9c;
-            transform: translateY(-1px);
-        }
-
-        /* Scrollbar styles for the dark theme */
-        .code-editor::-webkit-scrollbar, .console-tab-content::-webkit-scrollbar, .file-explorer::-webkit-scrollbar {
-            width: 8px;
-            background-color: #2c2c2c;
-        }
-        .code-editor::-webkit-scrollbar-thumb, .console-tab-content::-webkit-scrollbar-thumb, .file-explorer::-webkit-scrollbar-thumb {
-            background-color: #555;
-            border-radius: 4px;
-        }
-        
-        #info-tooltip {
-            top: 100%;
-            bottom: unset !important;
-            margin-top: 0.5rem;
-            left: 50%;
-            transform: translateX(-50%);
-            max-width: 300px;
-        }
-
-        /* Custom Modal Styles */
-        #action-dialog, #confirm-dialog {
-            z-index: 50;
-            animation: fadeIn 0.15s ease-out;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translate(-50%, -60%); }
-            to { opacity: 1; transform: translate(-50%, -50%); }
-        }
-    </style>
-</head>
-<body class="p-4">
-
+  <body class="p-4">
     <!-- Header / Title -->
     <div class="max-w-7xl mx-auto mb-4">
-        <h1 class="text-3xl font-bold text-white tracking-wider">MultiRaptor IDE (<span class="text-blue-400">M.R.I.D.E.</span>) <span class="text-xl text-gray-500">(v5.1 - AST Interpreter)
-                    <span id="info-icon" class="ml-2 inline-block cursor-pointer text-blue-400 hover:text-white transition duration-150 relative">
-                        <!-- Info Icon SVG -->
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        <!-- Tooltip Container -->
-                        <div id="info-tooltip" class="absolute hidden p-2 bg-gray-800 text-white text-xs rounded shadow-lg z-10 border border-blue-500 whitespace-pre">
-                            <!-- Content set by JS -->
-                        </div>
-                    </span>
-                </span>
-            </h1>
+      <h1 class="text-3xl font-bold text-white tracking-wider">
+        MultiRaptor IDE (<span class="text-blue-400">M.R.I.D.E.</span>)
+        <span class="text-xl text-gray-500">
+          (v5.1 - AST Interpreter)
+          <span
+            id="info-icon"
+            class="ml-2 inline-block cursor-pointer text-blue-400 hover:text-white transition duration-150 relative"
+          >
+            <!-- Info Icon SVG -->
+            <svg
+              class="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              ></path>
+            </svg>
+
+            <!-- Tooltip Container (content filled by TS) -->
+            <div
+              id="info-tooltip"
+              class="absolute hidden p-2 bg-gray-800 text-white text-xs rounded shadow-lg z-10 border border-blue-500 whitespace-pre"
+            ></div>
+          </span>
+        </span>
+      </h1>
     </div>
 
-    <!-- Custom Action Dialog Modal -->
-    <div id="action-dialog" class="hidden fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 p-6 rounded-lg shadow-2xl bg-gray-800 border border-blue-500 w-full max-w-sm">
-        <h3 id="dialog-title" class="text-xl font-bold text-white mb-4">Create New Item</h3>
-        <p id="dialog-prompt" class="text-gray-300 mb-4 text-sm"></p>
-        <div id="dialog-path-display" class="text-xs text-gray-500 mb-2"></div>
-        <input type="text" id="dialog-input" class="w-full p-2 rounded bg-gray-700 border border-gray-600 text-white font-mono focus:outline-none focus:border-blue-400" placeholder="Enter name...">
-        <div class="mt-6 flex justify-end space-x-3">
-            <button onclick="hideModal()" class="px-4 py-2 text-sm font-semibold rounded bg-gray-600 hover:bg-gray-700 text-white transition duration-150">
-                Cancel
-            </button>
-            <button id="dialog-submit-button" class="px-4 py-2 text-sm font-semibold rounded bg-blue-600 hover:bg-blue-700 text-white transition duration-150">
-                Create
-            </button>
-        </div>
-    </div>
-    
-    <!-- Custom Confirmation Modal -->
-    <div id="confirm-dialog" class="hidden fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 p-6 rounded-lg shadow-2xl bg-gray-800 border border-red-500 w-full max-w-sm">
-        <h3 id="confirm-title" class="text-xl font-bold text-red-400 mb-4">Confirm Action</h3>
-        <p id="confirm-prompt" class="text-gray-300 mb-6 text-sm">Are you sure you want to proceed?</p>
-        <div class="mt-4 flex justify-end space-x-3">
-            <button onclick="handleConfirmation(false)" class="px-4 py-2 text-sm font-semibold rounded bg-gray-600 hover:bg-gray-700 text-white transition duration-150">
-                No, Cancel
-            </button>
-            <button onclick="handleConfirmation(true)" class="px-4 py-2 text-sm font-semibold rounded bg-red-600 hover:bg-red-700 text-white transition duration-150">
-                Yes, Delete
-            </button>
-        </div>
+    <!-- Action Dialog (Create file/folder) -->
+    <div
+      id="action-dialog"
+      class="hidden fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 p-6 rounded-lg shadow-2xl bg-gray-800 border border-blue-500 w-full max-w-sm"
+    >
+      <h3 id="dialog-title" class="text-xl font-bold text-white mb-4">
+        Create New Item
+      </h3>
+
+      <p
+        id="dialog-prompt"
+        class="text-gray-300 mb-4 text-sm"
+      ></p>
+
+      <div
+        id="dialog-path-display"
+        class="text-xs text-gray-500 mb-2"
+      ></div>
+
+      <input
+        type="text"
+        id="dialog-input"
+        class="w-full p-2 rounded bg-gray-700 border border-gray-600 text-white font-mono focus:outline-none focus:border-blue-400"
+        placeholder="Enter name..."
+      />
+
+      <div class="mt-6 flex justify-end space-x-3">
+        <button
+          id="dialog-cancel-button"
+          class="px-4 py-2 text-sm font-semibold rounded bg-gray-600 hover:bg-gray-700 text-white transition duration-150"
+        >
+          Cancel
+        </button>
+        <button
+          id="dialog-submit-button"
+          class="px-4 py-2 text-sm font-semibold rounded bg-blue-600 hover:bg-blue-700 text-white transition duration-150"
+        >
+          Create
+        </button>
+      </div>
     </div>
 
+    <!-- Confirmation Dialog (Delete) -->
+    <div
+      id="confirm-dialog"
+      class="hidden fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 p-6 rounded-lg shadow-2xl bg-gray-800 border border-red-500 w-full max-w-sm"
+    >
+      <h3
+        id="confirm-title"
+        class="text-xl font-bold text-red-400 mb-4"
+      >
+        Confirm Action
+      </h3>
+
+      <p
+        id="confirm-prompt"
+        class="text-gray-300 mb-6 text-sm"
+      >
+        Are you sure you want to proceed?
+      </p>
+
+      <div class="mt-4 flex justify-end space-x-3">
+        <button
+          id="confirm-cancel-button"
+          class="px-4 py-2 text-sm font-semibold rounded bg-gray-600 hover:bg-gray-700 text-white transition duration-150"
+        >
+          No, Cancel
+        </button>
+        <button
+          id="confirm-accept-button"
+          class="px-4 py-2 text-sm font-semibold rounded bg-red-600 hover:bg-red-700 text-white transition duration-150"
+        >
+          Yes, Delete
+        </button>
+      </div>
+    </div>
 
     <!-- IDE Container -->
-    <div id="ide-container" class="shadow-2xl max-w-7xl mx-auto rounded-lg overflow-hidden">
-        
-        <!-- File Explorer Sidebar -->
-        <div id="file-explorer" class="file-explorer">
-            <div id="file-explorer-header" class="p-3 text-sm font-semibold text-gray-400 uppercase tracking-wider border-b border-[#3c3c3c] flex justify-between items-center">
-                <span id="file-explorer-header-text">PROJECT</span>
-                <!-- Toggle Button omitted for simplicity in V5 tree view -->
-            </div>
-            <div id="file-list" class="pt-2 flex-grow overflow-y-auto">
-                <!-- File tree populated by JS -->
-            </div>
-            
-            <!-- Global File Management Actions -->
-            <div id="file-management-actions" class="p-3 border-t border-[#3c3c3c] flex flex-col space-y-2">
-                <!-- + New File Button (Creates in root) -->
-                <button id="new-file-button-root" onclick="showModal('file', '')" 
-                        class="w-full text-xs font-semibold text-white bg-green-600 hover:bg-green-700 p-2 rounded transition duration-150 flex items-center justify-center">
-                    <!-- File Icon -->
-                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                    New File (Root)
-                </button>
-                 <!-- + New Folder Button (Creates in root) -->
-                <button id="new-folder-button-root" onclick="showModal('folder', '')" 
-                        class="w-full text-xs font-semibold text-gray-800 bg-gray-300 hover:bg-gray-400 p-2 rounded transition duration-150 flex items-center justify-center">
-                    <!-- Folder Icon -->
-                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
-                    New Folder (Root)
-                </button>
-            </div>
+    <div
+      id="ide-container"
+      class="shadow-2xl max-w-7xl mx-auto rounded-lg overflow-hidden"
+    >
+      <!-- File Explorer Sidebar -->
+      <div id="file-explorer" class="file-explorer">
+        <div
+          id="file-explorer-header"
+          class="p-3 text-sm font-semibold text-gray-400 uppercase tracking-wider border-b border-[#3c3c3c] flex justify-between items-center"
+        >
+          <span id="file-explorer-header-text">PROJECT</span>
         </div>
 
-        <!-- Main Content Area (Editor + Console Panel) -->
-        <div class="main-content">
-            
-            <!-- Editor Container -->
-            <div id="editor-container" class="editor-container">
-                 <!-- Editor Header (Tab Bar Style) -->
-                <div id="editor-header" class="flex justify-between items-center bg-[#252526] p-2 border-b border-[#3c3c3c]">
-                    <span id="current-file-name" class="text-white text-sm font-medium ml-2 px-2 py-1 bg-[#1e1e1e] rounded-t-md border-t border-l border-r border-[#3c3c3c]">main.mr</span>
-                    <button id="run-button" onclick="runInterpreter(false)"
-                            class="run-button-accent text-white text-xs font-bold py-1.5 px-4 rounded transition duration-150 ease-in-out">
-                        <svg class="w-4 h-4 inline mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 12.016v3.31a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        Run Code
-                    </button>
-                </div>
-                <textarea id="code-input" class="code-editor" spellcheck="false"></textarea>
-            </div>
+        <div
+          id="file-list"
+          class="pt-2 flex-grow overflow-y-auto"
+        ></div>
 
-            <!-- Horizontal Resizer Bar -->
-            <div id="resizer-bar" class="resizer-bar"></div>
+        <!-- Global File Management Actions -->
+        <div
+          id="file-management-actions"
+          class="p-3 border-t border-[#3c3c3c] flex flex-col space-y-2"
+        >
+          <button
+            id="new-file-button-root"
+            class="w-full text-xs font-semibold text-white bg-green-600 hover:bg-green-700 p-2 rounded transition duration-150 flex items-center justify-center"
+          >
+            <svg
+              class="w-4 h-4 mr-1"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              ></path>
+            </svg>
+            New File (Root)
+          </button>
 
-            <!-- Console Panel -->
-            <div id="console-panel" class="console-panel">
-                <!-- Tab Buttons -->
-                <div class="flex flex-shrink-0 bg-[#1e1e1e] border-b border-[#3c3c3c]">
-                    <button id="tab-terminal" onclick="switchTab('terminal')" 
-                            class="tab-button active">Terminal</button>
-                    <button id="tab-console" onclick="switchTab('console')" 
-                            class="tab-button">Program Output</button>
-                    <div class="flex-grow bg-[#1e1e1e]"></div>
-                </div>
+          <button
+            id="new-folder-button-root"
+            class="w-full text-xs font-semibold text-gray-800 bg-gray-300 hover:bg-gray-400 p-2 rounded transition duration-150 flex items-center justify-center"
+          >
+            <svg
+              class="w-4 h-4 mr-1"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+              ></path>
+            </svg>
+            New Folder (Root)
+          </button>
+        </div>
+      </div>
 
-                <!-- Terminal Tab Content -->
-                <div id="terminal-pane" class="console-tab-content p-4 text-gray-300" style="display: block;">
-                    <div id="terminal-output"></div>
-                </div>
+      <!-- Main Content: Editor + Console -->
+      <div class="main-content">
+        <!-- Editor Container -->
+        <div id="editor-container" class="editor-container">
+          <div
+            id="editor-header"
+            class="flex justify-between items-center bg-[#252526] p-2 border-b border-[#3c3c3c]"
+          >
+            <span
+              id="current-file-name"
+              class="text-white text-sm font-medium ml-2 px-2 py-1 bg-[#1e1e1e] rounded-t-md border-t border-l border-r border-[#3c3c3c]"
+            >
+              main.mr
+            </span>
 
-                <!-- Console Tab Content -->
-                <div id="console-pane" class="console-tab-content p-4" style="display: none;">
-                    <div id="console-output"></div>
-                </div>
+            <button
+              id="run-button"
+              class="run-button-accent text-white text-xs font-bold py-1.5 px-4 rounded transition duration-150 ease-in-out"
+            >
+              <svg
+                class="w-4 h-4 inline mr-1 -mt-0.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M14.752 11.168l-3.197-2.132A1 1 0 0010 12.016v3.31a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+                ></path>
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                ></path>
+              </svg>
+              Run Code
+            </button>
+          </div>
 
-                 <!-- CLI Input (Only visible in Terminal tab) -->
-                <div id="cli-input-wrapper" class="cli-input-wrapper">
-                    <span class="text-blue-400 mr-2 font-mono leading-none flex-shrink-0">$ rap ></span>
-                    <input type="text" id="cli-input" placeholder="Type 'rap help' or 'rap run'..." >
-                </div>
-            </div>
-
+          <textarea
+            id="code-input"
+            class="code-editor"
+            spellcheck="false"
+          ></textarea>
         </div>
 
+        <!-- Resizer -->
+        <div id="resizer-bar" class="resizer-bar"></div>
+
+        <!-- Console Panel -->
+        <div id="console-panel" class="console-panel">
+          <div
+            class="flex flex-shrink-0 bg-[#1e1e1e] border-b border-[#3c3c3c]"
+          >
+            <button
+              id="tab-terminal"
+              class="tab-button active"
+            >
+              Terminal
+            </button>
+            <button
+              id="tab-console"
+              class="tab-button"
+            >
+              Program Output
+            </button>
+            <div class="flex-grow bg-[#1e1e1e]"></div>
+          </div>
+
+          <div
+            id="terminal-pane"
+            class="console-tab-content p-4 text-gray-300"
+            style="display: block"
+          >
+            <div id="terminal-output"></div>
+          </div>
+
+          <div
+            id="console-pane"
+            class="console-tab-content p-4"
+            style="display: none"
+          >
+            <div id="console-output"></div>
+          </div>
+
+          <div id="cli-input-wrapper" class="cli-input-wrapper">
+            <span
+              class="text-blue-400 mr-2 font-mono leading-none flex-shrink-0"
+            >
+              $ rap &gt;
+            </span>
+            <input
+              type="text"
+              id="cli-input"
+              placeholder="Type 'rap help' or 'rap run'..."
+            />
+          </div>
+        </div>
+      </div>
     </div>
 
-    <script>
-        const codeInput = document.getElementById('code-input');
-        const runButton = document.getElementById('run-button');
-        const cliInput = document.getElementById('cli-input');
-        const fileList = document.getElementById('file-list');
-        const currentFileNameDisplay = document.getElementById('current-file-name');
-        const cliInputWrapper = document.getElementById('cli-input-wrapper');
-
-        // IDE Elements
-        const ideContainer = document.getElementById('ide-container');
-        const resizerBar = document.getElementById('resizer-bar');
-        const editorContainer = document.getElementById('editor-container');
-        const consolePanel = document.getElementById('console-panel'); 
-        
-        // Tooltip elements
-        const infoTooltip = document.getElementById('info-tooltip');
-        const infoIcon = document.getElementById('info-icon');
-
-        // Console elements
-        const terminalOutput = document.getElementById('terminal-output');
-        const consoleOutput = document.getElementById('console-output');
-        const terminalPane = document.getElementById('terminal-pane');
-        const consolePane = document.getElementById('console-pane');
-        const tabTerminal = document.getElementById('tab-terminal');
-        const tabConsole = document.getElementById('tab-console');
-        
-        // Modal Elements
-        const actionDialog = document.getElementById('action-dialog');
-        const dialogTitle = document.getElementById('dialog-title');
-        const dialogPrompt = document.getElementById('dialog-prompt');
-        const dialogPathDisplay = document.getElementById('dialog-path-display');
-        const dialogInput = document.getElementById('dialog-input');
-        const dialogSubmitButton = document.getElementById('dialog-submit-button');
-
-        const confirmDialog = document.getElementById('confirm-dialog');
-        const confirmTitle = document.getElementById('confirm-title');
-        const confirmPrompt = document.getElementById('confirm-prompt');
-        
-        // Global state
-        let currentSyntaxMode = 'AST-RAPTOR'; 
-        let currentTab = 'terminal';
-        let currentFile = 'main.mr'; // Full path: main.mr
-        let isResizing = false;
-        let activeDialogType = null; // 'file' or 'folder'
-        let dialogTargetPath = ''; // Stores the path where the new item will be created
-        let pendingDeletePath = null; // Stores file/folder path to be deleted
-        let openFolders = new Set(['src']); // Tracks expanded folder paths
-
-        
-        // --- File System Simulation (Hierarchical) ---
-        let fileSystem = {
-            'main.mr': { 
-                type: 'file', 
-                content: `
-// =======================================================
-// MultiRaptor Sample: Entry Point (main.mr)
-// =======================================================
-Import("demo.mr"); // Load demo file containing proc_demo and constants.
-Import("src/utils.mr"); 
-
-// --- Execution ---
-Signal("Initializing the MultiRaptor Demo.");
-Signal("-----------------------------------");
-proc_demo(); // Execute the main demonstration procedure!
-Signal("-----------------------------------");
-Signal("Demo execution complete.");
-`
-            },
-            'demo.mr': {
-                type: 'file',
-                content: `
-// =======================================================
-// MultiRaptor Demo Showcase (demo.mr)
-// =======================================================
-
-// 1. CONSTANT DECLARATION (seal)
-seal MAX_ATTEMPTS = 5;
-seal BASE_POWER = 12.5;
-
-// 2. VARIABLE DECLARATION (vault)
-vault target_name = "Core Reactor Alpha";
-
-// 3. FUNCTION DEFINITION
-proc proc_demo() {
-    Signal("Demo running inside proc_demo.");
-    Signal("Target: " + target_name); 
-
-    // 4. ARITHMETIC EXPRESSIONS
-    vault result_1 = (BASE_POWER + 7.5) * 3; 
-    vault result_2 = 100 / MAX_ATTEMPTS - 5; // 100 / 5 - 5 = 15
-
-    Signal("Power Calculation: ((12.5 + 7.5) * 3) = " + result_1); // Should output 60
-    Signal("Attempts Calculation: (100 / 5 - 5) = " + result_2);   // Should output 15
-
-    // 5. VARIABLE REASSIGNMENT (vault only)
-    Signal("Original Max Attempts: " + MAX_ATTEMPTS); 
-    // MAX_ATTEMPTS = 10; // This would throw a runtime error!
-
-    vault counter = 1;
-    Signal("Initial Counter: " + counter); 
-    counter = counter + 4; // Reassignment is successful
-    Signal("Updated Counter: " + counter); // Should output 5
-
-    // 6. FUNCTION CALL WITH PARAMETERS (calls proc_data_message from src/utils.mr)
-    vault computed_value = proc_data_message(result_1, 2); // Pass 60 and 2
-
-    Signal("Function Call Result: " + computed_value); // 60 * 2 = 120 (from proc_data_message)
-    
-    // 7. Built-in Math object usage
-    vault radius = 10;
-    vault area = Math.PI * Math.pow(radius, 2);
-    Signal("Area of Circle (Radius 10): " + area); // Math object works!
-}
-
-// 8. GLOBAL STATEMENT (Code outside proc_demo, executed on 2nd pass)
-Signal("Global statements loaded successfully.");
-`
-            },
-            'src': { 
-                type: 'folder', 
-                children: {
-                    'utils.mr': { 
-                        type: 'file',
-                        content: `
-// =======================================================
-// MultiRaptor Utility Functions (src/utils.mr)
-// =======================================================
-// This file is nested in the 'src' folder.
-
-// This procedure uses parameters passed by the caller.
-proc proc_data_message(base_value, multiplier) {
-    vault intermediate = base_value + 20;
-    Signal("Utility called. Intermediate: " + intermediate); 
-    
-    // The return value will be used in the AssignmentExpression in the caller.
-    return base_value * multiplier; 
-}
-`
-                    },
-                    'config': {
-                        type: 'folder',
-                        children: {
-                            'settings.mr': {
-                                type: 'file',
-                                content: `
-// =======================================================
-// MultiRaptor Settings (src/config/settings.mr)
-// =======================================================
-seal VERSION = "5.1.0";
-Signal("Config loaded. Version: " + VERSION);
-`
-                            }
-                        }
-                    }
-                }
-            },
-        };
-
-
-        // =======================================================
-        // AST-BASED INTERPRETER CORE
-        // =======================================================
-
-        // --- 1. TOKENIZER ---
-        class Token {
-            constructor(type, value, line, column) {
-                this.type = type;
-                this.value = value;
-                this.line = line;
-                this.column = column;
-            }
-        }
-
-        const Tokens = {
-            // Keywords
-            KEYWORD_VAULT: 'KEYWORD_VAULT', // var
-            KEYWORD_SEAL: 'KEYWORD_SEAL',   // const
-            KEYWORD_PROC: 'KEYWORD_PROC',   // function
-            KEYWORD_RETURN: 'KEYWORD_RETURN', // return
-            
-            // Built-ins
-            BUILTIN_SIGNAL: 'BUILTIN_SIGNAL',
-            BUILTIN_IMPORT: 'BUILTIN_IMPORT',
-
-            // Separators
-            SEPARATOR_LPAREN: 'SEPARATOR_LPAREN', // (
-            SEPARATOR_RPAREN: 'SEPARATOR_RPAREN', // )
-            SEPARATOR_LBRACE: 'SEPARATOR_LBRACE', // { (Block start)
-            SEPARATOR_RBRACE: 'SEPARATOR_RBRACE', // } (Block end)
-            SEPARATOR_COMMA: 'SEPARATOR_COMMA', // ,
-            SEPARATOR_SEMICOLON: 'SEPARATOR_SEMICOLON', // ;
-            
-            // Literals
-            LITERAL_NUMBER: 'LITERAL_NUMBER',
-            LITERAL_STRING: 'LITERAL_STRING',
-            LITERAL_IDENTIFIER: 'LITERAL_IDENTIFIER', // Variables, function names
-            
-            // Operators
-            OPERATOR_ASSIGN: 'OPERATOR_ASSIGN', // =
-            OPERATOR_ADD: 'OPERATOR_ADD', // +
-            OPERATOR_SUB: 'OPERATOR_SUB', // -
-            OPERATOR_MUL: 'OPERATOR_MUL', // *
-            OPERATOR_DIV: 'OPERATOR_DIV', // /
-            OPERATOR_DOT: 'OPERATOR_DOT', // . (for method access)
-
-            // End of File
-            EOF: 'EOF',
-        };
-
-        const KEYWORDS = {
-            'vault': Tokens.KEYWORD_VAULT,
-            'seal': Tokens.KEYWORD_SEAL,
-            'proc': Tokens.KEYWORD_PROC,
-            'return': Tokens.KEYWORD_RETURN,
-            'Signal': Tokens.BUILTIN_SIGNAL,
-            'Import': Tokens.BUILTIN_IMPORT,
-        };
-
-        class Tokenizer {
-            constructor(source) {
-                this.source = source;
-                this.cursor = 0;
-                this.line = 1;
-                this.column = 1;
-                this.tokens = [];
-            }
-
-            tokenize() {
-                while (this.cursor < this.source.length) {
-                    const char = this.source[this.cursor];
-                    
-                    if (/\s/.test(char)) {
-                        this._skipWhitespace();
-                        continue;
-                    }
-                    if (char === '/' && this.source[this.cursor + 1] === '/') {
-                        this._skipComment();
-                        continue;
-                    }
-                    if (/[a-zA-Z_]/.test(char)) {
-                        this._tokenizeIdentifierOrKeyword();
-                        continue;
-                    }
-                    if (/[0-9]/.test(char)) {
-                        this._tokenizeNumber();
-                        continue;
-                    }
-                    if (char === '"' || char === "'") {
-                        this._tokenizeString();
-                        continue;
-                    }
-
-                    // Handle single-character tokens
-                    switch (char) {
-                        case ';': this._advance(1); this.tokens.push(new Token(Tokens.SEPARATOR_SEMICOLON, ';', this.line, this.column - 1)); break;
-                        case '=': this._advance(1); this.tokens.push(new Token(Tokens.OPERATOR_ASSIGN, '=', this.line, this.column - 1)); break;
-                        case '+': this._advance(1); this.tokens.push(new Token(Tokens.OPERATOR_ADD, '+', this.line, this.column - 1)); break;
-                        case '-': this._advance(1); this.tokens.push(new Token(Tokens.OPERATOR_SUB, '-', this.line, this.column - 1)); break;
-                        case '*': this._advance(1); this.tokens.push(new Token(Tokens.OPERATOR_MUL, '*', this.line, this.column - 1)); break;
-                        case '/': this._advance(1); this.tokens.push(new Token(Tokens.OPERATOR_DIV, '/', this.line, this.column - 1)); break;
-                        case '(': this._advance(1); this.tokens.push(new Token(Tokens.SEPARATOR_LPAREN, '(', this.line, this.column - 1)); break;
-                        case ')': this._advance(1); this.tokens.push(new Token(Tokens.SEPARATOR_RPAREN, ')', this.line, this.column - 1)); break;
-                        case '{': this._advance(1); this.tokens.push(new Token(Tokens.SEPARATOR_LBRACE, '{', this.line, this.column - 1)); break;
-                        case '}': this._advance(1); this.tokens.push(new Token(Tokens.SEPARATOR_RBRACE, '}', this.line, this.column - 1)); break;
-                        case ',': this._advance(1); this.tokens.push(new Token(Tokens.SEPARATOR_COMMA, ',', this.line, this.column - 1)); break;
-                        case '.': this._advance(1); this.tokens.push(new Token(Tokens.OPERATOR_DOT, '.', this.line, this.column - 1)); break;
-                        default:
-                            throw new Error(`Tokenizer Error: Unexpected character '${char}' at ${this.line}:${this.column}`);
-                    }
-                }
-                this.tokens.push(new Token(Tokens.EOF, 'EOF', this.line, this.column));
-                return this.tokens;
-            }
-
-            _advance(n = 1) {
-                for (let i = 0; i < n; i++) {
-                    if (this.source[this.cursor] === '\n') {
-                        this.line++;
-                        this.column = 1;
-                    } else {
-                        this.column++;
-                    }
-                    this.cursor++;
-                }
-            }
-
-            _skipWhitespace() {
-                while (this.cursor < this.source.length && /\s/.test(this.source[this.cursor])) {
-                    this._advance();
-                }
-            }
-            
-            _skipComment() {
-                while (this.cursor < this.source.length && this.source[this.cursor] !== '\n') {
-                    this._advance();
-                }
-                this._skipWhitespace(); 
-            }
-
-            _tokenizeIdentifierOrKeyword() {
-                let start = this.cursor;
-                const startColumn = this.column;
-                
-                while (this.cursor < this.source.length && /[a-zA-Z0-9_]/.test(this.source[this.cursor])) {
-                    this._advance();
-                }
-
-                const value = this.source.substring(start, this.cursor);
-                const type = KEYWORDS[value] || Tokens.LITERAL_IDENTIFIER;
-                this.tokens.push(new Token(type, value, this.line, startColumn));
-            }
-
-            _tokenizeNumber() {
-                let start = this.cursor;
-                const startColumn = this.column;
-                
-                while (this.cursor < this.source.length && /[0-9.]/.test(this.source[this.cursor])) {
-                    this._advance();
-                }
-                
-                const value = this.source.substring(start, this.cursor);
-                if (isNaN(parseFloat(value))) {
-                     throw new Error(`Tokenizer Error: Invalid number format '${value}' at ${this.line}:${startColumn}`);
-                }
-                this.tokens.push(new Token(Tokens.LITERAL_NUMBER, parseFloat(value), this.line, startColumn));
-            }
-
-            _tokenizeString() {
-                const quoteChar = this.source[this.cursor];
-                this._advance(); // Consume opening quote
-                let start = this.cursor;
-                const startColumn = this.column;
-                let value = '';
-
-                while (this.cursor < this.source.length) {
-                    if (this.source[this.cursor] === quoteChar) {
-                        value = this.source.substring(start, this.cursor);
-                        this._advance(); // Consume closing quote
-                        this.tokens.push(new Token(Tokens.LITERAL_STRING, value, this.line, startColumn));
-                        return;
-                    }
-                    this._advance();
-                }
-                throw new Error(`Tokenizer Error: Unterminated string literal at ${this.line}:${this.column}`);
-            }
-        }
-
-        // --- 2. PARSER (AST Builder) ---
-        const AST = {
-            Program: 'Program',
-            ProcDeclaration: 'ProcDeclaration',
-            VariableDeclaration: 'VariableDeclaration',
-            CallExpression: 'CallExpression',
-            BinaryExpression: 'BinaryExpression',
-            Literal: 'Literal',
-            Identifier: 'Identifier',
-            AssignmentExpression: 'AssignmentExpression',
-            ReturnStatement: 'ReturnStatement',
-        };
-
-        class Parser {
-            constructor(tokens) {
-                this.tokens = tokens;
-                this.cursor = 0;
-            }
-
-            parse() {
-                const body = [];
-                while (this.peek().type !== Tokens.EOF) {
-                    body.push(this.parseStatement());
-                }
-                return { type: AST.Program, body };
-            }
-
-            peek() {
-                return this.tokens[this.cursor];
-            }
-            
-            consume(expectedType, expectedValue = null) {
-                const token = this.peek();
-                if (token.type !== expectedType || (expectedValue && token.value !== expectedValue)) {
-                    throw new Error(`Parser Error: Expected ${expectedType}${expectedValue ? ' (' + expectedValue + ')' : ''} but got ${token.type} ('${token.value}') at ${token.line}:${token.column}`);
-                }
-                this.cursor++;
-                return token;
-            }
-
-            parseStatement() {
-                const token = this.peek();
-                switch (token.type) {
-                    case Tokens.KEYWORD_PROC:
-                        return this.parseProcDeclaration();
-                    case Tokens.KEYWORD_VAULT:
-                    case Tokens.KEYWORD_SEAL:
-                        return this.parseVariableDeclaration();
-                    case Tokens.BUILTIN_IMPORT:
-                        this.parseImportStatement();
-                        return { type: 'NoOp' }; 
-                    case Tokens.KEYWORD_RETURN:
-                        return this.parseReturnStatement();
-                    default:
-                        return this.parseExpressionStatement();
-                }
-            }
-            
-            parseImportStatement() {
-                this.consume(Tokens.BUILTIN_IMPORT);
-                this.consume(Tokens.SEPARATOR_LPAREN);
-                this.consume(Tokens.LITERAL_STRING); 
-                this.consume(Tokens.SEPARATOR_RPAREN);
-                this.consume(Tokens.SEPARATOR_SEMICOLON);
-            }
-
-            parseReturnStatement() {
-                this.consume(Tokens.KEYWORD_RETURN);
-                const argument = this.parseExpression();
-                this.consume(Tokens.SEPARATOR_SEMICOLON);
-                return { type: AST.ReturnStatement, argument: argument };
-            }
-
-            parseProcDeclaration() {
-                this.consume(Tokens.KEYWORD_PROC);
-                const name = this.consume(Tokens.LITERAL_IDENTIFIER).value;
-                
-                this.consume(Tokens.SEPARATOR_LPAREN);
-                const params = [];
-                while (this.peek().type !== Tokens.SEPARATOR_RPAREN) {
-                    if (params.length > 0) {
-                        this.consume(Tokens.SEPARATOR_COMMA);
-                    }
-                    params.push(this.consume(Tokens.LITERAL_IDENTIFIER).value);
-                }
-                this.consume(Tokens.SEPARATOR_RPAREN);
-                this.consume(Tokens.SEPARATOR_LBRACE); 
-
-                const body = [];
-                while (this.peek().type !== Tokens.SEPARATOR_RBRACE) {
-                    body.push(this.parseStatement());
-                }
-                this.consume(Tokens.SEPARATOR_RBRACE); 
-
-                return {
-                    type: AST.ProcDeclaration,
-                    name: name,
-                    params: params,
-                    body: body
-                };
-            }
-
-            parseVariableDeclaration() {
-                const kindToken = this.peek();
-                const kind = kindToken.type === Tokens.KEYWORD_VAULT ? 'vault' : 'seal';
-                this.cursor++;
-                
-                const name = this.consume(Tokens.LITERAL_IDENTIFIER).value;
-                this.consume(Tokens.OPERATOR_ASSIGN);
-                
-                const initializer = this.parseExpression();
-                this.consume(Tokens.SEPARATOR_SEMICOLON);
-                
-                return {
-                    type: AST.VariableDeclaration,
-                    kind: kind,
-                    name: name,
-                    initializer: initializer
-                };
-            }
-            
-            parseExpressionStatement() {
-                // Check if the expression is an assignment (e.g., 'count = 5;')
-                const token1 = this.peek();
-                const token2 = this.tokens[this.cursor + 1];
-                
-                if (token1.type === Tokens.LITERAL_IDENTIFIER && token2 && token2.type === Tokens.OPERATOR_ASSIGN) {
-                    const name = this.consume(Tokens.LITERAL_IDENTIFIER).value;
-                    this.consume(Tokens.OPERATOR_ASSIGN);
-                    const right = this.parseExpression();
-                    this.consume(Tokens.SEPARATOR_SEMICOLON);
-                    
-                    return { type: AST.AssignmentExpression, name: name, value: right };
-                }
-
-                // Otherwise, it must be a function call or identifier alone
-                const expr = this.parseExpression();
-                this.consume(Tokens.SEPARATOR_SEMICOLON);
-                
-                return { type: 'ExpressionStatement', expression: expr };
-            }
-
-            parseExpression() {
-                // Simple operator precedence (left to right, no complex grouping yet)
-                let left = this.parsePrimaryExpression();
-
-                while ([Tokens.OPERATOR_ADD, Tokens.OPERATOR_SUB, Tokens.OPERATOR_MUL, Tokens.OPERATOR_DIV].includes(this.peek().type)) {
-                    const operatorToken = this.peek();
-                    this.cursor++;
-                    const right = this.parsePrimaryExpression();
-                    
-                    left = {
-                        type: AST.BinaryExpression,
-                        operator: operatorToken.value,
-                        left: left,
-                        right: right
-                    };
-                }
-                
-                return left;
-            }
-
-            parsePrimaryExpression() {
-                const token = this.peek();
-                let expression;
-
-                switch (token.type) {
-                    case Tokens.LITERAL_NUMBER:
-                    case Tokens.LITERAL_STRING:
-                        this.cursor++;
-                        expression = { type: AST.Literal, value: token.value };
-                        break;
-                    case Tokens.BUILTIN_SIGNAL:
-                    case Tokens.LITERAL_IDENTIFIER:
-                        // Check for method access (e.g., Math.PI, Math.pow)
-                        if (this.tokens[this.cursor + 1] && this.tokens[this.cursor + 1].type === Tokens.OPERATOR_DOT) {
-                             const objName = this.consume(Tokens.LITERAL_IDENTIFIER).value;
-                             this.consume(Tokens.OPERATOR_DOT);
-                             const propName = this.consume(Tokens.LITERAL_IDENTIFIER).value;
-                             
-                             // If the property is followed by '(', it's a method call
-                             if (this.peek().type === Tokens.SEPARATOR_LPAREN) {
-                                 expression = this.parseCallExpression(objName + '.' + propName);
-                             } else {
-                                // Simple property access (e.g., Math.PI)
-                                expression = { type: AST.Identifier, name: objName + '.' + propName };
-                             }
-                        } 
-                        // Could be a function call or just an identifier
-                        else if (this.tokens[this.cursor + 1] && this.tokens[this.cursor + 1].type === Tokens.SEPARATOR_LPAREN) {
-                            expression = this.parseCallExpression();
-                        } else {
-                            this.cursor++;
-                            expression = { type: AST.Identifier, name: token.value };
-                        }
-                        break;
-                    case Tokens.SEPARATOR_LPAREN:
-                        // Grouping: (Expression)
-                        this.consume(Tokens.SEPARATOR_LPAREN);
-                        expression = this.parseExpression();
-                        this.consume(Tokens.SEPARATOR_RPAREN);
-                        break;
-                    default:
-                        throw new Error(`Parser Error: Unexpected token '${token.value}' when expecting a primary expression at ${token.line}:${token.column}`);
-                }
-                return expression;
-            }
-
-            parseCallExpression(explicitName = null) {
-                const name = explicitName || this.consume(this.peek().type).value; 
-                this.consume(Tokens.SEPARATOR_LPAREN);
-                
-                const args = [];
-                while (this.peek().type !== Tokens.SEPARATOR_RPAREN) {
-                    if (args.length > 0) {
-                        this.consume(Tokens.SEPARATOR_COMMA);
-                    }
-                    args.push(this.parseExpression());
-                }
-                
-                this.consume(Tokens.SEPARATOR_RPAREN);
-                
-                return {
-                    type: AST.CallExpression,
-                    name: name,
-                    arguments: args
-                };
-            }
-        }
-
-
-        // --- 3. INTERPRETER (Execution Context) ---
-        class Scope {
-            constructor(parent = null) {
-                this.parent = parent;
-                this.variables = {}; // Stores { value, isConstant }
-            }
-
-            define(name, value, isConstant) {
-                if (this.variables[name]) {
-                    throw new Error(`Variable '${name}' already defined in scope.`);
-                }
-                this.variables[name] = { value: value, isConstant: isConstant };
-            }
-
-            get(name) {
-                // Check if it's a direct property access (e.g., Math.PI)
-                if (name.includes('.')) {
-                    const parts = name.split('.');
-                    if (parts.length > 2) throw new Error("Nested object access beyond 1 layer is not yet supported.");
-                    const obj = this.get(parts[0]);
-                    if (typeof obj === 'object' && obj !== null && parts[1] in obj) {
-                        return obj[parts[1]];
-                    }
-                }
-                
-                if (this.variables[name]) {
-                    return this.variables[name].value;
-                }
-                if (this.parent) {
-                    return this.parent.get(name);
-                }
-                
-                // Special case for global JS built-ins (only Math is allowed for now)
-                if (name === 'Math' && typeof window['Math'] !== 'undefined') {
-                    return window['Math'];
-                }
-
-                throw new Error(`Variable or function '${name}' is not defined.`);
-            }
-
-            set(name, value) {
-                if (this.variables[name]) {
-                    if (this.variables[name].isConstant) {
-                        throw new Error(`Cannot assign to constant variable '${name}'.`);
-                    }
-                    this.variables[name].value = value;
-                    return;
-                }
-                if (this.parent) {
-                    this.parent.set(name, value);
-                    return;
-                }
-                throw new Error(`Cannot assign to undefined variable '${name}'.`);
-            }
-        }
-        
-        // Custom error to handle procedure return flow
-        class ReturnValue extends Error {
-            constructor(value) {
-                super('Return flow control');
-                this.value = value;
-            }
-        }
-
-        class Interpreter {
-            constructor(ast, consoleLogger) {
-                this.ast = ast;
-                this.consoleLogger = consoleLogger;
-                this.globalScope = new Scope();
-                this.functions = {}; 
-                this.currentScope = this.globalScope;
-                
-                // Define built-in functions
-                this.functions['Signal'] = {
-                    isBuiltin: true,
-                    execute: (args) => {
-                        this.consoleLogger(args.join(''), 'program');
-                    }
-                };
-                // Math built-in (treated as a global object variable)
-                // Note: Math functions are stored directly as methods/properties for easy access
-                this.globalScope.define('Math', { 
-                    sqrt: Math.sqrt, 
-                    pow: Math.pow,
-                    PI: Math.PI
-                }, true);
-            }
-
-            interpret() {
-                this.consoleLogger("AST Interpreter Initialized...", 'program');
-
-                // 1. First pass: Register all function declarations
-                this.ast.body.forEach(node => {
-                    if (node.type === AST.ProcDeclaration) {
-                        this.functions[node.name] = node;
-                    }
-                });
-
-                // 2. Second pass: Execute statements in global scope
-                this.ast.body.forEach(node => {
-                    if (node.type !== AST.ProcDeclaration && node.type !== 'NoOp') {
-                        this.evaluate(node);
-                    }
-                });
-            }
-
-            evaluate(node) {
-                try {
-                    switch (node.type) {
-                        case AST.VariableDeclaration:
-                            return this.evaluateVariableDeclaration(node);
-                        case AST.AssignmentExpression:
-                            return this.evaluateAssignmentExpression(node);
-                        case 'ExpressionStatement':
-                            return this.evaluate(node.expression);
-                        case AST.CallExpression:
-                            return this.evaluateCallExpression(node);
-                        case AST.BinaryExpression:
-                            return this.evaluateBinaryExpression(node);
-                        case AST.Literal:
-                            return node.value;
-                        case AST.Identifier:
-                            return this.currentScope.get(node.name);
-                        case AST.ReturnStatement:
-                            // Throw an exception to jump out of the procedure execution
-                            throw new ReturnValue(this.evaluate(node.argument));
-                        default:
-                            if (node.type === AST.ProcDeclaration) return;
-                            if (node.type === 'NoOp') return;
-                            throw new Error(`Runtime Error: Unknown AST node type: ${node.type}`);
-                    }
-                } catch (e) {
-                    if (e instanceof ReturnValue) {
-                        throw e; // Propagate ReturnValue up to the caller
-                    }
-                    throw e; // Re-throw other errors
-                }
-            }
-            
-            evaluateVariableDeclaration(node) {
-                const value = this.evaluate(node.initializer);
-                const isConstant = node.kind === 'seal';
-                this.currentScope.define(node.name, value, isConstant);
-            }
-            
-            evaluateAssignmentExpression(node) {
-                const value = this.evaluate(node.value);
-                this.currentScope.set(node.name, value);
-            }
-
-            evaluateCallExpression(node) {
-                const func = this.functions[node.name];
-                
-                // Handle method calls (e.g., Math.pow)
-                if (node.name.includes('.')) {
-                    const parts = node.name.split('.');
-                    if (parts.length > 2) throw new Error("Nested method calls beyond 1 layer are not yet supported.");
-                    const obj = this.currentScope.get(parts[0]);
-                    const methodName = parts[1];
-                    
-                    if (typeof obj === 'object' && obj !== null && typeof obj[methodName] === 'function') {
-                        const evaluatedArgs = node.arguments.map(arg => this.evaluate(arg));
-                        return obj[methodName](...evaluatedArgs);
-                    }
-                    throw new Error(`Method '${node.name}' is not defined or callable.`);
-                }
-                
-                if (!func) {
-                    throw new Error(`Function '${node.name}' is not defined.`);
-                }
-                
-                const evaluatedArgs = node.arguments.map(arg => this.evaluate(arg));
-                
-                if (func.isBuiltin) {
-                    return func.execute(evaluatedArgs);
-                }
-
-                // Procedure Execution
-                const calleeScope = new Scope(this.globalScope);
-                
-                func.params.forEach((paramName, index) => {
-                    calleeScope.define(paramName, evaluatedArgs[index], false); 
-                });
-                
-                const previousScope = this.currentScope;
-                this.currentScope = calleeScope;
-                let result = undefined;
-
-                try {
-                    func.body.forEach(stmt => this.evaluate(stmt));
-                } catch (e) {
-                    if (e instanceof ReturnValue) {
-                        result = e.value;
-                    } else {
-                        throw e;
-                    }
-                } finally {
-                    this.currentScope = previousScope;
-                }
-                
-                return result;
-            }
-
-            evaluateBinaryExpression(node) {
-                const left = this.evaluate(node.left);
-                const right = this.evaluate(node.right);
-
-                // Check for type coercion (e.g., string + number)
-                if (node.operator === '+') {
-                    return String(left) + String(right);
-                }
-
-                // Must be numbers for other ops
-                if (typeof left !== 'number' || typeof right !== 'number') {
-                    throw new Error(`Operator '${node.operator}' requires two numbers, got ${typeof left} and ${typeof right}.`);
-                }
-
-                switch (node.operator) {
-                    case '-': return left - right;
-                    case '*': return left * right;
-                    case '/': 
-                        if (right === 0) throw new Error("Division by zero.");
-                        return left / right;
-                    default: throw new Error(`Unknown operator ${node.operator}`);
-                }
-            }
-        }
-
-
-        // =======================================================
-        // IDE UI & Utility Functions (Adjusted for AST)
-        // =======================================================
-
-        function flattenFileSystem(node, currentPath = '', files = {}) {
-            const children = node.children ? node.children : node;
-             
-            Object.keys(children).forEach(name => {
-                const child = children[name];
-                const fullPath = currentPath ? `${currentPath}/${name}` : name;
-                if (child.type === 'file') {
-                    files[fullPath] = child.content;
-                } else if (child.type === 'folder' && child.children) {
-                    flattenFileSystem(child.children, fullPath, files);
-                }
-            });
-            return files;
-        }
-
-        function runInterpreter(isCliRun = false) {
-            if (!isCliRun) {
-                consoleOutput.innerHTML = '';
-                __mr_console_log(`Executing MultiRaptor code in ${currentSyntaxMode} mode...`, 'cli_output');
-            }
-            runButton.disabled = true;
-            runButton.textContent = 'Parsing...';
-            
-            // 1. Save current editor content
-            const currentFileNode = getFileSystemNode(currentFile).node;
-            if (currentFileNode && currentFileNode.type === 'file') {
-                 currentFileNode.content = codeInput.value;
-            }
-
-            // 2. Combine all file contents
-            const allFiles = flattenFileSystem(fileSystem);
-            let combinedCode = '';
-            
-            Object.keys(allFiles).forEach(fileName => {
-                combinedCode += `\n\n// --- File: ${fileName} ---\n` + allFiles[fileName] + '\n';
-            });
-            
-            // 3. Tokenize, Parse, and Interpret
-            setTimeout(() => {
-                try {
-                    runButton.textContent = 'Tokenizing...';
-                    const tokenizer = new Tokenizer(combinedCode);
-                    const tokens = tokenizer.tokenize();
-                    __mr_console_log(`[Tokenizer Success] ${tokens.length} tokens generated.`, 'cli_output');
-
-                    runButton.textContent = 'Parsing...';
-                    const parser = new Parser(tokens);
-                    const ast = parser.parse();
-                    __mr_console_log(`[Parser Success] AST generated.`, 'cli_output');
-                    
-                    runButton.textContent = 'Interpreting...';
-                    const interpreter = new Interpreter(ast, __mr_console_log);
-                    interpreter.interpret();
-
-                } catch (e) {
-                    if (e instanceof ReturnValue) {
-                         // A return outside of a function body should be ignored, but if it's
-                         // caught here, it's usually indicative of success within the flow.
-                         __mr_console_log(`[Execution Finished] Exit with value: ${e.value}`, 'cli_output');
-                    } else {
-                        __mr_console_log(e.message, 'error');
-                    }
-                } finally {
-                    runButton.disabled = false;
-                    runButton.textContent = 'Run Code';
-                    switchTab('console');
-                }
-            }, 50); 
-        }
-
-        // --- File System Functions (Unchanged from v5) ---
-        
-        function getFileSystemNode(fullPath) {
-            const parts = fullPath.split('/').filter(p => p.length > 0);
-            if (parts.length === 0) return { node: fileSystem, parent: null };
-            
-            let current = fileSystem;
-            let parent = null;
-            let currentPath = '';
-
-            for (let i = 0; i < parts.length; i++) {
-                const part = parts[i];
-                const isRoot = current === fileSystem;
-                
-                if (!isRoot) {
-                    if (current.type !== 'folder' || !current.children) {
-                        return { node: null, parent: null };
-                    }
-                    parent = current.children;
-                } else {
-                    parent = current;
-                }
-                
-                if (!parent[part]) {
-                    return { node: null, parent: null };
-                }
-                
-                current = parent[part];
-                currentPath = (currentPath ? currentPath + '/' : '') + part;
-            }
-            return { node: current, parent: parent };
-        }
-
-        function toggleFolder(path) {
-            if (openFolders.has(path)) {
-                openFolders.delete(path);
-            } else {
-                openFolders.add(path);
-            }
-            renderFileList();
-        }
-
-        function renderFileTree(children, currentPath = '', depth = 0) {
-            const keys = Object.keys(children).sort((a, b) => {
-                const nodeA = children[a];
-                const nodeB = children[b];
-                if (currentPath === '') {
-                    if (a === 'main.mr') return -1;
-                    if (b === 'main.mr') return 1;
-                }
-                if (nodeA.type === 'folder' && nodeB.type !== 'folder') return -1;
-                if (nodeA.type !== 'folder' && nodeB.type === 'folder') return 1;
-                return a.localeCompare(b);
-            });
-
-            const html = keys.map(name => {
-                const node = children[name];
-                const fullPath = currentPath ? `${currentPath}/${name}` : name;
-                const indentClass = `indent-${Math.min(depth + 1, 4)}`;
-                const isActive = node.type === 'file' && fullPath === currentFile;
-
-                let itemHtml = '';
-                
-                if (node.type === 'folder') {
-                    const isOpen = openFolders.has(fullPath);
-                    const arrowIcon = isOpen 
-                        ? `<svg class="w-3 h-3 text-gray-400 toggle-arrow arrow-down" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path></svg>`
-                        : `<svg class="w-3 h-3 text-gray-400 toggle-arrow arrow-right" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path></svg>`;
-                    
-                    const folderIcon = `<svg class="w-4 h-4 mr-1 text-yellow-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v2H2V6z"></path><path d="M4 11V9h16v6a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z"></path></svg>`;
-                    const newFileIcon = `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 6h16a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>`;
-                    const newFolderIcon = `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>`;
-
-                    itemHtml += `<div class="file-tree-node ${indentClass} hover:bg-[#2a2a2e]" onclick="toggleFolder('${fullPath}')">
-                                    <div class="file-content-area text-gray-300">
-                                        ${arrowIcon}
-                                        ${folderIcon}
-                                        <span class="file-name">${name}</span>
-                                    </div>
-                                    <div class="flex items-center">
-                                        <div class="folder-actions">
-                                            <button title="New File in ${name}" class="folder-action-button text-green-400 hover:text-green-300" onclick="event.stopPropagation(); showModal('file', '${fullPath}')">
-                                                ${newFileIcon}
-                                            </button>
-                                            <button title="New Folder in ${name}" class="folder-action-button text-blue-400 hover:text-blue-300" onclick="event.stopPropagation(); showModal('folder', '${fullPath}')">
-                                                ${newFolderIcon}
-                                            </button>
-                                        </div>
-                                        <button title="Delete Folder ${name}" class="delete-file-button" onclick="event.stopPropagation(); showConfirmationModal('${fullPath}', 'folder')">
-                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                        </button>
-                                    </div>
-                                </div>`;
-                    
-                    if (isOpen && node.children && Object.keys(node.children).length > 0) {
-                        itemHtml += renderFileTree(node.children, fullPath, depth + 1);
-                    } else if (isOpen) {
-                        itemHtml += `<div class="file-tree-node ${indentClass} text-xs italic text-gray-500 p-1">Empty folder</div>`;
-                    }
-                    
-                } else if (node.type === 'file') {
-                    const fileIcon = `<svg class="w-4 h-4 mr-1 ${isActive ? 'text-white' : 'text-blue-400'} flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0015.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>`;
-
-                    itemHtml += `<div class="file-tree-node ${indentClass} ${isActive ? 'active-file' : 'text-gray-300'}" onclick="switchFile('${fullPath}')">
-                                    <div class="file-content-area">
-                                        <span class="w-3 h-3 mr-1 flex-shrink-0"></span> <!-- Spacer for alignment -->
-                                        ${fileIcon}
-                                        <span class="file-name">${name}</span>
-                                    </div>
-                                    <button title="Delete File ${name}" class="delete-file-button" onclick="event.stopPropagation(); showConfirmationModal('${fullPath}', 'file')">
-                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                    </button>
-                                </div>`;
-                }
-                return itemHtml;
-            }).join('');
-
-            return html;
-        }
-
-        function renderFileList() {
-            fileList.innerHTML = renderFileTree(fileSystem, '', 0);
-        }
-
-        function switchFile(fullPath) {
-            const { node } = getFileSystemNode(fullPath);
-
-            if (!node || node.type !== 'file') {
-                __mr_console_log(`Error: Cannot open path '${fullPath}'. It is not a file or does not exist.`, 'cli_output');
-                return;
-            }
-            
-            const oldFileNode = getFileSystemNode(currentFile).node;
-            if (oldFileNode && oldFileNode.type === 'file') {
-                 oldFileNode.content = codeInput.value;
-            }
-            
-            currentFile = fullPath;
-            
-            codeInput.value = node.content || '';
-            currentFileNameDisplay.textContent = currentFile;
-
-            renderFileList();
-            codeInput.focus();
-        }
-
-        function createNewFile(fileName) {
-            
-            let targetPath = dialogTargetPath;
-            let finalName = fileName;
-
-            if (!finalName.toLowerCase().endsWith('.mr')) {
-                finalName += '.mr';
-            }
-            
-            const fullPath = targetPath ? `${targetPath}/${finalName}` : finalName;
-            
-            let parentNode;
-            if (targetPath) {
-                const { node } = getFileSystemNode(targetPath);
-                parentNode = node.children;
-            } else {
-                parentNode = fileSystem;
-            }
-
-            if (!parentNode) {
-                 __mr_console_log(`Error: Target folder path '${targetPath}' is invalid.`, 'cli_output');
-                 return;
-            }
-
-            if (parentNode[finalName]) {
-                __mr_console_log(`Error: Item '${fullPath}' already exists.`, 'cli_output');
-                return;
-            }
-            
-            parentNode[finalName] = {
-                type: 'file',
-                content: `
-// =======================================================
-// MultiRaptor New File: ${fullPath}
-// =======================================================
-// Add your definitions (proc/def) here.
-`
-            };
-            
-            if (targetPath && !openFolders.has(targetPath)) {
-                openFolders.add(targetPath);
-            }
-
-            __mr_console_log(`File '${fullPath}' created and opened.`, 'cli_output');
-            switchFile(fullPath);
-        }
-        
-        function createNewFolder(folderName) {
-            
-            let targetPath = dialogTargetPath;
-            
-            let parentNode;
-            if (targetPath) {
-                const { node } = getFileSystemNode(targetPath);
-                parentNode = node.children;
-            } else {
-                parentNode = fileSystem;
-            }
-
-            if (!parentNode) {
-                 __mr_console_log(`Error: Target folder path '${targetPath}' is invalid.`, 'cli_output');
-                 return;
-            }
-            
-            const fullPath = targetPath ? `${targetPath}/${folderName}` : folderName;
-
-            if (parentNode[folderName]) {
-                __mr_console_log(`Error: Folder '${fullPath}' already exists.`, 'cli_output');
-                return;
-            }
-
-            parentNode[folderName] = {
-                type: 'folder',
-                children: {}
-            };
-            
-            __mr_console_log(`Folder '${fullPath}' created successfully.`, 'cli_output');
-            renderFileList();
-        }
-        
-        function deleteItem(fullPath, type) {
-            
-            const { node, parent } = getFileSystemNode(fullPath);
-
-            if (!node || !parent) {
-                __mr_console_log(`Error: ${type === 'file' ? 'File' : 'Folder'} '${fullPath}' not found.`, 'cli_output');
-                return;
-            }
-            
-            if (fullPath === 'main.mr') {
-                 __mr_console_log(`Error: Cannot delete 'main.mr', the project entry point.`, 'cli_output');
-                 return;
-            }
-            
-            if (type === 'folder' && node.type === 'folder' && node.children && Object.keys(node.children).length > 0) {
-                 __mr_console_log(`Error: Folder '${fullPath}' is not empty. Please delete all files inside first.`, 'cli_output');
-                 return;
-            }
-
-            const itemName = fullPath.split('/').pop();
-            delete parent[itemName];
-            
-            __mr_console_log(`${type === 'file' ? 'File' : 'Folder'} '${fullPath}' deleted.`, 'cli_output');
-
-            if (currentFile === fullPath) {
-                switchFile('main.mr');
-            } else {
-                renderFileList();
-            }
-        }
-
-
-        // --- UI and Modal Logic (Unchanged from v5) ---
-
-        function showModal(type, targetPath = '') {
-            activeDialogType = type;
-            dialogTargetPath = targetPath;
-            dialogTitle.textContent = type === 'file' ? 'Create New MultiRaptor File' : 'Create New Folder';
-            dialogPrompt.textContent = type === 'file' 
-                ? 'Enter the filename. The .mr extension will be added if missing.' 
-                : 'Enter the folder name.';
-            dialogPathDisplay.textContent = targetPath ? `In Folder: /${targetPath}/` : 'In Root Folder (/)';
-            dialogInput.value = '';
-            dialogInput.placeholder = type === 'file' ? 'new_module.mr' : 'my_sub_folder';
-            dialogSubmitButton.textContent = 'Create';
-            actionDialog.classList.remove('hidden');
-            dialogInput.focus();
-        }
-        
-        function hideModal() {
-            actionDialog.classList.add('hidden');
-            activeDialogType = null;
-            dialogTargetPath = '';
-            cliInput.focus();
-        }
-
-        function handleModalSubmit() {
-            const inputName = dialogInput.value.trim();
-
-            if (inputName === "") {
-                __mr_console_log("Action cancelled: No name provided.", 'cli_output');
-                hideModal();
-                return;
-            }
-
-            if (activeDialogType === 'file') {
-                createNewFile(inputName);
-            } else if (activeDialogType === 'folder') {
-                createNewFolder(inputName);
-            }
-            
-            hideModal();
-        }
-        
-        function showConfirmationModal(fullPath, type) {
-            pendingDeletePath = { path: fullPath, type: type };
-            confirmTitle.textContent = `Delete ${type === 'file' ? 'File' : 'Folder'}: ${fullPath}`;
-            confirmPrompt.textContent = `Are you absolutely sure you want to delete ${type === 'file' ? 'file' : 'folder'} '${fullPath}'? This action cannot be undone.`;
-            confirmDialog.classList.remove('hidden');
-        }
-
-        function hideConfirmationModal() {
-            confirmDialog.classList.add('hidden');
-            pendingDeletePath = null;
-        }
-
-        function handleConfirmation(isConfirmed) {
-            if (isConfirmed && pendingDeletePath) {
-                deleteItem(pendingDeletePath.path, pendingDeletePath.type);
-            } else if (pendingDeletePath) {
-                __mr_console_log(`Deletion of '${pendingDeletePath.path}' cancelled.`, 'cli_output');
-            }
-            hideConfirmationModal();
-        }
-        
-        function switchTab(tabName) {
-            currentTab = tabName;
-            tabTerminal.classList.remove('active');
-            tabConsole.classList.remove('active');
-            terminalPane.style.display = 'none';
-            consolePane.style.display = 'none';
-            cliInputWrapper.style.display = 'none';
-
-            if (tabName === 'terminal') {
-                terminalPane.style.display = 'block';
-                tabTerminal.classList.add('active');
-                cliInputWrapper.style.display = 'flex';
-                cliInput.focus();
-            } else {
-                consolePane.style.display = 'block';
-                tabConsole.classList.add('active');
-            }
-        }
-
-        const __mr_console_log = (message, type = 'program') => {
-            const isProgramOutput = type === 'program' || type === 'error';
-            const targetElement = isProgramOutput ? consoleOutput : terminalOutput;
-            
-            const output = document.createElement('div');
-            output.classList.add('font-mono');
-            
-            if (type === 'program') {
-                output.textContent = ">> " + message;
-                output.className = 'text-green-400'; 
-            } else if (type === 'error') {
-                output.textContent = `!! RUNTIME ERROR: ${message}`;
-                output.className = 'text-red-500 font-bold'; 
-                switchTab('console'); 
-            } else if (type === 'cli_output') {
-                output.textContent = message;
-                output.className = 'text-gray-300'; 
-            } else if (type === 'cli_echo') {
-                output.textContent = `$ rap > ${message}`;
-                output.className = 'text-blue-400 font-bold'; 
-            }
-
-            targetElement.appendChild(output);
-            targetElement.scrollTop = targetElement.scrollHeight; 
-        };
-
-        function ShowHelp() {
-            __mr_console_log("-- Displaying Help in Program Output Tab --", 'cli_output');
-            switchTab('console'); 
-
-            const raptorHelp = `
--- MultiRaptor Help (v5.1 AST Mode) --
-The language now uses a proper Tokenizer, Parser, and Scope-based Interpreter.
-Supported features:
-- Variable declaration: vault (mutable), seal (constant)
-- Function declaration/call: proc <name>(params) { ... }
-- Built-in: Signal("message" + value)
-- Control Flow: return expression;
-- Expressions: +, -, *, / (supports basic arithmetic and string concatenation)
-- Built-in Math object access (e.g., Math.PI, Math.pow(x, y))
-- Variable Assignment: variable = expression;
-
-CLI: rap run, rap help, rap doctor
-`;
-            __mr_console_log(raptorHelp.trim(), 'program');
-        }
-        
-        function handleCliCommand() {
-            const command = cliInput.value.trim();
-            if (!command) return;
-
-            __mr_console_log(command, 'cli_echo');
-            cliInput.value = '';
-
-            const parts = command.toLowerCase().split(/\s+/);
-            const baseCommand = parts[0];
-
-            if (baseCommand !== 'rap') {
-                __mr_console_log(`Error: Command not found: ${baseCommand}. Try 'rap help'.`, 'cli_output');
-                return;
-            }
-
-            const rapAction = parts[1];
-
-            switch (rapAction) {
-                case 'help':
-                    ShowHelp();
-                    break;
-                case 'run':
-                    consoleOutput.innerHTML = ''; 
-                    __mr_console_log(`\nRunning MultiRaptor project from main.mr...`, 'cli_output');
-                    const currentFileNode = getFileSystemNode(currentFile).node;
-                    if (currentFileNode && currentFileNode.type === 'file') {
-                         currentFileNode.content = codeInput.value;
-                    }
-                    runInterpreter(true);
-                    switchTab('console');
-                    break;
-                
-                case 'doctor':
-                    __mr_console_log(`\nChecking MultiRaptor environment health...`, 'cli_output');
-                    __mr_console_log(`   > Core dependencies: OK`, 'cli_output');
-                    __mr_console_log(`   > Interpreter Mode: ${currentSyntaxMode}`, 'cli_output');
-                    __mr_console_log(`   > Environment: All systems nominal.`, 'cli_output');
-                    break;
-
-                default:
-                    __mr_console_log(`Error: Unknown 'rap' command: ${rapAction}. Try 'rap help'.`, 'cli_output');
-                    break;
-            }
-            setTimeout(() => cliInput.focus(), 0);
-        }
-
-        // --- Initialization ---
-
-        function initializeIDE() {
-            window.toggleFolder = toggleFolder;
-            window.showModal = showModal;
-            window.showConfirmationModal = showConfirmationModal;
-            window.switchFile = switchFile;
-            window.runInterpreter = runInterpreter;
-
-            const headerElement = document.querySelector('h1').parentNode;
-            if (!headerElement) return; 
-
-            const headerHeight = headerElement.offsetHeight + 16; 
-            const ideHeight = window.innerHeight - headerHeight - 32; 
-            ideContainer.style.height = `${ideHeight}px`;
-
-            const editorHeaderHeight = document.getElementById('editor-header').offsetHeight; 
-            
-            const initialEditorHeight = Math.floor(ideHeight * 0.70);
-            const initialConsoleHeight = ideHeight - initialEditorHeight - 5; // 5 is RESIZER_HEIGHT
-
-            editorContainer.style.height = `${initialEditorHeight}px`;
-            consolePanel.style.height = `${initialConsoleHeight}px`;
-            codeInput.style.height = `calc(100% - ${editorHeaderHeight}px)`; 
-            
-            switchFile('main.mr');
-            
-            const RESIZER_HEIGHT = 5; 
-            const MIN_PANEL_HEIGHT = 100;
-            
-            resizerBar.addEventListener('mousedown', startResize);
-            
-            function startResize(e) {
-                isResizing = true;
-                document.body.style.userSelect = 'none'; 
-                document.body.style.cursor = 'row-resize';
-                document.addEventListener('mousemove', handleResize);
-                document.addEventListener('mouseup', stopResize);
-            }
-
-            function handleResize(e) {
-                if (!isResizing) return;
-
-                const ideContainerRect = ideContainer.getBoundingClientRect();
-                
-                const newEditorHeight = e.clientY - ideContainerRect.top; 
-                const totalContentHeight = ideContainerRect.height;
-
-                const editorHeaderHeight = document.getElementById('editor-header').offsetHeight; 
-                
-                const clampedEditorHeight = Math.max(
-                    MIN_PANEL_HEIGHT + editorHeaderHeight, 
-                    Math.min(newEditorHeight, totalContentHeight - MIN_PANEL_HEIGHT - RESIZER_HEIGHT)
-                );
-                
-                const contentHeight = clampedEditorHeight;
-
-                editorContainer.style.height = `${contentHeight}px`;
-                consolePanel.style.height = `${totalContentHeight - contentHeight - RESIZER_HEIGHT}px`;
-
-                codeInput.style.height = `calc(100% - ${editorHeaderHeight}px)`; 
-            }
-
-            function stopResize() {
-                isResizing = false;
-                document.body.style.userSelect = 'auto';
-                document.body.style.cursor = 'default';
-                document.removeEventListener('mousemove', handleResize);
-                document.removeEventListener('mouseup', stopResize);
-            }
-            
-            window.onresize = function() {
-                 const headerElement = document.querySelector('h1').parentNode;
-                 if (!headerElement) return; 
-
-                 const headerHeight = headerElement.offsetHeight + 16;
-                 const ideHeight = window.innerHeight - headerHeight - 32;
-
-                 const oldEditorHeight = editorContainer.offsetHeight;
-                 const oldIdeHeight = ideContainer.offsetHeight;
-                 const ratio = oldIdeHeight > 0 ? oldEditorHeight / oldIdeHeight : 0.7;
-                 
-                 ideContainer.style.height = `${ideHeight}px`;
-
-                 const editorHeaderHeight = document.getElementById('editor-header').offsetHeight;
-                 
-                 const newEditorHeight = Math.max(MIN_PANEL_HEIGHT, Math.floor(ideHeight * ratio));
-                 const newConsoleHeight = ideHeight - newEditorHeight - RESIZER_HEIGHT;
-
-                 editorContainer.style.height = `${newEditorHeight}px`;
-                 consolePanel.style.height = `${newConsoleHeight}px`;
-                 codeInput.style.height = `calc(100% - ${editorHeaderHeight}px)`; 
-            };
-            
-            cliInput.addEventListener('keydown', (event) => {
-                if (event.key === 'Enter') {
-                    event.preventDefault();
-                    handleCliCommand();
-                }
-            });
-
-            dialogInput.addEventListener('keydown', (event) => {
-                if (event.key === 'Enter') {
-                    event.preventDefault();
-                    handleModalSubmit();
-                }
-            });
-            dialogSubmitButton.onclick = handleModalSubmit;
-
-
-            infoTooltip.textContent = 
-`MultiRaptor v5.1 IDE: AST Interpreter Core.
-- Execution is now handled by a custom Tokenizer, Parser, and Scope-based Interpreter.
-- Supports variables (vault/seal), procedures (proc), Signal(), and arithmetic expressions.
-- This is a proper compiler/interpreter foundation!`;
-            
-            infoIcon.onmouseenter = () => infoTooltip.classList.remove('hidden');
-            infoIcon.onmouseleave = () => infoTooltip.classList.add('hidden');
-            
-            __mr_console_log("Welcome to MultiRaptor IDE v5.1. Core language interpretation has been upgraded to use AST.", 'cli_output');
-            cliInput.focus();
-        }
-        
-        initializeIDE();
-    </script>
-</body>
+    <!-- Compiled bundle (from coding.ts + modules) -->
+    <script src="./coding.js" type="module"></script>
+  </body>
 </html>
