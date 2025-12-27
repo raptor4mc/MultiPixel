@@ -1,45 +1,10 @@
-:root {
-    --bg-darkest: #010409;
-    --bg-main: #0d1117;
-    --bg-side: #161b22;
-    --border: #30363d;
-    --accent: #2f81f7;
-    --text-muted: #8b949e;
-}
-
-body, html { height: 100%; margin: 0; background: var(--bg-darkest); color: #c9d1d9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; overflow: hidden; }
-
-.app-container { display: flex; flex-direction: column; height: 100vh; }
-
-.navbar { height: 40px; background: #161b22; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-bottom: 1px solid var(--border); font-size: 13px; }
-.btn-run { background: #238636; color: white; border: none; padding: 4px 12px; border-radius: 6px; cursor: pointer; font-weight: 600; }
-
-.main-split { display: flex; flex: 1; overflow: hidden; }
-
-.activity-bar { width: 48px; background: var(--bg-main); border-right: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; padding-top: 15px; gap: 20px; color: var(--text-muted); }
-.activity-bar .active { color: white; border-left: 2px solid var(--accent); width: 100%; text-align: center; }
-
-.explorer { width: 220px; background: var(--bg-main); border-right: 1px solid var(--border); font-size: 12px; }
-.section-label { padding: 10px; font-weight: bold; color: var(--text-muted); font-size: 11px; }
-.file { padding: 6px 20px; cursor: pointer; }
-.file.active { background: #1f242c; }
-
-.editor-column { flex: 2; display: flex; flex-direction: column; border-right: 1px solid var(--border); }
-#editor { flex: 1; background: var(--bg-darkest); border: none; color: #e6edf3; padding: 20px; font-family: 'Consolas', monospace; font-size: 14px; outline: none; resize: none; }
-
-/* BOTTOM DOCK STYLES */
-.bottom-dock { height: 30%; background: var(--bg-darkest); border-top: 1px solid var(--border); display: flex; flex-direction: column; }
-.dock-header { display: flex; gap: 20px; padding: 5px 20px; border-bottom: 1px solid var(--border); font-size: 11px; color: var(--text-muted); }
-.dock-tab { cursor: pointer; padding: 5px 0; }
-.dock-tab.active { color: white; border-bottom: 2px solid var(--accent); }
-.dock-panel { flex: 1; padding: 15px; font-family: monospace; font-size: 12px; overflow-y: auto; }
-
-/* VISUALIZER STYLES */
-.visualizer-column { flex: 1.5; background: var(--bg-side); display: flex; flex-direction: column; }
-.stage { flex: 1; display: flex; justify-content: center; align-items: center; background: #000; position: relative; margin: 15px; border-radius: 8px; border: 1px solid var(--border); }
-#gameCanvas { background: #111; max-width: 100%; }
-.inspector { height: 150px; background: var(--bg-main); border-top: 1px solid var(--border); padding: 10px; }
-
-.hidden { display: none; }
-.text-yellow { color: #d29922; }
-.text-blue { color: #58a6ff; }
+body { margin: 0; font-family: Arial, sans-serif; display: flex; flex-direction: column; height: 100vh; }
+#header { background: #333; color: white; padding: 10px; display: flex; justify-content: space-between; }
+#main { display: flex; flex: 1; }
+#sidebar { width: 250px; background: #f4f4f4; border-right: 1px solid #ccc; padding: 10px; overflow-y: auto; }
+#editor-container { flex: 1; position: relative; }
+#terminal-container { height: 200px; }
+.repo-item { cursor: pointer; padding: 5px; }
+.repo-item:hover { background: #ddd; }
+.file-item { margin-left: 20px; }
+button { margin: 5px; }
