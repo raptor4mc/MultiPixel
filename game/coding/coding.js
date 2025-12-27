@@ -29,7 +29,7 @@ require(['vs/editor/editor.main'], function() {
     });
 
     // Mock data
-    let repos = JSON.parse(localStorage.getItem('repos')) || [{ name: 'default-repo', files: { 'main.mr': '// Main file\nvar x = 5;\nprint(x);' }, commits: [] }];
+    let repos = JSON.parse(localStorage.getItem('repos')) || [{ name: 'default-repo', files: { 'main.mr': '// Main file\nvar x = 5;\nprint(x);' }, commits: [], branches: ['main'], issues: [] }];
     let currentRepo = repos[0];
     let currentFile = 'main.mr';
 
@@ -49,7 +49,7 @@ require(['vs/editor/editor.main'], function() {
     document.getElementById('new-repo').onclick = () => {
         const name = prompt('Repo name:');
         if (name) {
-            repos.push({ name, files: {}, commits: [] });
+            repos.push({ name, files: {}, commits: [], branches: ['main'], issues: [] });
             localStorage.setItem('repos', JSON.stringify(repos));
             updateUI();
         }
@@ -72,4 +72,56 @@ require(['vs/editor/editor.main'], function() {
     window.multiRaptorRepos = repos;
     window.multiRaptorCurrentRepo = currentRepo;
     window.multiRaptorCurrentFile = currentFile;
+
+    // New features: Auto-save every 30 seconds
+    setInterval(() => {
+        if (currentRepo && editor) {
+            currentRepo.files[currentFile] = editor.getValue();
+            localStorage.setItem('repos', JSON.stringify(repos));
+        }
+    }, 30000);
+
+    // New button handlers
+    document.getElementById('new-branch').onclick = () => {
+        const name = prompt('Branch name:');
+        if (name) {
+            currentRepo.branches.push(name);
+            localStorage.setItem('repos', JSON.stringify(repos));
+            alert('Branch created!');
+        }
+    };
+    document.getElementById('new-issue').onclick = () => {
+        const title = prompt('Issue title:');
+        if (title) {
+            currentRepo.issues.push({ title, status: 'open' });
+            localStorage.setItem('repos', JSON.stringify(repos));
+            alert('Issue created!');
+        }
+    };
+    document.getElementById('settings').onclick = () => {
+        const autoSave = confirm('Enable auto-save?');
+        setSetting('autoSave', autoSave);
+        alert('Settings updated!');
+    };
+    document.getElementById('search-files').oninput = (e) => {
+        const query = e.target.value;
+        const files = Object.keys(currentRepo.files).filter(f => f.includes(query));
+        document.getElementById('files-list').innerHTML = files.map(f => `<div class="file-item repo-item" onclick="openFile('${f}')">${f}</div>`).join('');
+    };
+    document.getElementById('new-file').onclick = () => {
+        const name = prompt('File name:');
+        if (name) {
+            currentRepo.files[name] = '';
+            updateUI();
+            localStorage.setItem('repos', JSON.stringify(repos));
+        }
+    };
+    document.getElementById('new-folder').onclick = () => {
+        const name = prompt('Folder name:');
+        if (name) {
+            currentRepo.files[name + '/'] = {}; // Mock folder
+            updateUI();
+            localStorage.setItem('repos', JSON.stringify(repos));
+        }
+    };
 });
