@@ -3,7 +3,12 @@ export class Tick {
     this.world = world;
   }
 
-  update() {
-    // future: physics, AI, lighting, redstone
+  update(dt) {
+    // future systems live here:
+    // physics
+    // mobs / AI
+    // lighting
+    // redstone
+    // weather
   }
 }
