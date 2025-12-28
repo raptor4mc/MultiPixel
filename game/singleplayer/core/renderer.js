@@ -41,7 +41,10 @@ export class Renderer {
               }
             }
 
-            ctx.fillStyle = height > 25 ? "#2ecc71" : "#8e5a2b";
+           if (height > 42) ctx.fillStyle = "#7f8c8d";      // stone
+else if (height > 30) ctx.fillStyle = "#2ecc71"; // grass
+else ctx.fillStyle = "#8e5a2b";                  // dirt
+
 
             ctx.fillRect(
               (cx * 16 + x) * scale - camX + this.canvas.width / 2,
