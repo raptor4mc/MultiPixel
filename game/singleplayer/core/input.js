@@ -1,28 +1,23 @@
 export class Input {
-  constructor(canvas = document.body) {
+  constructor(canvas) {
     this.keys = new Set();
+    this.mouseDX = 0;
+    this.locked = false;
 
-    this.mouse = {
-      dx: 0,
-      dy: 0,
-      sensitivity: 0.002
-    };
-
-    // Keyboard
     window.addEventListener("keydown", e => this.keys.add(e.code));
     window.addEventListener("keyup", e => this.keys.delete(e.code));
 
-    // Pointer lock
     canvas.addEventListener("click", () => {
       canvas.requestPointerLock();
     });
 
-    // Mouse movement
-    window.addEventListener("mousemove", e => {
-      if (document.pointerLockElement === canvas) {
-        this.mouse.dx += e.movementX;
-        this.mouse.dy += e.movementY;
-      }
+    document.addEventListener("pointerlockchange", () => {
+      this.locked = document.pointerLockElement === canvas;
+    });
+
+    document.addEventListener("mousemove", e => {
+      if (!this.locked) return;
+      this.mouseDX += e.movementX;
     });
   }
 
@@ -30,11 +25,10 @@ export class Input {
     return this.keys.has(key);
   }
 
-  consumeMouse() {
-    const dx = this.mouse.dx;
-    const dy = this.mouse.dy;
-    this.mouse.dx = 0;
-    this.mouse.dy = 0;
-    return { dx, dy };
+  consumeMouseDX() {
+    const dx = this.mouseDX;
+    this.mouseDX = 0;
+    return dx;
   }
 }
+
