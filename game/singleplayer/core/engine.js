@@ -4,6 +4,7 @@ import { Tick } from "./tick.js";
 
 export class Engine {
   constructor(canvas, world) {
+    this.world = world;
     this.renderer = new Renderer(canvas, world);
     this.input = new Input();
     this.tick = new Tick(world);
@@ -11,27 +12,27 @@ export class Engine {
   }
 
   start() {
-  this.running = true;
-  let last = performance.now();
+    this.running = true;
+    let last = performance.now();
 
-  const loop = (now) => {
-    if (!this.running) return;
+    const loop = (now) => {
+      if (!this.running) return;
 
-    const dt = (now - last) / 1000;
-    last = now;
+      const dt = (now - last) / 1000;
+      last = now;
 
-    // ✅ update player with input
-    this.world.player.update(dt, this.input);
+      // update player
+      this.world.player.update(dt, this.input);
 
-    // future systems
-    this.tick.update(dt);
+      // update world systems
+      this.tick.update(dt);
 
-    this.renderer.render();
+      // render
+      this.renderer.render();
+
+      requestAnimationFrame(loop);
+    };
+
     requestAnimationFrame(loop);
-  };
-
-  requestAnimationFrame(loop);
-}
-
   }
 }
