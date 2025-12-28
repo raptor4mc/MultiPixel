@@ -1,4 +1,5 @@
 body {
+  margin: 0;
   font-family: system-ui;
   background: #0f1220;
   color: white;
@@ -14,24 +15,13 @@ body {
   border-radius: 12px;
 }
 
-label {
-  display: block;
-  margin-bottom: 12px;
-}
-
-input {
+input, button {
   width: 100%;
-  padding: 8px;
-}
-
-section {
-  margin: 16px 0;
+  padding: 10px;
+  margin-top: 8px;
 }
 
 button {
-  width: 100%;
-  padding: 12px;
-  margin-top: 8px;
   background: #4f7cff;
   border: none;
   color: white;
