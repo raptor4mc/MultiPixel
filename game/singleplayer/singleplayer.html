@@ -4,6 +4,17 @@
   <meta charset="UTF-8" />
   <title>Singleplayer</title>
   <link rel="stylesheet" href="singleplayer.css">
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #000;
+    }
+    canvas {
+      display: block;
+    }
+  </style>
 </head>
 <body>
 
@@ -31,9 +42,11 @@
   <button id="play">Create World</button>
 </div>
 
-<canvas id="game" style="display:none"></canvas>
+<canvas id="game"></canvas>
+
+<!-- REQUIRED FOR STEP 2 -->
+<script src="https://cdn.jsdelivr.net/npm/gl-matrix@3.4.3/gl-matrix-min.js"></script>
 
 <script type="module" src="singleplayer.js"></script>
 </body>
 </html>
-
