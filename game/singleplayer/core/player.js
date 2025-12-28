@@ -1,56 +1,58 @@
 export class Player {
   constructor() {
-    this.position = { x: 0, y: 0, z: 0 };
+    this.pos = { x: 0, y: 80, z: 0 };
+    this.vel = { x: 0, y: 0, z: 0 };
 
-    this.rotation = {
-      yaw: 0,   // left/right
-      pitch: 0  // up/down
-    };
-
+    this.yaw = 0;
     this.speed = 6;
-    this.lookSpeed = 1.0;
+    this.gravity = 30;
+    this.onGround = false;
   }
 
-  update(dt, input) {
-    /* ---------- Mouse look ---------- */
-    const { dx, dy } = input.consumeMouse();
+  update(dt, input, world) {
+    // mouse look
+    this.yaw -= input.consumeMouseDX() * 0.002;
 
-    this.rotation.yaw -= dx * input.mouse.sensitivity * this.lookSpeed;
-    this.rotation.pitch -= dy * input.mouse.sensitivity * this.lookSpeed;
+    let mx = 0;
+    let mz = 0;
 
-    // Clamp pitch to avoid flipping
-    const limit = Math.PI / 2 - 0.01;
-    this.rotation.pitch = Math.max(-limit, Math.min(limit, this.rotation.pitch));
+    if (input.isDown("KeyW")) mz -= 1;
+    if (input.isDown("KeyS")) mz += 1;
+    if (input.isDown("KeyA")) mx -= 1;
+    if (input.isDown("KeyD")) mx += 1;
 
-    /* ---------- Movement ---------- */
-    let forward = 0;
-    let strafe = 0;
+    if (mx || mz) {
+      const len = Math.hypot(mx, mz);
+      mx /= len;
+      mz /= len;
+    }
 
-    if (input.isDown("KeyW")) forward += 1;
-    if (input.isDown("KeyS")) forward -= 1;
-    if (input.isDown("KeyA")) strafe -= 1;
-    if (input.isDown("KeyD")) strafe += 1;
+    const sin = Math.sin(this.yaw);
+    const cos = Math.cos(this.yaw);
 
-    if (forward !== 0 || strafe !== 0) {
-      const len = Math.hypot(forward, strafe);
-      forward /= len;
-      strafe /= len;
+    this.vel.x = (mx * cos - mz * sin) * this.speed;
+    this.vel.z = (mz * cos + mx * sin) * this.speed;
 
-      const sin = Math.sin(this.rotation.yaw);
-      const cos = Math.cos(this.rotation.yaw);
+    // gravity
+    this.vel.y -= this.gravity * dt;
 
-      this.position.x += (forward * sin + strafe * cos) * this.speed * dt;
-      this.position.z += (forward * cos - strafe * sin) * this.speed * dt;
+    // integrate
+    this.pos.x += this.vel.x * dt;
+    this.pos.y += this.vel.y * dt;
+    this.pos.z += this.vel.z * dt;
+
+    // ground collision
+    const ground = world.getHeight(
+      Math.floor(this.pos.x),
+      Math.floor(this.pos.z)
+    ) + 1;
+
+    if (this.pos.y < ground) {
+      this.pos.y = ground;
+      this.vel.y = 0;
+      this.onGround = true;
+    } else {
+      this.onGround = false;
     }
   }
-
-  /* Camera data for renderer */
-  getCamera() {
-    return {
-      position: this.position,
-      yaw: this.rotation.yaw,
-      pitch: this.rotation.pitch
-    };
-  }
 }
-
