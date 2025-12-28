@@ -4,9 +4,6 @@ export class Renderer {
     this.world = world;
     this.ctx = canvas.getContext("2d");
 
-    const camX = this.world.player.position.x;
-    const camZ = this.world.player.position.z;
-
     this.resize();
     window.addEventListener("resize", () => this.resize());
   }
@@ -17,6 +14,13 @@ export class Renderer {
   }
 
   render() {
+    const player = this.world.player;
+
+const scale = 12;
+
+const camX = player.position.x * scale;
+const camZ = player.position.z * scale;
+
     const ctx = this.ctx;
     ctx.fillStyle = "#87CEEB";
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
