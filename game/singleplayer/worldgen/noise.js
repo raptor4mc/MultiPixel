@@ -1,4 +1,6 @@
 export function noise2D(x, z, seed = 0) {
-  const s = Math.sin(x * 127.1 + z * 311.7 + seed * 101.3) * 43758.5453;
-  return s - Math.floor(s); // 0..1
+  let n = x * 374761393 + z * 668265263 + seed * 1442695040888963407n;
+  n = BigInt.asUintN(64, n ^ (n >> 13n));
+  n *= 1274126177n;
+  return Number(n & 0xffffffffn) / 0xffffffff;
 }
