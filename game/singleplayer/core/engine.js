@@ -11,13 +11,27 @@ export class Engine {
   }
 
   start() {
-    this.running = true;
-    const loop = () => {
-      if (!this.running) return;
-      this.tick.update();
-      this.renderer.render();
-      requestAnimationFrame(loop);
-    };
-    loop();
+  this.running = true;
+  let last = performance.now();
+
+  const loop = (now) => {
+    if (!this.running) return;
+
+    const dt = (now - last) / 1000;
+    last = now;
+
+    // ✅ update player with input
+    this.world.player.update(dt, this.input);
+
+    // future systems
+    this.tick.update(dt);
+
+    this.renderer.render();
+    requestAnimationFrame(loop);
+  };
+
+  requestAnimationFrame(loop);
+}
+
   }
 }
