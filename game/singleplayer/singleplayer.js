@@ -1,26 +1,26 @@
 import { Engine } from "./core/engine.js";
 import { World } from "./core/world.js";
 
-// 🔹 Get elements properly
 const playBtn = document.getElementById("play");
-const worldNameInput = document.getElementById("worldName");
-const seedInput = document.getElementById("seed");
-const gamemodeSelect = document.getElementById("gamemode");
-const terrainSelect = document.getElementById("terrain");
 const menu = document.getElementById("menu");
 const canvas = document.getElementById("game");
 
+let started = false;
+
 playBtn.addEventListener("click", () => {
+  if (started) return;
+  started = true;
+
   const config = {
-    name: worldNameInput.value || "World",
-    seed: seedInput.value || Math.random().toString(),
-    gamemode: gamemodeSelect.value,
-    terrain: terrainSelect.value
+    name: document.getElementById("worldName").value || "World",
+    seed: document.getElementById("seed").value || Math.random().toString(),
+    gamemode: document.getElementById("gamemode").value,
+    terrain: document.getElementById("terrain").value
   };
 
-  console.log("Creating world:", config); // ✅ debug
+  console.log("Creating world:", config);
 
-  menu.style.display = "none";
+  menu.remove();
   canvas.style.display = "block";
 
   const world = new World(config);
