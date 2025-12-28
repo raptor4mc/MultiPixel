@@ -7,6 +7,11 @@ const canvas = document.getElementById("game");
 
 let started = false;
 
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+
 playBtn.addEventListener("click", () => {
   if (started) return;
   started = true;
@@ -22,6 +27,9 @@ playBtn.addEventListener("click", () => {
 
   menu.remove();
   canvas.style.display = "block";
+
+  resizeCanvas();
+  window.addEventListener("resize", resizeCanvas);
 
   const world = new World(config);
   const engine = new Engine(canvas, world);
