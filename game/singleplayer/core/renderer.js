@@ -1,58 +1,72 @@
 export class Renderer {
-  constructor(canvas, world) {
-    this.canvas = canvas;
-    this.world = world;
-    this.ctx = canvas.getContext("2d");
+  constructor(canvas) {
+    this.gl = canvas.getContext("webgl");
+    if (!this.gl) throw new Error("WebGL not supported");
 
-    this.resize();
-    window.addEventListener("resize", () => this.resize());
+    this.program = this.createProgram();
+    this.posLoc = this.gl.getAttribLocation(this.program, "aPos");
+    this.mvpLoc = this.gl.getUniformLocation(this.program, "uMVP");
+
+    this.buffers = [];
   }
 
-  resize() {
-    this.canvas.width = window.innerWidth;
-    this.canvas.height = window.innerHeight;
-  }
-
-  render() {
-    const ctx = this.ctx;
-    const p = this.world.player;
-
-    ctx.fillStyle = "#87CEEB";
-    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-    const scale = 12;
-    const view = 4;
-
-    const camX = p.pos.x * scale;
-    const camZ = p.pos.z * scale;
-
-    for (let cx = -view; cx <= view; cx++) {
-      for (let cz = -view; cz <= view; cz++) {
-        const chunk = this.world.chunks.getChunk(cx, cz);
-
-        for (let x = 0; x < 16; x++) {
-          for (let z = 0; z < 16; z++) {
-
-            let h = 0;
-            for (let y = 63; y >= 0; y--) {
-              const i = (z * 16 + x) * 64 + y;
-              if (chunk[i]) { h = y; break; }
-            }
-
-            ctx.fillStyle =
-              h > 42 ? "#7f8c8d" :
-              h > 30 ? "#2ecc71" :
-                       "#8e5a2b";
-
-            ctx.fillRect(
-              (cx * 16 + x) * scale - camX + this.canvas.width / 2,
-              (cz * 16 + z) * scale - camZ + this.canvas.height / 2,
-              scale,
-              scale
-            );
-          }
-        }
+  createProgram() {
+    const vs = `
+      attribute vec3 aPos;
+      uniform mat4 uMVP;
+      void main() {
+        gl_Position = uMVP * vec4(aPos, 1.0);
       }
-    }
+    `;
+    const fs = `
+      precision mediump float;
+      void main() {
+        gl_FragColor = vec4(0.6, 0.8, 0.5, 1.0);
+      }
+    `;
+    const gl = this.gl;
+
+    const v = gl.createShader(gl.VERTEX_SHADER);
+    gl.shaderSource(v, vs);
+    gl.compileShader(v);
+
+    const f = gl.createShader(gl.FRAGMENT_SHADER);
+    gl.shaderSource(f, fs);
+    gl.compileShader(f);
+
+    const p = gl.createProgram();
+    gl.attachShader(p, v);
+    gl.attachShader(p, f);
+    gl.linkProgram(p);
+    return p;
   }
-}
+
+  clear() {
+    const gl = this.gl;
+    gl.enable(gl.DEPTH_TEST);
+    gl.clearColor(0.5, 0.7, 1.0, 1.0);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  }
+
+  render(world, camera) {
+    const gl = this.gl;
+    gl.useProgram(this.program);
+    this.clear();
+
+    const proj = mat4.perspective([], Math.PI / 3, gl.canvas.width / gl.canvas.height, 0.1, 1000);
+    const view = mat4.create();
+
+    mat4.rotateX(view, view, camera.rotation[0]);
+    mat4.rotateY(view, view, camera.rotation[1]);
+    mat4.translate(view, view, [
+      -camera.position[0],
+      -camera.position[1],
+      -camera.position[2]
+    ]);
+
+    const mvp = mat4.multiply([], proj, view);
+    gl.uniformMatrix4fv(this.mvpLoc, false, mvp);
+
+    world.chunks.forEachChunk((cx, cz, chunk) => {
+      const mesh = world.chunks.buildMesh(cx, cz, chunk, world);
+      if (mesh.vertices.length === 0) retu
