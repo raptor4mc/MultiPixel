@@ -1,10 +1,10 @@
 import terrains from "../data/terrainTypes.json" assert { type: "json" };
+import { Button } from "../ui/components/button.js";
 
 const root = document.getElementById("terrainSelect");
 
 terrains.forEach(t => {
-  const btn = document.createElement("button");
-  btn.textContent = t.name;
-  btn.onclick = () => window.appState.terrain = t.id;
-  root.appendChild(btn);
+  root.appendChild(
+    Button(t.name, () => window.appState.terrain = t.id)
+  );
 });
