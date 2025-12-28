@@ -1,10 +1,6 @@
 export const presets = {
-  creative: {
+  creativeFlat: {
     gamemode: "creative",
-    cheats: true
-  },
-  survival: {
-    gamemode: "survival",
-    cheats: false
+    terrain: "flat"
   }
 };
