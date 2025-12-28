@@ -1,51 +1,74 @@
-import { ChunkManager } from "./chunks.js";
-import { Player } from "./player.js";
-
-export class World {
+export class ChunkManager {
   constructor(config) {
     this.config = config;
-    this.player = new Player();
-    this.chunks = new ChunkManager(config);
-
-    this.generateSpawnChunks();
+    this.chunks = new Map();
   }
 
-  generateSpawnChunks() {
-    // Generate ONE chunk at 0,0
-    const cx = 0;
-    const cz = 0;
+  key(cx, cz) {
+    return `${cx},${cz}`;
+  }
 
-    const chunk = new Uint8Array(16 * 16 * 64);
+  getChunk(cx, cz) {
+    return this.chunks.get(this.key(cx, cz));
+  }
 
-    // Flat terrain at y = 8
+  setChunk(cx, cz, data) {
+    this.chunks.set(this.key(cx, cz), data);
+  }
+
+  forEachChunk(cb) {
+    for (const [key, chunk] of this.chunks) {
+      const [cx, cz] = key.split(",").map(Number);
+      cb(cx, cz, chunk);
+    }
+  }
+
+  buildMesh(cx, cz, chunk, world) {
+    const vertices = [];
+    const indices = [];
+    let index = 0;
+
+    const get = (x, y, z) => {
+      if (x < 0 || x >= 16 || z < 0 || z >= 16 || y < 0 || y >= 64)
+        return world.isSolid(cx * 16 + x, y, cz * 16 + z);
+      return chunk[(z * 16 + x) * 64 + y] !== 0;
+    };
+
+    const faces = [
+      { n: [1, 0, 0], v: [[1,0,0],[1,1,0],[1,1,1],[1,0,1]] },
+      { n: [-1,0,0], v: [[0,0,1],[0,1,1],[0,1,0],[0,0,0]] },
+      { n: [0,1,0], v: [[0,1,1],[1,1,1],[1,1,0],[0,1,0]] },
+      { n: [0,-1,0], v: [[0,0,0],[1,0,0],[1,0,1],[0,0,1]] },
+      { n: [0,0,1], v: [[0,0,1],[1,0,1],[1,1,1],[0,1,1]] },
+      { n: [0,0,-1], v: [[1,0,0],[0,0,0],[0,1,0],[1,1,0]] }
+    ];
+
     for (let z = 0; z < 16; z++) {
       for (let x = 0; x < 16; x++) {
-        for (let y = 0; y <= 8; y++) {
-          chunk[(z * 16 + x) * 64 + y] = 1;
+        for (let y = 0; y < 64; y++) {
+          if (chunk[(z * 16 + x) * 64 + y] === 0) continue;
+
+          for (const face of faces) {
+            const nx = x + face.n[0];
+            const ny = y + face.n[1];
+            const nz = z + face.n[2];
+            if (get(nx, ny, nz)) continue;
+
+            for (const v of face.v) {
+              vertices.push(
+                cx * 16 + x + v[0],
+                y + v[1],
+                cz * 16 + z + v[2]
+              );
+            }
+
+            indices.push(index, index+1, index+2, index, index+2, index+3);
+            index += 4;
+          }
         }
       }
     }
 
-    this.chunks.setChunk(cx, cz, chunk);
-
-    // Spawn player above terrain
-    this.player.position.set(8, 12, 8);
-  }
-
-  getBlock(x, y, z) {
-    const cx = Math.floor(x / 16);
-    const cz = Math.floor(z / 16);
-    const chunk = this.chunks.getChunk(cx, cz);
-    if (!chunk) return 0;
-
-    const lx = ((x % 16) + 16) % 16;
-    const lz = ((z % 16) + 16) % 16;
-    if (y < 0 || y >= 64) return 0;
-
-    return chunk[(lz * 16 + lx) * 64 + y];
-  }
-
-  isSolid(x, y, z) {
-    return this.getBlock(x, y, z) !== 0;
+    return { vertices, indices };
   }
 }
