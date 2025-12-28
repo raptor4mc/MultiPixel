@@ -1,32 +1,35 @@
 import { Renderer } from "./renderer.js";
 import { Input } from "./input.js";
-import { Tick } from "./tick.js";
 
 export class Engine {
   constructor(canvas, world) {
+    this.canvas = canvas;
     this.world = world;
-    this.renderer = new Renderer(canvas, world);
+
     this.input = new Input(canvas);
-    this.tick = new Tick(world);
-    this.running = false;
+    this.renderer = new Renderer(canvas);
+
+    this.lastTime = 0;
+    this.loop = this.loop.bind(this);
   }
 
   start() {
-    this.running = true;
-    let last = performance.now();
+    requestAnimationFrame(this.loop);
+  }
 
-    const loop = now => {
-      const dt = (now - last) / 1000;
-      last = now;
+  loop(time) {
+    const dt = Math.min((time - this.lastTime) / 1000, 0.05);
+    this.lastTime = time;
 
-      this.world.player.update(dt, this.input, this.world);
-      this.tick.update(dt);
-      this.renderer.render();
+    // Update player
+    this.world.player.update(dt, this.input);
 
-      requestAnimationFrame(loop);
-    };
+    // GET CAMERA FROM PLAYER
+    const camera = this.world.player.getCameraMatrix();
 
-    requestAnimationFrame(loop);
+    // Render world with camera
+    this.renderer.render(this.world, camera);
+
+    requestAnimationFrame(this.loop);
   }
 }
-
