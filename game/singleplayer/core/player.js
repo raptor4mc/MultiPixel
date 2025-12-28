@@ -1,58 +1,71 @@
+import { Physics } from "./physics.js";
+
 export class Player {
-  constructor() {
-    this.pos = { x: 0, y: 80, z: 0 };
-    this.vel = { x: 0, y: 0, z: 0 };
+    constructor(world) {
+        this.world = world;
 
-    this.yaw = 0;
-    this.speed = 6;
-    this.gravity = 30;
-    this.onGround = false;
-  }
+        this.pos = { x: 0, y: 20, z: 0 };
+        this.vel = { x: 0, y: 0, z: 0 };
 
-  update(dt, input, world) {
-    // mouse look
-    this.yaw -= input.consumeMouseDX() * 0.002;
+        this.yaw = 0;
+        this.pitch = 0;
 
-    let mx = 0;
-    let mz = 0;
+        this.speed = 6;
+        this.jumpForce = 7;
+        this.onGround = false;
 
-    if (input.isDown("KeyW")) mz -= 1;
-    if (input.isDown("KeyS")) mz += 1;
-    if (input.isDown("KeyA")) mx -= 1;
-    if (input.isDown("KeyD")) mx += 1;
-
-    if (mx || mz) {
-      const len = Math.hypot(mx, mz);
-      mx /= len;
-      mz /= len;
+        this.collider = {
+            width: 0.6,
+            height: 1.8
+        };
     }
 
-    const sin = Math.sin(this.yaw);
-    const cos = Math.cos(this.yaw);
+    update(dt, input) {
+        // Mouse look
+        const { dx, dy } = input.consumeMouse();
+        this.yaw -= dx * 0.002;
+        this.pitch -= dy * 0.002;
+        this.pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.pitch));
 
-    this.vel.x = (mx * cos - mz * sin) * this.speed;
-    this.vel.z = (mz * cos + mx * sin) * this.speed;
+        // Movement input
+        let forward = 0;
+        let strafe = 0;
 
-    // gravity
-    this.vel.y -= this.gravity * dt;
+        if (input.isDown("KeyW")) forward += 1;
+        if (input.isDown("KeyS")) forward -= 1;
+        if (input.isDown("KeyA")) strafe -= 1;
+        if (input.isDown("KeyD")) strafe += 1;
 
-    // integrate
-    this.pos.x += this.vel.x * dt;
-    this.pos.y += this.vel.y * dt;
-    this.pos.z += this.vel.z * dt;
+        const sin = Math.sin(this.yaw);
+        const cos = Math.cos(this.yaw);
 
-    // ground collision
-    const ground = world.getHeight(
-      Math.floor(this.pos.x),
-      Math.floor(this.pos.z)
-    ) + 1;
+        const moveX = (forward * sin + strafe * cos) * this.speed;
+        const moveZ = (forward * cos - strafe * sin) * this.speed;
 
-    if (this.pos.y < ground) {
-      this.pos.y = ground;
-      this.vel.y = 0;
-      this.onGround = true;
-    } else {
-      this.onGround = false;
+        this.vel.x = moveX;
+        this.vel.z = moveZ;
+
+        // Jump
+        if (this.onGround && input.isDown("Space")) {
+            this.vel.y = this.jumpForce;
+            this.onGround = false;
+        }
+
+        // Gravity
+        this.vel.y -= 20 * dt;
+
+        // Physics
+        Physics.move(this, this.world, dt);
     }
-  }
+
+    getCameraMatrix() {
+        return {
+            position: [
+                this.pos.x,
+                this.pos.y + this.collider.height * 0.9,
+                this.pos.z
+            ],
+            rotation: [this.pitch, this.yaw, 0]
+        };
+    }
 }
