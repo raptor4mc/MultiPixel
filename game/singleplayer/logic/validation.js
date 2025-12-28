@@ -1,5 +1,5 @@
-export function validateSettings(settings) {
-  if (!settings.name) throw "World needs a name";
-  if (!settings.gamemode) throw "Gamemode missing";
-  if (!settings.terrain) throw "Terrain missing";
+export function validateSettings(s) {
+  if (!s.name) throw "Missing world name";
+  if (!s.gamemode) throw "Missing gamemode";
+  if (!s.terrain) throw "Missing terrain";
 }
