@@ -1,4 +1,4 @@
 {
-  "gamemode": "creative",
-  "terrain": "normal"
+  "version": 1,
+  "difficulty": "normal"
 }
