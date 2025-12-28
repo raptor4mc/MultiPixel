@@ -1,4 +1,4 @@
-render() {
+  render() {
   const ctx = this.ctx;
   ctx.fillStyle = "#87CEEB";
   ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
