@@ -1,13 +1,10 @@
-window.selectedTerrain = null;
+import terrains from "../data/terrainTypes.json" assert { type: "json" };
 
-document.querySelectorAll("[data-terrain]").forEach(btn => {
-  btn.addEventListener("click", () => {
-    window.selectedTerrain = btn.dataset.terrain;
+const root = document.getElementById("terrainSelect");
 
-    document
-      .querySelectorAll("[data-terrain]")
-      .forEach(b => b.classList.remove("selected"));
-
-    btn.classList.add("selected");
-  });
+terrains.forEach(t => {
+  const btn = document.createElement("button");
+  btn.textContent = t.name;
+  btn.onclick = () => window.appState.terrain = t.id;
+  root.appendChild(btn);
 });
