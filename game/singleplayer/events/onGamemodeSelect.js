@@ -1,10 +1,10 @@
 import gamemodes from "../data/gamemodes.json" assert { type: "json" };
+import { Button } from "../ui/components/button.js";
 
 const root = document.getElementById("gamemodeSelect");
 
 gamemodes.forEach(g => {
-  const btn = document.createElement("button");
-  btn.textContent = g.name;
-  btn.onclick = () => window.appState.gamemode = g.id;
-  root.appendChild(btn);
+  root.appendChild(
+    Button(g.name, () => window.appState.gamemode = g.id)
+  );
 });
