@@ -16,9 +16,10 @@ export function normal(cx, cz, seed) {
       const worldX = cx * CHUNK_SIZE + x;
       const worldZ = cz * CHUNK_SIZE + z;
 
+      // ✅ DO NOT FLOOR
       const n = noise2D(
-        Math.floor(worldX * scale),
-        Math.floor(worldZ * scale),
+        worldX * scale,
+        worldZ * scale,
         seed | 0
       );
 
