@@ -1,23 +1,12 @@
-import { presets } from "./presets.js";
-import { randomSeed } from "../world/seeds/random.js";
-import { parseSeed } from "../world/seeds/parser.js";
+import defaults from "../data/defaults.json" assert { type: "json" };
 
-export function buildSettings() {
-  const name =
-    document.getElementById("worldName").value.trim() || "New World";
-
-  const gamemode = window.selectedGamemode || "creative";
-  const terrain = window.selectedTerrain || "normal";
-
-  const seed =
-    window.customSeedInput
-      ? parseSeed(window.customSeedInput)
-      : randomSeed();
-
+export function buildSettings(state) {
   return {
-    name,
-    seed,
-    terrain,
-    ...presets[gamemode]
+    ...defaults,
+    name: state.worldName || "New World",
+    seed: state.seed,
+    gamemode: state.gamemode,
+    terrain: state.terrain,
+    createdAt: Date.now()
   };
 }
