@@ -1,35 +1,39 @@
 body {
-  background: #0e0e0e;
+  font-family: system-ui;
+  background: #0f1220;
   color: white;
-  font-family: sans-serif;
+  display: grid;
+  place-items: center;
+  height: 100vh;
+}
+
+#app {
+  width: 420px;
+  background: #181c3a;
   padding: 20px;
+  border-radius: 12px;
 }
 
 label {
   display: block;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 input {
+  width: 100%;
   padding: 8px;
-  width: 220px;
 }
 
-.row {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
+section {
+  margin: 16px 0;
 }
 
 button {
-  padding: 10px 16px;
-  background: #222;
+  width: 100%;
+  padding: 12px;
+  margin-top: 8px;
+  background: #4f7cff;
+  border: none;
   color: white;
-  border: 1px solid #444;
   cursor: pointer;
-}
-
-button.selected {
-  border-color: #00ff99;
-  background: #003322;
 }
