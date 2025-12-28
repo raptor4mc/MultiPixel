@@ -1,13 +1,10 @@
-window.selectedGamemode = null;
+import gamemodes from "../data/gamemodes.json" assert { type: "json" };
 
-document.querySelectorAll("[data-gamemode]").forEach(btn => {
-  btn.addEventListener("click", () => {
-    window.selectedGamemode = btn.dataset.gamemode;
+const root = document.getElementById("gamemodeSelect");
 
-    document
-      .querySelectorAll("[data-gamemode]")
-      .forEach(b => b.classList.remove("selected"));
-
-    btn.classList.add("selected");
-  });
+gamemodes.forEach(g => {
+  const btn = document.createElement("button");
+  btn.textContent = g.name;
+  btn.onclick = () => window.appState.gamemode = g.id;
+  root.appendChild(btn);
 });
