@@ -15,39 +15,34 @@ export class Renderer {
 
   render() {
     const ctx = this.ctx;
+    const p = this.world.player;
+
     ctx.fillStyle = "#87CEEB";
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
     const scale = 12;
-    const viewRadius = 2;
+    const view = 4;
 
-    const player = this.world.player;
-    const camX = player.position.x * scale;
-    const camZ = player.position.z * scale;
+    const camX = p.pos.x * scale;
+    const camZ = p.pos.z * scale;
 
-    for (let cx = -viewRadius; cx <= viewRadius; cx++) {
-      for (let cz = -viewRadius; cz <= viewRadius; cz++) {
-
+    for (let cx = -view; cx <= view; cx++) {
+      for (let cz = -view; cz <= view; cz++) {
         const chunk = this.world.chunks.getChunk(cx, cz);
-        if (!chunk) continue;
 
         for (let x = 0; x < 16; x++) {
           for (let z = 0; z < 16; z++) {
 
-            let height = 0;
-
+            let h = 0;
             for (let y = 63; y >= 0; y--) {
-              const i = (x * 16 + z) * 64 + y;
-              if (chunk[i] !== 0) {
-                height = y;
-                break;
-              }
+              const i = (z * 16 + x) * 64 + y;
+              if (chunk[i]) { h = y; break; }
             }
 
-            // color by height
-            if (height > 42) ctx.fillStyle = "#7f8c8d";      // stone
-            else if (height > 30) ctx.fillStyle = "#2ecc71"; // grass
-            else ctx.fillStyle = "#8e5a2b";                  // dirt
+            ctx.fillStyle =
+              h > 42 ? "#7f8c8d" :
+              h > 30 ? "#2ecc71" :
+                       "#8e5a2b";
 
             ctx.fillRect(
               (cx * 16 + x) * scale - camX + this.canvas.width / 2,
@@ -61,4 +56,3 @@ export class Renderer {
     }
   }
 }
-
