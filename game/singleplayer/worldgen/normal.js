@@ -20,7 +20,11 @@ export function normal(cx, cz, seed) {
 
       n /= 1.75; // normalize
 
-      const height = Math.floor(24 + n * 24);
+    const height = Math.floor(18 + n * 40);
+let height = Math.floor(18 + n * 40);
+
+// flatten slightly
+height = Math.round(height / 2) * 2;
 
       for (let y = 0; y < HEIGHT; y++) {
         const i = (x * CHUNK + z) * HEIGHT + y;
