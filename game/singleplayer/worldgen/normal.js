@@ -17,14 +17,13 @@ export function normal(cx, cz, seed) {
       n += noise2D(wx * 0.02, wz * 0.02, seed) * 1.0;
       n += noise2D(wx * 0.04, wz * 0.04, seed + 1) * 0.5;
       n += noise2D(wx * 0.08, wz * 0.08, seed + 2) * 0.25;
+      n /= 1.75;
 
-      n /= 1.75; // normalize
+      // ✅ declare ONCE
+      let height = Math.floor(18 + n * 40);
 
-    const height = Math.floor(18 + n * 40);
-let height = Math.floor(18 + n * 40);
-
-// flatten slightly
-height = Math.round(height / 2) * 2;
+      // flatten slightly
+      height = Math.round(height / 2) * 2;
 
       for (let y = 0; y < HEIGHT; y++) {
         const i = (x * CHUNK + z) * HEIGHT + y;
