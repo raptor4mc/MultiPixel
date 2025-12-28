@@ -1,9 +1,6 @@
 import { Renderer } from "./renderer.js";
 import { Input } from "./input.js";
 
-import { Input } from "./input.js";
-import { Renderer } from "./renderer.js";
-
 export class Engine {
   constructor(canvas, world) {
     this.canvas = canvas;
@@ -15,8 +12,6 @@ export class Engine {
     this.world.renderer = this.renderer;
 
     this.lastTime = performance.now();
-  
-    this.loop = this.loop.bind(this);
   }
   }
 
