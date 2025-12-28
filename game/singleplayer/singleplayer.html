@@ -10,25 +10,14 @@
 <div id="app">
   <h1>Create World</h1>
 
-  <label>
-    World Name
-    <input id="worldName" placeholder="My World" />
-  </label>
+  <input id="worldName" placeholder="World name" />
+  <input id="seedInput" placeholder="Seed (optional)" />
 
-  <label>
-    Seed
-    <input id="seedInput" placeholder="Leave empty for random" />
-  </label>
+  <h2>Gamemode</h2>
+  <div id="gamemodeSelect"></div>
 
-  <section>
-    <h2>Gamemode</h2>
-    <div id="gamemodeSelect"></div>
-  </section>
-
-  <section>
-    <h2>Terrain</h2>
-    <div id="terrainSelect"></div>
-  </section>
+  <h2>Terrain</h2>
+  <div id="terrainSelect"></div>
 
   <button id="createWorld">Create World</button>
   <button id="loadWorld">Load World</button>
