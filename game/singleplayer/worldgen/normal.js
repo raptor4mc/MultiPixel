@@ -1,33 +1,30 @@
 import { noise2D } from "./noise.js";
 
-const CHUNK_SIZE = 16;
+const CHUNK = 16;
 const HEIGHT = 64;
 
 export function normal(cx, cz, seed) {
-  const blocks = new Uint8Array(CHUNK_SIZE * CHUNK_SIZE * HEIGHT);
+  const blocks = new Uint8Array(CHUNK * CHUNK * HEIGHT);
 
-  const baseHeight = 24;
-  const amplitude = 20;
-  const scale = 0.05;
+  for (let x = 0; x < CHUNK; x++) {
+    for (let z = 0; z < CHUNK; z++) {
 
-  for (let x = 0; x < CHUNK_SIZE; x++) {
-    for (let z = 0; z < CHUNK_SIZE; z++) {
+      const wx = cx * CHUNK + x;
+      const wz = cz * CHUNK + z;
 
-      const worldX = cx * CHUNK_SIZE + x;
-      const worldZ = cz * CHUNK_SIZE + z;
+      // 🌍 FRACTAL NOISE (3 octaves)
+      let n = 0;
+      n += noise2D(wx * 0.02, wz * 0.02, seed) * 1.0;
+      n += noise2D(wx * 0.04, wz * 0.04, seed + 1) * 0.5;
+      n += noise2D(wx * 0.08, wz * 0.08, seed + 2) * 0.25;
 
-      // ✅ DO NOT FLOOR
-      const n = noise2D(
-        worldX * scale,
-        worldZ * scale,
-        seed | 0
-      );
+      n /= 1.75; // normalize
 
-      const height = Math.floor(baseHeight + n * amplitude);
+      const height = Math.floor(24 + n * 24);
 
       for (let y = 0; y < HEIGHT; y++) {
-        const index = (x * CHUNK_SIZE + z) * HEIGHT + y;
-        blocks[index] = y <= height ? 1 : 0;
+        const i = (x * CHUNK + z) * HEIGHT + y;
+        blocks[i] = y <= height ? 1 : 0;
       }
     }
   }
