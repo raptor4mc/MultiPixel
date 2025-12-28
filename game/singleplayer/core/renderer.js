@@ -15,35 +15,42 @@ export class Renderer {
 
   render() {
     const ctx = this.ctx;
-    ctx.fillStyle = "#87CEEB"; // sky
+    ctx.fillStyle = "#87CEEB";
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-    const chunk = this.world.chunks.getChunk(0, 0);
+    const scale = 12;
+    const viewRadius = 2;
 
-    const scale = 8;
-    let i = 0;
+    for (let cx = -viewRadius; cx <= viewRadius; cx++) {
+      for (let cz = -viewRadius; cz <= viewRadius; cz++) {
 
-    for (let x = 0; x < 16; x++) {
-      for (let z = 0; z < 16; z++) {
-        let height = 0;
+        const chunk = this.world.chunks.getChunk(cx, cz);
 
-        for (let y = 63; y >= 0; y--) {
-          if (chunk[i + y] !== 0) {
-            height = y;
-            break;
+        for (let x = 0; x < 16; x++) {
+          for (let z = 0; z < 16; z++) {
+
+            let height = 0;
+
+            for (let y = 63; y >= 0; y--) {
+              const index = (x * 16 + z) * 64 + y;
+              if (chunk[index] !== 0) {
+                height = y;
+                break;
+              }
+            }
+
+            ctx.fillStyle = height > 25 ? "#2ecc71" : "#8e5a2b";
+
+            ctx.fillRect(
+              (cx * 16 + x) * scale + this.canvas.width / 2,
+              (cz * 16 + z) * scale + this.canvas.height / 2,
+              scale,
+              scale
+            );
           }
         }
-
-        ctx.fillStyle = height > 25 ? "#228B22" : "#8B4513";
-        ctx.fillRect(
-          x * scale + 100,
-          z * scale + 100,
-          scale,
-          scale
-        );
-
-        i += 64;
       }
     }
   }
 }
+
