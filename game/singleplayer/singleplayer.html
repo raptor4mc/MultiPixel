@@ -1,52 +1,38 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Singleplayer</title>
-  <link rel="stylesheet" href="singleplayer.css">
-  <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-      background: #000;
-    }
-    canvas {
-      display: block;
-    }
-  </style>
+  <meta charset="UTF-8">
+  <title>Create World</title>
+  <link rel="stylesheet" href="./singleplayer.css">
 </head>
 <body>
 
-<div id="menu">
-  <h1>Create World</h1>
+<h1>Create World</h1>
 
-  <label>World Name</label>
-  <input id="worldName" placeholder="My World">
+<label>
+  World Name
+  <input id="worldName" placeholder="New World">
+</label>
 
-  <label>Seed</label>
-  <input id="seed" placeholder="Random">
+<label>
+  Seed
+  <input id="seedInput" placeholder="Leave empty for random">
+</label>
 
-  <label>Gamemode</label>
-  <select id="gamemode">
-    <option value="survival">Survival</option>
-    <option value="creative">Creative</option>
-  </select>
-
-  <label>Terrain</label>
-  <select id="terrain">
-    <option value="normal">Normal</option>
-    <option value="flat">Flat</option>
-  </select>
-
-  <button id="play">Create World</button>
+<h2>Gamemode</h2>
+<div id="gamemodeRow" class="row">
+  <button data-gamemode="creative">Creative</button>
+  <button data-gamemode="survival">Survival</button>
 </div>
 
-<canvas id="game"></canvas>
+<h2>Terrain</h2>
+<div id="terrainRow" class="row">
+  <button data-terrain="normal">Normal</button>
+  <button data-terrain="flat">Flat</button>
+</div>
 
-<!-- REQUIRED FOR STEP 2 -->
-<script src="https://cdn.jsdelivr.net/npm/gl-matrix@3.4.3/gl-matrix-min.js"></script>
+<button id="createWorld">Create World</button>
 
-<script type="module" src="singleplayer.js"></script>
+<script type="module" src="./singleplayer.js"></script>
 </body>
 </html>
