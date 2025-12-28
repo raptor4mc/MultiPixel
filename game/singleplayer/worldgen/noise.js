@@ -1,6 +1,5 @@
-export function noise2D(x, z, seed = 0) {
-  let n = x * 374761393 + z * 668265263 + seed * 1442695041;
+export function noise2D(x, z, seed) {
+  let n = x * 374761 + z * 668265 + seed * 144665;
   n = (n ^ (n >> 13)) * 1274126177;
-  n = (n ^ (n >> 16)) >>> 0;
-  return n / 4294967295;
+  return ((n ^ (n >> 16)) >>> 0) / 4294967295;
 }
