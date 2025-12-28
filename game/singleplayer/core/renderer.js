@@ -4,6 +4,9 @@ export class Renderer {
     this.world = world;
     this.ctx = canvas.getContext("2d");
 
+    const camX = this.world.player.position.x;
+    const camZ = this.world.player.position.z;
+
     this.resize();
     window.addEventListener("resize", () => this.resize());
   }
@@ -41,12 +44,14 @@ export class Renderer {
 
             ctx.fillStyle = height > 25 ? "#2ecc71" : "#8e5a2b";
 
-            ctx.fillRect(
-              (cx * 16 + x) * scale + this.canvas.width / 2,
-              (cz * 16 + z) * scale + this.canvas.height / 2,
-              scale,
-              scale
-            );
+             ctx.fillRect(
+  (cx * 16 + x - camX) * scale + this.canvas.width / 2,
+  (cz * 16 + z - camZ) * scale + this.canvas.height / 2,
+  scale,
+  scale
+);
+
+
           }
         }
       }
