@@ -1,3 +1,3 @@
-export function randomSeed() {
-  return Math.floor(Math.random() * 2 ** 31);
+export function generateSeed() {
+  return Math.floor(Math.random() * 1e9);
 }
