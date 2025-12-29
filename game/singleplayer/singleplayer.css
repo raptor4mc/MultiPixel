@@ -65,6 +65,7 @@ canvas {
     font-size: 1rem;
     font-weight: bold;
     display: flex;
+    align-items: center;
     gap: 1rem;
 }
 
