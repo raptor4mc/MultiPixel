@@ -1,23 +1,16 @@
-import { parseSeed } from "../world/seeds/parser.js";
-
-let defaults = {
-  version: 1,
-  difficulty: "normal"
+export const SETTINGS = {
+  CHUNK_SIZE: 16,
+  CHUNK_HEIGHT: 64,
+  WORLD_RADIUS: 3,
+  BLOCK_SIZE: 1,
+  SEA_LEVEL: 20
 };
 
-// Load defaults async
-fetch("../data/defaults.json")
-  .then(res => res.json())
-  .then(data => defaults = data)
-  .catch(() => console.warn("Using fallback defaults"));
-
-export function buildSettings(state) {
-  return {
-    ...defaults,
-    name: state.worldName || "New World",
-    gamemode: state.gamemode,
-    terrain: state.terrain,
-    seed: parseSeed(state.seedText),
-    createdAt: Date.now()
-  };
-}
+export const PLAYER = {
+  HEIGHT: 2,
+  EYE_HEIGHT: 1.8,
+  RADIUS: 0.3,
+  SPEED: 0.1,
+  JUMP: 0.15,
+  GRAVITY: -0.01
+};
