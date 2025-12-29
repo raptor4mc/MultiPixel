@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>3D Voxel World - First Person</title>
 
-    <!-- Tailwind (UI only) -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
 
     <!-- Three.js -->
@@ -14,12 +14,10 @@
     <!-- Simplex Noise -->
     <script src="https://cdn.jsdelivr.net/npm/simplex-noise@2.4.0/simplex-noise.min.js"></script>
 
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="./singleplayer.css" />
+    <link rel="stylesheet" href="./singleplayer.css">
 </head>
 <body>
 
-    <!-- Info Panel -->
     <div id="info-panel">
         <p><strong>Voxel World Demo</strong></p>
         <p>Chunks Loaded: <span id="chunks-count">0</span></p>
@@ -27,7 +25,6 @@
         <p>Jump: <span class="text-neon-green">SPACE</span></p>
     </div>
 
-    <!-- Instructions Overlay -->
     <div id="instructions" class="font-mono">
         <p class="text-xl font-bold mb-2">Click to Play</p>
         <p>Movement: <span class="text-neon-green">W A S D</span></p>
@@ -37,16 +34,13 @@
         <p class="mt-4 text-sm text-gray-400">Press ESC to exit control mode.</p>
     </div>
 
-    <!-- Block Selector -->
     <div id="block-selector">
-        <span>Selected Block:</span>
+        <span>Selected Block: </span>
         <span id="selected-block-name" class="text-yellow-400">Dirt</span>
     </div>
 
-    <!-- Crosshair -->
     <div id="crosshair"></div>
 
-    <!-- Game Logic -->
-    <script type="module" src="./singleplayer.js"></script>
+    <script src="./singleplayer.js"></script>
 </body>
 </html>
