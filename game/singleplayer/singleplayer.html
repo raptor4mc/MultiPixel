@@ -2,27 +2,34 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Create World</title>
-  <link rel="stylesheet" href="singleplayer.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Voxel World</title>
+
+  <!-- External libs -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/simplex-noise@2.4.0/simplex-noise.min.js"></script>
+
+  <link rel="stylesheet" href="./singleplayer.css" />
 </head>
 <body>
 
-<div id="app">
-  <h1>Create World</h1>
+  <div id="info-panel">
+    <p><strong>Voxel World Demo</strong></p>
+    <p>Chunks Loaded: <span id="chunks-count">0</span></p>
+  </div>
 
-  <input id="worldName" placeholder="World name" />
-  <input id="seedInput" placeholder="Seed (optional)" />
+  <div id="instructions">
+    <p class="text-xl font-bold">Click to Play</p>
+  </div>
 
-  <h2>Gamemode</h2>
-  <div id="gamemodeSelect"></div>
+  <div id="block-selector">
+    Selected Block:
+    <span id="selected-block-name">Dirt</span>
+  </div>
 
-  <h2>Terrain</h2>
-  <div id="terrainSelect"></div>
+  <div id="crosshair"></div>
 
-  <button id="createWorld">Create World</button>
-  <button id="loadWorld">Load World</button>
-</div>
-
-<script type="module" src="singleplayer.js"></script>
+  <script type="module" src="./singleplayer.js"></script>
 </body>
 </html>
