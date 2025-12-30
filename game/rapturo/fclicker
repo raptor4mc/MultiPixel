@@ -20,9 +20,28 @@
             min-height: 100vh;
             padding-top: 20px;
             padding-bottom: 80px; /* Space for fixed bottom menu */
+            overflow-x: hidden; /* Prevent horizontal scroll during bootup */
+        }
+
+        /* --- Bootup Screen Overlay --- */
+        #bootup-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #0f172a; /* Same as body background */
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            opacity: 1; /* Start fully opaque */
+            transition: opacity 0.7s ease-out; /* For final fade out */
         }
 
         /* Base container for a central, fixed-width game */
+        /* Initially hidden with opacity-0 class, JS fades it in later */
         .game-container {
             max-width: 900px;
             width: 100%;
@@ -33,6 +52,8 @@
             color: #f1f5f9; /* Light text */
             min-height: calc(100vh - 100px);
             border-radius: 16px;
+            opacity: 0; /* Important: Start hidden */
+            transition: opacity 1s ease-in; /* For fading in the game */
         }
 
         /* =======================================
@@ -68,7 +89,6 @@
             background-color: #3f3f46; /* Zinc 700 */
             border: 8px solid #52525b; /* Zinc 600 */
             box-shadow: 0 10px #27272a; /* Zinc 800 */
-            /* Added large text size for the emoji */
         }
 
         #fossil-clicker:hover {
@@ -188,7 +208,16 @@
 </head>
 <body class="p-4 md:p-10">
 
-    <div class="game-container">
+    <!-- BOOTUP SCREEN OVERLAY (Fixed) -->
+    <div id="bootup-screen" class="text-white">
+        <!-- "Relimintor" text for the first phase of the splash screen -->
+        <h1 id="relimintor-text" class="text-5xl font-extrabold text-gray-300 opacity-100 transition-opacity duration-1000">
+            Relimintor
+        </h1>
+    </div>
+
+    <!-- MAIN GAME CONTAINER (Initially hidden via JS/CSS class) -->
+    <div class="game-container" id="main-game-content">
         <!-- Main Header Panel (Stats & Game Title) -->
         <div class="header-panel space-y-4">
             <h1 class="text-4xl font-extrabold text-center text-emerald-400 tracking-wider">
@@ -314,10 +343,9 @@
 
         // =======================================
         // BUILDING & RESEARCH DEFINITIONS
-        // Costs have been increased for slower progression.
         // =======================================
 
-        /** @type {Building[]} Incremental, repeatable purchases. */
+        /** @type {Building[]} Incremental, repeatable purchases. Costs increased for slower progression. */
         const buildings = [
             // FPC Buildings (Manual Clicking Power)
             { id: 0, name: "Hand Brush", icon: "🧹", cost: 30, fpcIncrease: 1, fpsIncrease: 0, count: 0 },
@@ -337,9 +365,8 @@
             { id: 12, name: "Prehistoric Time Gate", icon: "🕰️", cost: 1000000000, fpcIncrease: 0, fpsIncrease: 5000000, count: 0 }
         ];
 
-        /** @type {Research[]} One-time, multiplicative purchases. */
+        /** @type {Research[]} One-time, multiplicative purchases. Costs significantly increased for slower progression. */
         const research = [
-            // Costs significantly increased
             { id: 13, name: "Optimal Brushing", icon: "✨", cost: 3000, fpcMultiplier: 2.0, fpsMultiplier: 1.0, bought: false, description: "Doubles manual digging power (FPC x2)." },
             { id: 14, name: "Advanced Scanning", icon: "🛰️", cost: 30000, fpcMultiplier: 1.0, fpsMultiplier: 2.0, bought: false, description: "Doubles automated excavation speed (FPS x2)." },
             { id: 15, name: "Carbon Dating Efficiency", icon: "🧪", cost: 60000, fpcMultiplier: 1.0, fpsMultiplier: 1.5, bought: false, description: "Increases passive income by 50% (FPS x1.5)." },
@@ -373,7 +400,7 @@
         const geoBuddyEl = document.getElementById('geo-buddy-message');
         const trackerReportEl = document.getElementById('tracker-report');
         const newsFeedEl = document.getElementById('news-feed');
-
+        
         /**
          * Number formatter for large numbers (e.g., 1,234,567.8).
          * @type {Intl.NumberFormat}
@@ -747,23 +774,58 @@
         }
 
         /**
-         * Entry point for game initialization.
+         * Entry point for game initialization, including the bootup sequence.
          */
         window.onload = () => {
-             // 1. Attach event listener for manual clicking
-             clickerEl.addEventListener('click', manualClick);
+             const bootupScreen = document.getElementById('bootup-screen');
+             const mainGameContent = document.getElementById('main-game-content');
+             const initialTitle = document.getElementById('relimintor-text');
 
-             // 2. Initialize the view to the default tab
-             showTab(activeTab); 
+             // --- Bootup Sequence ---
+             
+             // 1. Relimintor visible. Wait 0.5s pause, then fade out Relimintor.
+             setTimeout(() => {
+                 initialTitle.style.opacity = '0';
+                 initialTitle.style.transition = 'opacity 1s ease-out';
 
-             // 3. Log initial news message
-             logNews("Game started. Welcome to the Fossil Dig Site!");
+                 // 2. After Relimintor fades out (1s), display the Game Title on the splash screen.
+                 setTimeout(() => {
+                     bootupScreen.innerHTML = `
+                         <h1 class="text-5xl font-extrabold text-emerald-400 tracking-wider opacity-0 transition-opacity duration-1000" id="splash-title">
+                             FOSSIL DIG CLICKER
+                         </h1>
+                     `;
+                     
+                     // Fade in the new title
+                     setTimeout(() => {
+                         const splashTitle = document.getElementById('splash-title');
+                         if (splashTitle) splashTitle.style.opacity = '1';
+                     }, 50);
 
-             // 4. Start the passive income loop
-             setInterval(gameLoop, 100);
+                     // 3. After Game Title is displayed (1.5s), fade out splash screen and fade in the game.
+                     setTimeout(() => {
+                         // Final transition: hide splash, show game
+                         bootupScreen.style.opacity = '0';
+                         mainGameContent.style.opacity = '1';
 
-             // Initial UI update
-             updateUI();
+                         // --- Start Main Game Logic ---
+                         clickerEl.addEventListener('click', manualClick);
+                         showTab(activeTab); 
+                         logNews("Game started. Welcome to the Fossil Dig Site!");
+                         setInterval(gameLoop, 100);
+                         updateUI();
+
+                         // Clean up the splash screen from the DOM after it fades out
+                         setTimeout(() => {
+                             bootupScreen.remove();
+                         }, 700);
+
+                     }, 1500); // 1.5s for the FOSSIL DIG CLICKER text display
+
+                 }, 1000); // 1s for Relimintor fade out
+
+             }, 500); // Start the sequence after a small initial pause
+
         };
 
         // Make functions globally accessible for inline HTML calls (like onclick)
