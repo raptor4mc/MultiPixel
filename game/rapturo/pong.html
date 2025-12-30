@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Ping Pong Challenge</title>
+    <!-- Using Inter font for a clean, modern look -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --court-width: 80vw;
+            --court-height: 50vh;
+            --court-color: #000000;
+            --paddle-color: #2ED573; /* Green */
+            --ball-color: #FFC312; /* Yellow */
+            --bg-color: #1a1a2e; /* Deep purple/blue */
+            --text-color: #f1f2f6;
+            --paddle-width: 1.5%;
+            --paddle-height: 20%; /* INCREASED for easier user play */
+            --ball-size: 20px;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            color: var(--text-color);
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: var(--court-width);
+            max-width: 800px;
+        }
+
+        .header {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 10px 0;
+        }
+
+        .score {
+            font-size: 2.5rem;
+            font-weight: 700;
+            padding: 5px 15px;
+            border-radius: 8px;
+            background-color: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            transition: transform 0.2s;
+        }
+
+        .score:hover {
+            transform: scale(1.05);
+        }
+
+        /* --- Game Court Styling --- */
+        .court {
+            width: 100%;
+            height: var(--court-height);
+            min-height: 300px;
+            background: var(--court-color);
+            border: 4px solid var(--text-color);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            position: relative;
+            overflow: hidden;
+            border-radius: 12px;
+        }
+
+        /* Center line */
+        .court::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 0;
+            height: 100%;
+            width: 2px;
+            background: repeating-linear-gradient(
+                to bottom,
+                rgba(255, 255, 255, 0.8),
+                rgba(255, 255, 255, 0.8) 10px,
+                transparent 10px,
+                transparent 20px
+            );
+            transform: translateX(-50%);
+        }
+
+        /* --- Paddle Styling --- */
+        .paddle {
+            position: absolute;
+            width: var(--paddle-width);
+            height: var(--paddle-height);
+            background-color: var(--paddle-color);
+            border-radius: 4px;
+            box-shadow: 0 0 10px rgba(46, 213, 115, 0.7);
+            transition: box-shadow 0.1s;
+        }
+
+        #player-paddle {
+            left: 1%;
+        }
+
+        #ai-paddle {
+            right: 1%;
+            background-color: #EB3B5A; /* Red for AI */
+            box-shadow: 0 0 10px rgba(235, 59, 90, 0.7);
+        }
+
+        /* --- Ball Styling --- */
+        #ball {
+            position: absolute;
+            width: var(--ball-size);
+            height: var(--ball-size);
+            background-color: var(--ball-color);
+            border-radius: 50%;
+            box-shadow: 0 0 15px var(--ball-color);
+        }
+
+        /* --- Start Screen & Game Messages --- */
+        .message-box {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.85);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            z-index: 10;
+            text-align: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        .message-box.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .message-box h2 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+
+        .message-box p {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            color: #ccc;
+        }
+
+        .start-button {
+            padding: 12px 30px;
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--bg-color);
+            background-color: var(--paddle-color);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(46, 213, 115, 0.5);
+            transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s;
+        }
+
+        .start-button:hover {
+            background-color: #1abc9c;
+            transform: translateY(-2px);
+            box-shadow: 0 7px 20px rgba(46, 213, 115, 0.7);
+        }
+
+        .start-button:active {
+            transform: translateY(0);
+            box-shadow: 0 3px 10px rgba(46, 213, 115, 0.5);
+        }
+
+        @media (max-width: 600px) {
+            :root {
+                --paddle-width: 2.5%;
+                --paddle-height: 25%; /* Adjusted for mobile */
+                --ball-size: 16px;
+            }
+            .score {
+                font-size: 2rem;
+            }
+            .message-box h2 {
+                font-size: 2rem;
+            }
+            .message-box p {
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <span class="score">You: <span id="player-score">0</span></span>
+            <h1>PONG</h1>
+            <span class="score">AI: <span id="ai-score">0</span></span>
+        </div>
+
+        <div class="court" id="court">
+            <div class="paddle" id="player-paddle"></div>
+            <div class="paddle" id="ai-paddle"></div>
+            <div id="ball"></div>
+
+            <div class="message-box" id="start-screen">
+                <h2>AI PING PONG CHALLENGE</h2>
+                <p>Use your mouse/touch to move the green paddle (Left). First to 10 wins!</p>
+                <button class="start-button" id="start-button">START GAME</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game elements
+        const court = document.getElementById('court');
+        const playerPaddle = document.getElementById('player-paddle');
+        const aiPaddle = document.getElementById('ai-paddle');
+        const ball = document.getElementById('ball');
+        const playerScoreEl = document.getElementById('player-score');
+        const aiScoreEl = document.getElementById('ai-score');
+        const startScreen = document.getElementById('start-screen');
+        const startButton = document.getElementById('start-button');
+
+        // Game state variables
+        let animationId;
+        let gameRunning = false;
+        let playerScore = 0;
+        let aiScore = 0;
+        const maxScore = 10;
+
+        // Ball properties
+        let ballX, ballY, ballSpeedX, ballSpeedY, initialBallSpeed = 5;
+
+        // Paddle properties
+        let paddleHeight, courtHeight, courtWidth;
+
+        // AI properties (made slightly less perfect for easier player experience)
+        const aiSpeed = 3.5; 
+        const aiReactionTime = 0.7; // Decreased AI anticipation
+
+        /**
+         * Initializes game dimensions and state.
+         */
+        function initGame() {
+            // Get dimensions (needs to be updated on resize)
+            courtHeight = court.clientHeight;
+            courtWidth = court.clientWidth;
+            paddleHeight = playerPaddle.clientHeight;
+            
+            // Set initial positions
+            ballX = courtWidth / 2 - (ball.clientWidth / 2);
+            ballY = courtHeight / 2 - (ball.clientHeight / 2);
+            
+            // Player paddle starts centered
+            playerPaddle.style.top = `${courtHeight / 2 - paddleHeight / 2}px`;
+
+            // AI paddle starts centered
+            aiPaddle.style.top = `${courtHeight / 2 - paddleHeight / 2}px`;
+
+            resetBall();
+            updateScores();
+        }
+
+        /**
+         * Resets the ball position and speed/direction.
+         */
+        function resetBall() {
+            // Center the ball
+            ballX = courtWidth / 2 - (ball.clientWidth / 2);
+            ballY = courtHeight / 2 - (ball.clientHeight / 2);
+
+            // Give a random initial vertical direction (-1 or 1)
+            ballSpeedY = (Math.random() > 0.5 ? 1 : -1) * initialBallSpeed * 0.5;
+
+            // Launch the ball toward the AI (right side) as requested
+            ballSpeedX = initialBallSpeed; 
+        }
+
+        /**
+         * Updates the UI scores.
+         */
+        function updateScores() {
+            playerScoreEl.textContent = playerScore;
+            aiScoreEl.textContent = aiScore;
+        }
+
+        /**
+         * Handles the movement of the player paddle based on mouse/touch input.
+         * @param {number} y - The desired vertical position (in pixels from the top of the court).
+         */
+        function movePlayerPaddle(y) {
+            let newY = y - court.offsetTop - paddleHeight / 2;
+
+            // Clamp newY within court boundaries
+            newY = Math.max(0, Math.min(newY, courtHeight - paddleHeight));
+
+            playerPaddle.style.top = `${newY}px`;
+        }
+
+        /**
+         * Simple AI logic: tracks the ball's Y position.
+         */
+        function moveAI() {
+            const aiY = aiPaddle.offsetTop;
+            const targetY = ballY + (ball.clientHeight / 2) - (paddleHeight / 2);
+
+            // Determine the distance to the target
+            const deltaY = targetY - aiY;
+
+            // Only move if the ball is moving towards the AI (positive X direction)
+            if (ballSpeedX > 0) {
+                // The AI is only slightly slower than the ball, giving the player a chance.
+                const speed = Math.min(Math.abs(deltaY) * aiReactionTime, aiSpeed);
+
+                if (deltaY > 0) {
+                    // Move down
+                    aiPaddle.style.top = `${Math.min(courtHeight - paddleHeight, aiY + speed)}px`;
+                } else if (deltaY < 0) {
+                    // Move up
+                    aiPaddle.style.top = `${Math.max(0, aiY - speed)}px`;
+                }
+            }
+        }
+
+        /**
+         * Handles the game logic and updates positions.
+         */
+        function gameLoop() {
+            if (!gameRunning) return;
+
+            // 1. Move Ball
+            ballX += ballSpeedX;
+            ballY += ballSpeedY;
+
+            // 2. Ball bouncing off top/bottom walls
+            if (ballY <= 0 || ballY >= courtHeight - ball.clientHeight) {
+                ballSpeedY *= -1; // Reverse vertical direction
+                // Play sound or visual cue for bounce
+                ball.style.boxShadow = `0 0 20px ${ball.style.backgroundColor}, 0 0 5px white`;
+                setTimeout(() => ball.style.boxShadow = `0 0 15px ${ball.style.backgroundColor}`, 100);
+            }
+
+            // 3. Ball scoring (left/right walls)
+            if (ballX < 0) {
+                // AI scored
+                aiScore++;
+                updateScores();
+                checkWinCondition();
+                resetBall();
+            } else if (ballX > courtWidth - ball.clientWidth) {
+                // Player scored
+                playerScore++;
+                updateScores();
+                checkWinCondition();
+                resetBall();
+            }
+
+            // 4. Paddle collision detection
+            // Get current positions and dimensions
+            const playerY = playerPaddle.offsetTop;
+            const aiY = aiPaddle.offsetTop;
+            const paddleW = playerPaddle.clientWidth;
+            const ballCenterY = ballY + ball.clientHeight / 2;
+
+            // Player Paddle (Left side)
+            if (ballSpeedX < 0 && // Ball moving left
+                ballX <= paddleW && // Ball reaches player's X position
+                ballCenterY >= playerY && // Ball's center is within paddle's Y range
+                ballCenterY <= playerY + paddleHeight) {
+
+                ballSpeedX *= -1.05; // Reverse X direction and slightly increase speed
+                ballSpeedX = Math.min(ballSpeedX, 15); // Cap speed
+                
+                // Calculate angle based on where the ball hit the paddle
+                let hitPoint = ballCenterY - (playerY + paddleHeight / 2);
+                ballSpeedY = hitPoint * 0.15; // Max angle/vertical speed adjustment
+
+                // Add a little visual feedback
+                playerPaddle.style.boxShadow = '0 0 15px var(--paddle-color), 0 0 5px white';
+                setTimeout(() => playerPaddle.style.boxShadow = '0 0 10px rgba(46, 213, 115, 0.7)', 100);
+            }
+
+            // AI Paddle (Right side)
+            if (ballSpeedX > 0 && // Ball moving right
+                ballX >= courtWidth - paddleW - ball.clientWidth && // Ball reaches AI's X position
+                ballCenterY >= aiY && // Ball's center is within paddle's Y range
+                ballCenterY <= aiY + paddleHeight) {
+
+                ballSpeedX *= -1.05; // Reverse X direction and slightly increase speed
+                ballSpeedX = Math.max(ballSpeedX, -15); // Cap speed (negative cap)
+
+                // Calculate angle based on where the ball hit the paddle
+                let hitPoint = ballCenterY - (aiY + paddleHeight / 2);
+                ballSpeedY = hitPoint * 0.15; // Max angle/vertical speed adjustment
+
+                // Add a little visual feedback
+                aiPaddle.style.boxShadow = '0 0 15px #EB3B5A, 0 0 5px white';
+                setTimeout(() => aiPaddle.style.boxShadow = '0 0 10px rgba(235, 59, 90, 0.7)', 100);
+            }
+
+            // 5. Move AI
+            moveAI();
+
+            // 6. Update UI positions
+            ball.style.left = `${ballX}px`;
+            ball.style.top = `${ballY}px`;
+
+            // 7. Loop
+            animationId = requestAnimationFrame(gameLoop);
+        }
+
+        /**
+         * Checks if a player has reached the max score.
+         */
+        function checkWinCondition() {
+            if (playerScore >= maxScore || aiScore >= maxScore) {
+                gameRunning = false;
+                cancelAnimationFrame(animationId);
+                let message = playerScore >= maxScore ? "CONGRATULATIONS! YOU WON!" : "GAME OVER. AI WINS!";
+                displayMessage(message, true);
+            }
+        }
+
+        /**
+         * Displays the game state message (start/win/loss).
+         * @param {string} title - The main message title.
+         * @param {boolean} resetScores - Whether to reset scores for a new game.
+         */
+        function displayMessage(title, resetScores = false) {
+            const h2 = startScreen.querySelector('h2');
+            const p = startScreen.querySelector('p');
+            
+            h2.textContent = title;
+            p.textContent = resetScores 
+                ? 'Click START GAME to play again!'
+                : 'Use your mouse/touch to move the green paddle (Left). First to 10 wins!';
+
+            startButton.textContent = 'START GAME';
+            startScreen.classList.add('active');
+
+            if (resetScores) {
+                playerScore = 0;
+                aiScore = 0;
+                updateScores();
+            }
+        }
+
+        /**
+         * Starts the game loop.
+         */
+        function startGame() {
+            if (gameRunning) return;
+            gameRunning = true;
+            initGame();
+            startScreen.classList.remove('active');
+            gameLoop();
+        }
+
+        // --- Event Listeners ---
+
+        // 1. Mouse/Touch movement for player paddle
+        court.addEventListener('mousemove', (e) => {
+            if (gameRunning) movePlayerPaddle(e.clientY);
+        });
+
+        court.addEventListener('touchmove', (e) => {
+            if (gameRunning) {
+                e.preventDefault();
+                movePlayerPaddle(e.touches[0].clientY);
+            }
+        });
+
+        // 2. Start button click
+        startButton.addEventListener('click', startGame);
+
+        // 3. Handle window resizing to keep the game responsive
+        window.addEventListener('resize', () => {
+            if (!gameRunning) {
+                // If not running, just update dimensions
+                initGame(); 
+                // Re-center message box if needed
+                displayMessage(startScreen.querySelector('h2').textContent, playerScore > 0 || aiScore > 0);
+            }
+            // If running, the gameLoop will handle continuous position updates,
+            // but we still need to recalculate boundaries:
+            courtHeight = court.clientHeight;
+            courtWidth = court.clientWidth;
+            paddleHeight = playerPaddle.clientHeight;
+        });
+
+        // Initial setup on load
+        window.onload = () => {
+            initGame();
+            displayMessage('AI PING PONG CHALLENGE');
+        };
+
+    </script>
+</body>
+</html>
