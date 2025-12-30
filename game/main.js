@@ -14,7 +14,7 @@ const MENU_ITEMS = [
     { name: "SinglePlayer", id: "single" },
     { name: "MultiPlayer", id: "multi" },
     { name: "Coding",       id: "coding" },
-    { name: "Mods",         id: "mods" },
+    { name: "Rapturo",         id: "Rapturo" },
     { name: "Credits",      id: "credits" }
 ];
 
@@ -195,7 +195,7 @@ function triggerAction(name) {
             "SinglePlayer": "singleplayer/singleplayer.html",
             "MultiPlayer": "multiplayer/multiplayer.html",
             "Coding": "coding/coding.html",
-            "Mods": "mods/mods.html",
+            "Rapturo": "mods/Rapturo.html",
             "Credits": "credits/credits.html"
         };
 
