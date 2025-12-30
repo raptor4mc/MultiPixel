@@ -13,7 +13,7 @@
         body {
             background-color: #0f172a; /* Dark slate background */
             color: #e2e8f0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Inter', Tahoma, Geneva, Verdana, sans-serif;
             overflow-x: hidden;
         }
 
@@ -73,22 +73,24 @@
             border-color: #4ade80;
         }
 
-        /* Card Hover Effects (Disney style zoom) */
+        /* --- REFINED GAME CARD STYLES --- */
         .game-card {
-            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
             position: relative;
             overflow: hidden;
             border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4); /* Base shadow */
         }
 
         .game-card:hover {
-            transform: scale(1.05);
-            border-color: #4ade80;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            transform: scale(1.06); /* Slightly more aggressive scale */
+            border-color: #4ade80; /* Green border on hover */
+            /* Add an inner glow effect and a larger shadow */
+            box-shadow: 0 15px 40px rgba(74, 222, 128, 0.25), 0 0 0 3px rgba(74, 222, 128, 0.5); 
             z-index: 10;
         }
 
-        /* Dynamic Background Patterns for Cards */
+        /* Dynamic Background Patterns for Cards (preserved) */
         .bg-pattern-1 { background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%); }
         .bg-pattern-2 { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); }
         .bg-pattern-3 { background: linear-gradient(135deg, #eab308 0%, #a16207 100%); }
@@ -109,6 +111,64 @@
         }
         ::-webkit-scrollbar-thumb:hover {
             background: #4ade80;
+        }
+
+        /* --- NEW ANIMATION STYLES FOR GAME CARD --- */
+
+        /* Keyframes for the rolling icon (on hover): moves right across the button space and back */
+        @keyframes iconRoll {
+            0% { transform: translateX(0) rotate(0deg); }
+            50% { transform: translateX(calc(100% + 4px)) rotate(180deg); }
+            100% { transform: translateX(0) rotate(360deg); }
+        }
+        
+        /* Keyframes for the icon jump (on click): moves to the 'A' position, holds, then returns */
+        @keyframes iconJumpAndReturn {
+            0% { transform: translateX(0) scale(1); }
+            20% { transform: translateX(40px) scale(1.1); } /* Jump towards 'A' position (approx. 40px) */
+            70% { transform: translateX(40px) scale(1.1); } /* Hold at 'A' position (50% duration = 0.5s) */
+            100% { transform: translateX(0) scale(1); } /* Return to start */
+        }
+
+
+        /* Description visibility and "plop up" effect (FIXED for 2-line wrap) */
+        .game-description-popup {
+            opacity: 0;
+            transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+            position: absolute;
+            
+            /* Positioning: Right of the icon box, centered vertically to the icon row */
+            left: 5rem; 
+            top: 50%;
+            /* Translate Y to truly center it vertically, Translate X for the "plop" effect */
+            transform: translateY(-50%) translateX(10px); 
+            
+            z-index: 20;
+            padding: 0.5rem 0.75rem; 
+
+            /* Subtle Styling */
+            background-color: rgba(30, 41, 59, 0.9); /* slate-800 semi-transparent */
+            border-radius: 0.5rem;
+            border: 1px solid rgba(74, 222, 128, 0.2); /* Green border accent */
+            
+            /* --- 2-LINE WRAP FIX --- */
+            max-width: 150px; /* Forces the text to wrap */
+            line-height: 1.25rem; /* Standard text-sm line height (20px) */
+            /* Height calculation: 2 * 1.25rem (lines) + 2 * 0.5rem (padding) = 3.5rem. Use 3.75rem for safety. */
+            max-height: 3.75rem; 
+            overflow: hidden; /* Hides any text that goes past 2 lines */
+        }
+
+        /* When hovering over the entire card, the description shows */
+        .game-card:hover .game-description-popup {
+            opacity: 1;
+            transform: translateY(-50%) translateX(0); /* Slide in horizontally */
+        }
+
+        /* Apply rolling animation only when the card is hovered */
+        .game-card:hover .play-icon-roll {
+            /* This will be overridden by the JS click animation */
+            animation: iconRoll 0.8s ease-in-out forwards;
         }
     </style>
 </head>
@@ -135,7 +195,6 @@
                 <i data-lucide="ghost" class="w-20 h-20 text-green-500 mx-auto mb-4 animate-bounce"></i>
                 <!-- Animated Title Container: Starts with Relimintor, transforms to Rapturo -->
                 <h1 id="animatedTitle" class="text-5xl md:text-6xl animated-title-container font-black mb-2"></h1>
-                <p class="text-slate-400">Teleport to your creations</p>
             </div>
 
             <!-- Search Input -->
@@ -182,7 +241,7 @@
 
     <!-- LOGIC -->
     <script>
-        // --- TEXT ANIMATION LOGIC ---
+        // --- TEXT ANIMATION LOGIC (UNCHANGED) ---
         const initialText = "RELIMINTOR"; // 10 letters
         const targetText = "RAPTURO";    // 7 letters
         const titleH1 = document.getElementById('animatedTitle');
@@ -220,10 +279,9 @@
             const initialO = titleH1.querySelector('.initial-o');
 
             // --- SMOOTH SLIDE COMPENSATION ---
-            // Adjusted R_SHIFT_PX to 50px to make the 'R' stop sliding earlier (per request).
-            const R_SHIFT_PX = '50px'; // Less aggressive slide to the right
-            const O_SHIFT_PX = '-15px'; // Less aggressive slide to the left
-            const SLIDE_DURATION = '1600ms'; // Long duration to cover the devour phase
+            const R_SHIFT_PX = '50px'; 
+            const O_SHIFT_PX = '-15px'; 
+            const SLIDE_DURATION = '1600ms'; 
 
             setTimeout(() => {
                 // R(0): Needs to move right to accommodate the 5 new letters 'APTUR'
@@ -271,7 +329,7 @@
                 // 3. Inject new letters A P T U R
                 const newLetters = targetText.slice(1, -1); // "APTUR"
                 
-                // Fixed, small delay for simultaneous emergence (per user request)
+                // Fixed, small delay for simultaneous emergence
                 const EMERGE_DELAY = 10; 
 
                 // 4. Final positioning of R(0)
@@ -281,7 +339,7 @@
                 initialR.style.animationDelay = `${EMERGE_DELAY}ms`; 
 
                 // Insert and animate the new letters (A P T U R) simultaneously
-                newLetters.split('').forEach((char, index) => {
+                newLetters.split('').forEach((char) => {
                     const span = document.createElement('span');
                     span.textContent = char;
                     span.className = 'inline-block transition-transform relative font-black raptor-gradient-color';
@@ -301,70 +359,58 @@
         }
 
 
-        // --- CONFIGURATION: ADD YOUR GAMES HERE ---
-        // Instructions:
-        // 1. Copy the block between { ... },
-        // 2. Paste it at the end of the list (before the closing '];')
-        // 3. Change the details. 
-        // 4. 'styleClass' options: bg-pattern-1 (Red), bg-pattern-2 (Blue), bg-pattern-3 (Yellow), 
-        //    bg-pattern-4 (Purple), bg-pattern-5 (Pink), bg-pattern-6 (Teal)
-        
+        // --- CONFIGURATION: ADD YOUR GAMES HERE (UNCHANGED) ---
         const games = [
             {
                 title: "Space Defender",
-                description: "Defend the galaxy from alien invaders.",
+                description: "Defend the galaxy from alien invaders and save humanity from the void.",
                 url: "./games/space-defender/index.html", // Path to your file
                 icon: "rocket", // See Lucide icons for names
                 styleClass: "bg-pattern-2"
             },
             {
                 title: "Dungeon Crawler",
-                description: "Explore the deep dark depths.",
+                description: "Explore the deep dark depths of the ancient ruins seeking legendary artifacts.",
                 url: "file:///C:/MyGames/dungeon/game.html",
                 icon: "skull",
                 styleClass: "bg-pattern-1"
             },
             {
                 title: "Super Pong",
-                description: "A classic reborn with neon physics.",
+                description: "A classic reborn with neon physics and challenging AI opponents.",
                 url: "./pong.html",
                 icon: "circle",
                 styleClass: "bg-pattern-6"
             },
             {
                 title: "Raptor Run",
-                description: "Escape the extinction event!",
+                description: "Escape the extinction event! Jump over obstacles and run for your life.",
                 url: "./raptor-run.html",
                 icon: "footprints",
                 styleClass: "bg-pattern-3"
             },
             {
                 title: "Chess AI",
-                description: "Can you beat the machine?",
+                description: "Can you beat the machine? Test your strategy against a neural network.",
                 url: "./chess/index.html",
                 icon: "crown",
                 styleClass: "bg-pattern-4"
             },
             {
                 title: "Mystery Project",
-                description: "Top secret prototype.",
+                description: "Top secret prototype: a new dimension of interactive fiction.",
                 url: "#",
                 icon: "code",
                 styleClass: "bg-pattern-5"
             }
         ];
 
-        // --- RENDER LOGIC ---
+        // --- RENDER LOGIC (UPDATED CARD TEMPLATE) ---
 
         const grid = document.getElementById('gamesGrid');
         const searchInput = document.getElementById('searchInput');
         const clearBtn = document.getElementById('clearBtn');
         const noResults = document.getElementById('noResults');
-
-        // Function to create icons dynamically
-        function createIcon(iconName) {
-            return `<i data-lucide="${iconName}" class="w-12 h-12 text-white/90 drop-shadow-md"></i>`;
-        }
 
         function renderGames(filterText = "") {
             grid.innerHTML = "";
@@ -373,41 +419,75 @@
             const lowerFilter = filterText.toLowerCase();
 
             games.forEach(game => {
+                // Helper to get a short, 7-word description
+                const shortDescription = game.description.split(' ').slice(0, 7).join(' ');
+
                 // Search logic: check title or description
                 if (game.title.toLowerCase().includes(lowerFilter) || 
                     game.description.toLowerCase().includes(lowerFilter)) {
                     
                     count++;
                     
+                    // Create the main link element (card)
                     const card = document.createElement('a');
                     card.href = game.url;
-                    // Open in new tab? Uncomment next line:
-                    // card.target = "_blank"; 
                     card.className = `game-card block rounded-xl h-48 relative cursor-pointer no-underline group ${game.styleClass}`;
+                    card.setAttribute('data-url', game.url); // Store URL for button click handling
                     
-                    card.innerHTML = `
-                        <!-- Background Overlay -->
-                        <div class="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition duration-300"></div>
-                        
-                        <!-- Content -->
-                        <div class="relative z-10 h-full flex flex-col justify-between p-5">
-                            <div class="self-start p-2 bg-black/20 rounded-lg backdrop-blur-sm group-hover:bg-white/20 transition">
-                                ${createIcon(game.icon)}
-                            </div>
-                            <div>
-                                <h3 class="text-2xl font-bold text-white mb-1 drop-shadow-sm tracking-tight">${game.title}</h3>
-                                <p class="text-white/80 text-sm leading-tight line-clamp-2 font-medium">${game.description}</p>
-                            </div>
-                        </div>
+                    const buttonId = `playBtn-${game.title.replace(/\s/g, '-')}-${count}`;
 
-                        <!-- Hover "Play" Indicator -->
-                        <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-300 bg-black/40 backdrop-blur-[2px]">
-                            <span class="bg-green-500 text-white px-6 py-2 rounded-full font-bold shadow-lg transform scale-90 group-hover:scale-100 transition">
-                                PLAY
-                            </span>
+                    card.innerHTML = `
+                        <!-- Content Wrapper, flex-col to stack top/bottom sections -->
+                        <div class="relative z-10 h-full flex flex-col justify-between p-5">
+                            
+                            <!-- TOP SECTION (Icon and Short Description Pop-up) -->
+                            <!-- Structure: (Icon) (Pop-up Description) -->
+                            <div class="flex items-start relative mb-4">
+                                <!-- Icon Area -->
+                                <div class="p-3 bg-black/10 rounded-xl backdrop-blur-sm border border-white/20 shadow-xl transform group-hover:scale-[1.1] transition duration-300 z-10 flex-shrink-0">
+                                    <i data-lucide="${game.icon}" class="w-8 h-8 text-white"></i>
+                                </div>
+                                
+                                <!-- Description Pop-up (Visible only on Card Hover, positioned beside icon, above title) -->
+                                <div class="game-description-popup">
+                                    <p class="text-white/90 text-sm font-medium">${shortDescription}</p>
+                                </div>
+                            </div>
+
+                            <!-- BOTTOM SECTION (Title and Button) -->
+                            <div>
+                                <!-- Title: Positioned above the button -->
+                                <h3 class="text-xl font-extrabold text-white tracking-wider mb-4">${game.title}</h3>
+                                
+                                <!-- Engage Button: Static, always visible at the bottom, covers full width -->
+                                <button id="${buttonId}" 
+                                    class="w-full flex items-center justify-center gap-2 bg-green-500 text-white px-4 py-3 rounded-full font-bold shadow-2xl shadow-green-700/50 transition duration-300 hover:bg-green-400">
+                                    <i data-lucide="play" class="w-5 h-5 fill-white play-icon-roll transition-transform"></i>
+                                    <span>ENGAGE</span>
+                                </button>
+                            </div>
                         </div>
                     `;
+                    
                     grid.appendChild(card);
+                    
+                    // --- Attach Click Listener for Play Icon Jump Animation ---
+                    const playButton = card.querySelector(`#${buttonId}`);
+                    const playIcon = playButton.querySelector('.play-icon-roll');
+
+                    playButton.addEventListener('click', (e) => {
+                        e.preventDefault(); // Stop the link from navigating immediately
+                        
+                        // Apply the new jump animation to the icon for 1 second
+                        playIcon.style.animation = 'iconJumpAndReturn 1s ease-in-out forwards';
+                        
+                        // After the animation finishes (1s), perform the navigation
+                        setTimeout(() => {
+                            // Clear animation style (so hover works again) and navigate
+                            playIcon.style.animation = ''; 
+                            window.location.href = game.url;
+                        }, 1000); // Wait for the 1000ms animation duration
+                    });
                 }
             });
 
