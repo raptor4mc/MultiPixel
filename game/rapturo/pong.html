@@ -64,6 +64,65 @@
             transform: scale(1.05);
         }
 
+        /* --- Title Animation Styles --- */
+        #game-title-wrapper {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 1.5em; /* Allocate space for the animation */
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin: 0;
+            padding: 0;
+        }
+
+        .title-part {
+            position: absolute;
+            transition: opacity 0.3s;
+        }
+
+        /* The final PING PONG text reveal */
+        #title-ping-pong {
+            color: var(--ball-color);
+            text-shadow: 0 0 10px var(--ball-color);
+            opacity: 0; /* Start hidden */
+            animation: 
+                morph-in 2.5s forwards 0.5s, /* Stage 1: Reveal and grow */
+                pulse-title 1s infinite alternate 3s; /* Stage 2: Final pulse effect */
+        }
+
+        /* The initial RelimiNtor text implosion */
+        #title-initial {
+            color: #EB3B5A; /* AI color for the initial chaotic word */
+            text-shadow: 0 0 15px #EB3B5A;
+            animation: 
+                chaos-and-implode 1.5s forwards;
+        }
+
+        /* --- Keyframe Animations --- */
+
+        /* 1. Chaos and Implosion (RelimiNtor) */
+        @keyframes chaos-and-implode {
+            0% { opacity: 1; transform: scale(1); filter: blur(0); }
+            50% { opacity: 1; transform: scale(1.2) rotate(5deg); filter: blur(2px); }
+            90% { opacity: 0.5; transform: scale(0.1) rotate(0deg); filter: blur(8px); }
+            100% { opacity: 0; transform: scale(0); visibility: hidden; }
+        }
+
+        /* 2. Morph In (PING PONG) - Simulates the letters flying out */
+        @keyframes morph-in {
+            0% { transform: scale(0.1) translateY(10px); opacity: 0; letter-spacing: 1em; }
+            50% { transform: scale(1.5) translateY(-5px); opacity: 1; letter-spacing: 0.5em; }
+            100% { transform: scale(1.0) translateY(0); opacity: 1; letter-spacing: 0em; }
+        }
+
+        /* 3. Final Pulse (PING PONG) */
+        @keyframes pulse-title {
+            from { text-shadow: 0 0 10px var(--ball-color), 0 0 20px rgba(255, 195, 18, 0.5); }
+            to { text-shadow: 0 0 5px var(--ball-color), 0 0 40px rgba(255, 195, 18, 0.8); }
+        }
+
         /* --- Game Court Styling --- */
         .court {
             width: 100%;
@@ -201,6 +260,9 @@
             .message-box p {
                 font-size: 1rem;
             }
+            #game-title-wrapper {
+                font-size: 2rem;
+            }
         }
     </style>
 </head>
@@ -209,7 +271,13 @@
     <div class="container">
         <div class="header">
             <span class="score">You: <span id="player-score">0</span></span>
-            <h1>PONG</h1>
+            
+            <!-- Custom wrapper for the morphing title animation -->
+            <div id="game-title-wrapper">
+                <span id="title-initial" class="title-part">RelimiNtor</span>
+                <span id="title-ping-pong" class="title-part">PING PONG</span>
+            </div>
+
             <span class="score">AI: <span id="ai-score">0</span></span>
         </div>
 
