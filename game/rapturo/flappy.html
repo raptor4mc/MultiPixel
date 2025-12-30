@@ -15,11 +15,11 @@
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            padding: 1rem;
+            padding: 0.5rem; /* Reduced padding on body */
         }
         #game-container {
             width: 100%;
-            max-width: 600px;
+            max-width: 500px;
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
             border-radius: 1rem;
             overflow: hidden;
@@ -29,11 +29,11 @@
             display: block;
             width: 100%;
             background-color: #79ac78; /* A nice jungle green */
-            border-bottom: 6px solid #3c6255; /* Reduced border size */
+            border-bottom: 6px solid #3c6255;
             cursor: pointer;
         }
         .ui-panel {
-            padding: 1rem;
+            padding: 0.75rem 1rem; /* Reduced vertical padding */
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -44,7 +44,7 @@
             text-align: center;
             padding: 0.5rem 1rem;
             font-size: 2.5rem;
-            height: 3.5rem; 
+            height: 3rem; /* Reduced height */
             display: flex;
             justify-content: center;
             align-items: center;
@@ -272,33 +272,54 @@
             return span;
         });
 
-        // Temporarily set position to get required final metrics
+        // Temporarily set position to get required static metrics
         titleContainer.style.position = 'static';
         finalLetters.forEach(span => { span.style.position = 'static'; span.style.opacity = 1; });
 
         // Introduce a small vertical adjustment to fine-tune the visual center of the text block.
         const VERTICAL_ADJUSTMENT = -3; 
         
-        // Calculate final positions (Used as anchors)
-        const finalPositions = finalLetters.map(span => ({
+        // Calculate static render positions (Relative to container's left edge)
+        const initialRenderPositions = finalLetters.map(span => ({
             x: span.offsetLeft,
             y: span.offsetTop + VERTICAL_ADJUSTMENT // Apply vertical adjustment
         }));
 
+        // --- 1.1 Calculate Centering Offset ---
+        const containerWidth = titleContainer.clientWidth;
+        const firstLetterX = finalLetters[0].offsetLeft;
+        const lastLetter = finalLetters[finalLetters.length - 1];
+        
+        // Calculate the total width of the text block as statically rendered
+        const textWidth = lastLetter.offsetLeft + lastLetter.offsetWidth - firstLetterX;
+        
+        // Calculate the shift needed to move the block's start from its current left position (`firstLetterX`) 
+        // to the calculated center-aligned starting point `(containerWidth - textWidth) / 2`
+        const centerStart = (containerWidth - textWidth) / 2;
+        const offsetX = centerStart - firstLetterX;
+
+
+        // --- 1.2 Create Centered Final Positions ---
+        const centeredFinalPositions = initialRenderPositions.map(pos => ({
+            x: pos.x + offsetX,
+            y: pos.y
+        }));
+        
         // Reset for animation: Clear and set absolute positioning
         titleContainer.style.position = 'relative';
         finalLetters.forEach(span => { span.style.position = 'absolute'; span.style.opacity = 0; span.style.transition = 'none'; });
         titleContainer.innerHTML = '';
         finalLetters.forEach(span => titleContainer.appendChild(span));
         
+        // Define anchors using centered positions
         const L_ANCHOR_INDEX = 1; // L in FLAPPY
         const R_ANCHOR_INDEX = 7; // R in RAPTOR
-        const anchorLPos = finalPositions[L_ANCHOR_INDEX];
-        const anchorRPos = finalPositions[R_ANCHOR_INDEX];
+        const anchorLPos = centeredFinalPositions[L_ANCHOR_INDEX];
+        const anchorRPos = centeredFinalPositions[R_ANCHOR_INDEX];
 
         // Set final absolute positions for FLAPPY RAPTOR letters
-        finalLetters.forEach((span, index) => {
-            const finalPos = finalPositions[index];
+        centeredFinalPositions.forEach((finalPos, index) => {
+            const span = finalLetters[index];
             span.style.left = `${finalPos.x}px`;
             span.style.top = `${finalPos.y}px`;
         });
@@ -312,7 +333,7 @@
             
             // Map 10 letters of ReLimintor roughly across the 13 positions
             const mapIndex = [0, 2, 4, 5, 6, 8, 9, 10, 11, 12][index];
-            const initialPos = finalPositions[mapIndex] || finalPositions[0]; // Fallback position
+            const initialPos = centeredFinalPositions[mapIndex] || centeredFinalPositions[0]; // Fallback position
             
             span.style.left = `${initialPos.x}px`;
             span.style.top = `${initialPos.y}px`;
@@ -378,7 +399,7 @@
         // PHASE 3: Assembly (Letters fly out from Anchors) (1000ms)
         
         // F (index 0) - Flies out from L (index 1) to the left
-        const F_FinalPos = finalPositions[0];
+        const F_FinalPos = centeredFinalPositions[0];
         setTimeout(() => {
             finalLetters[0].style.transform = `translate(${anchorLPos.x - F_FinalPos.x}px, 0)`; // Start F at L
             finalLetters[0].style.opacity = 1;
@@ -389,7 +410,7 @@
 
         // APPY (indices 2, 3, 4, 5) - Staggered flight right from L
         [2, 3, 4, 5].forEach((index, i) => {
-            const finalPos = finalPositions[index];
+            const finalPos = centeredFinalPositions[index];
             setTimeout(() => {
                 const span = finalLetters[index];
                 span.style.transform = `translate(${anchorLPos.x - finalPos.x}px, 0)`; // Start at L
@@ -402,7 +423,7 @@
 
         // RAPTOR (indices 8, 9, 10, 11, 12) - Staggered flight right from R
         [8, 9, 10, 11, 12].forEach((index, i) => {
-            const finalPos = finalPositions[index];
+            const finalPos = centeredFinalPositions[index];
             setTimeout(() => {
                 const span = finalLetters[index];
                 span.style.transform = `translate(${anchorRPos.x - finalPos.x}px, 0)`; // Start at R
@@ -431,21 +452,21 @@
 
     let animationFrameId;
     let gameSpeed = 3;
-    let pipeGap = 120; // Reduced gap for a more compact game
-    let pipeWidth = 45; // Slightly thinner pipes
-    let pipeInterval = 1500; // milliseconds
+    let pipeGap = 120;
+    let pipeWidth = 45;
+    let pipeInterval = 1500;
     let lastPipeTime = 0;
 
     let raptor = {
-        x: 60, // Starting closer to the left
-        y: 150,
-        size: 20, // Reduced size
-        gravity: 0.35, // Adjusted gravity
+        x: 60,
+        y: 125, // Updated for 250px height
+        size: 20,
+        gravity: 0.3, // Slightly reduced gravity
         velocity: 0,
-        lift: -7, // Adjusted lift
+        lift: -6.5, // Slightly reduced lift
         isFlapping: false,
-        flapFrame: 0, // 0: wings down, 1: wings up
-        flapSpeed: 5 // Switch frame every 5 frames
+        flapFrame: 0,
+        flapSpeed: 5
     };
     
     // Raptor body/collision size for checkCollision()
@@ -462,8 +483,8 @@
 
     // --- CANVAS RESIZING ---
     function resizeCanvas() {
-        // Maintain a reasonable aspect ratio (e.g., 600x300 - more compact)
-        canvas.height = 300;
+        // Reduced canvas height for a more compact game
+        canvas.height = 250; 
         // The width is handled by CSS to be 100% of the container
     }
     window.addEventListener('resize', resizeCanvas);
