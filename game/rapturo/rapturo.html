@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relimintor - Game Portal</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Custom Animations and Base Styles */
+        body {
+            background-color: #0f172a; /* Dark slate background */
+            color: #e2e8f0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* Base floating animation for the entire title area */
+        @keyframes floatUp {
+            0% { opacity: 0; transform: translateY(20px) scale(0.95); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        
+        /* Keyframes for text transformation effect (devouring) */
+        @keyframes vanish-to-r {
+            0% { opacity: 1; transform: scale(1) translate(0, 0); }
+            /* Target moves left towards the center of the first 'R' */
+            100% { opacity: 0; transform: scale(0.1) translateX(-80px); } 
+        }
+
+        @keyframes vanish-to-o {
+            0% { opacity: 1; transform: scale(1) translate(0, 0); }
+            /* Target moves left towards the center of the 'O' */
+            100% { opacity: 0; transform: scale(0.1) translateX(-10px); }
+        }
+
+        /* Keyframes for text transformation effect (emergence) */
+        @keyframes emerge {
+            0% { opacity: 0; transform: scale(0.1) translateY(20px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        /* The Gradient Color (applied by JS to individual spans) */
+        .raptor-gradient-color {
+            background: linear-gradient(to right, #4ade80, #22c55e);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Container styling for the animated text */
+        .animated-title-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: nowrap;
+            overflow: hidden; 
+            min-height: 80px; /* Ensure space for the animation */
+            animation: floatUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        
+        /* The initial 'R' and 'O' need to be relatively positioned during transition 
+           to prevent reflow while other letters vanish. */
+        .initial-r, .initial-o {
+            position: relative;
+        }
+
+
+        /* Search Bar Glow */
+        .search-container:focus-within {
+            box-shadow: 0 0 20px rgba(74, 222, 128, 0.3);
+            border-color: #4ade80;
+        }
+
+        /* Card Hover Effects (Disney style zoom) */
+        .game-card {
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .game-card:hover {
+            transform: scale(1.05);
+            border-color: #4ade80;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            z-index: 10;
+        }
+
+        /* Dynamic Background Patterns for Cards */
+        .bg-pattern-1 { background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%); }
+        .bg-pattern-2 { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); }
+        .bg-pattern-3 { background: linear-gradient(135deg, #eab308 0%, #a16207 100%); }
+        .bg-pattern-4 { background: linear-gradient(135deg, #a855f7 0%, #7e22ce 100%); }
+        .bg-pattern-5 { background: linear-gradient(135deg, #ec4899 0%, #be185d 100%); }
+        .bg-pattern-6 { background: linear-gradient(135deg, #14b8a6 0%, #0f766e 100%); }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4ade80;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center">
+
+    <!-- Navbar -->
+    <nav class="w-full p-6 flex justify-between items-center z-20">
+        <div class="flex items-center gap-2 cursor-pointer select-none">
+            <!-- Raptor Icon -->
+            <i data-lucide="dino" class="w-8 h-8 text-green-400"></i>
+            <h1 class="text-2xl font-bold tracking-tighter uppercase">Relimintor</h1>
+        </div>
+        <div class="text-sm text-slate-400 hover:text-white cursor-pointer transition">
+            My Library
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 w-full max-w-6xl px-4 flex flex-col items-center mt-10 mb-20">
+        
+        <!-- Logo & Search Section (Google Style) -->
+        <div class="flex flex-col items-center w-full max-w-2xl mb-16 text-center">
+            <div class="mb-8">
+                <i data-lucide="ghost" class="w-20 h-20 text-green-500 mx-auto mb-4 animate-bounce"></i>
+                <!-- Animated Title Container: Starts with Relimintor, transforms to Rapturo -->
+                <h1 id="animatedTitle" class="text-5xl md:text-6xl animated-title-container font-black mb-2"></h1>
+                <p class="text-slate-400">Teleport to your creations</p>
+            </div>
+
+            <!-- Search Input -->
+            <div class="search-container w-full relative group transition-all duration-300 rounded-full bg-slate-800/50 border border-slate-700 backdrop-blur-sm">
+                <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5"></i>
+                <input 
+                    type="text" 
+                    id="searchInput"
+                    placeholder="Search your games..." 
+                    class="w-full bg-transparent text-white px-12 py-4 rounded-full outline-none placeholder:text-slate-500 text-lg"
+                    autocomplete="off"
+                >
+                <!-- Clear Button -->
+                <button id="clearBtn" class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white hidden">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Games Grid (Disney+ Style) -->
+        <div class="w-full">
+            <h2 class="text-xl font-semibold mb-6 text-slate-200 flex items-center gap-2">
+                <i data-lucide="gamepad-2" class="w-5 h-5 text-green-400"></i>
+                Ready to Play
+            </h2>
+            
+            <div id="gamesGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                <!-- Game cards will be injected here by JavaScript -->
+            </div>
+
+            <!-- No Results Message -->
+            <div id="noResults" class="hidden w-full text-center py-20">
+                <i data-lucide="frown" class="w-16 h-16 text-slate-600 mx-auto mb-4"></i>
+                <h3 class="text-xl text-slate-400">No games found in this sector.</h3>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="w-full py-6 text-center text-slate-600 text-sm border-t border-slate-800/50">
+        <p>&copy; 2024 Relimintor Systems. Keep coding.</p>
+    </footer>
+
+    <!-- LOGIC -->
+    <script>
+        // --- TEXT ANIMATION LOGIC ---
+        const initialText = "RELIMINTOR"; // 10 letters
+        const targetText = "RAPTURO";    // 7 letters
+        const titleH1 = document.getElementById('animatedTitle');
+
+        function setupAnimation() {
+            titleH1.innerHTML = '';
+            
+            // 1. Inject initial text (RELIMINTOR) as spans
+            initialText.split('').forEach((char, index) => {
+                const span = document.createElement('span');
+                span.textContent = char;
+                span.className = 'inline-block transition-transform text-white/80';
+                
+                // Identify the R (index 0) and O (index 8) to be kept
+                if (index === 0) { 
+                    span.classList.add('initial-r');
+                } else if (index === 8) {
+                    span.classList.add('initial-o');
+                } else {
+                    span.classList.add('raptor-gradient-color');
+                }
+
+                titleH1.appendChild(span);
+            });
+
+            // 2. Start transformation after a short delay
+            setTimeout(transformText, 1000);
+        }
+
+        function transformText() {
+            const initialSpans = titleH1.querySelectorAll('span');
+            
+            // Get references to the persistent spans
+            const initialR = titleH1.querySelector('.initial-r');
+            const initialO = titleH1.querySelector('.initial-o');
+
+            // --- SMOOTH SLIDE COMPENSATION ---
+            // Adjusted R_SHIFT_PX to 50px to make the 'R' stop sliding earlier (per request).
+            const R_SHIFT_PX = '50px'; // Less aggressive slide to the right
+            const O_SHIFT_PX = '-15px'; // Less aggressive slide to the left
+            const SLIDE_DURATION = '1600ms'; // Long duration to cover the devour phase
+
+            setTimeout(() => {
+                // R(0): Needs to move right to accommodate the 5 new letters 'APTUR'
+                initialR.style.transition = `transform ${SLIDE_DURATION} cubic-bezier(0.4, 0, 0.2, 1)`;
+                initialR.style.transform = `translateX(${R_SHIFT_PX})`; 
+
+                // O(8): Needs to move left as the entire word shrinks
+                initialO.style.transition = `transform ${SLIDE_DURATION} cubic-bezier(0.4, 0, 0.2, 1)`; 
+                initialO.style.transform = `translateX(${O_SHIFT_PX})`; 
+            }, 100);
+
+            // Phase A: Devour (E L I M I N T R)
+            initialSpans.forEach((span, index) => {
+                const delay = (index - 1) * 70;
+
+                if (index === 0 || index === 8) {
+                    // R(0) and O(8) are handled by the transition above, they don't vanish.
+                } else if (index === 9) {
+                    // R(9) vanishes into O(8)
+                    span.style.animation = `vanish-to-o 0.5s ease-in forwards`;
+                    span.style.animationDelay = `500ms`; 
+                } else { 
+                    // E L I M I N T (indices 1-7) vanish into R(0)
+                    span.style.animation = `vanish-to-r 0.5s ease-in forwards`;
+                    span.style.animationDelay = `${delay}ms`;
+                }
+            });
+
+            // Phase B: Emerge Rapturo (R A P T U R O)
+            setTimeout(() => {
+                
+                // 1. Clean up and remove vanished spans (indices 1,2,3,4,5,6,7,9)
+                initialSpans.forEach((span, index) => {
+                    if (index !== 0 && index !== 8) {
+                        span.remove();
+                    }
+                });
+                
+                // 2. INSTANTLY reset the manual transform and transition to allow reflow.
+                initialR.style.transition = 'none'; 
+                initialR.style.transform = 'none'; 
+                initialO.style.transition = 'none'; 
+                initialO.style.transform = 'none'; 
+
+                // 3. Inject new letters A P T U R
+                const newLetters = targetText.slice(1, -1); // "APTUR"
+                
+                // Fixed, small delay for simultaneous emergence (per user request)
+                const EMERGE_DELAY = 10; 
+
+                // 4. Final positioning of R(0)
+                initialR.classList.remove('text-white/80');
+                initialR.classList.add('text-white'); 
+                initialR.style.animation = `emerge 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards`;
+                initialR.style.animationDelay = `${EMERGE_DELAY}ms`; 
+
+                // Insert and animate the new letters (A P T U R) simultaneously
+                newLetters.split('').forEach((char, index) => {
+                    const span = document.createElement('span');
+                    span.textContent = char;
+                    span.className = 'inline-block transition-transform relative font-black raptor-gradient-color';
+                    span.style.animation = `emerge 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards`;
+                    span.style.animationDelay = `${EMERGE_DELAY}ms`; // Same delay for all
+                    
+                    titleH1.insertBefore(span, initialO);
+                });
+
+                // 5. Final positioning of O(8)
+                initialO.classList.remove('text-white/80');
+                initialO.classList.add('text-white'); 
+                initialO.style.animation = `emerge 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards`;
+                initialO.style.animationDelay = `${EMERGE_DELAY}ms`; // Same delay for all
+
+            }, 1800); // Wait for the devour animations and slides to complete
+        }
+
+
+        // --- CONFIGURATION: ADD YOUR GAMES HERE ---
+        // Instructions:
+        // 1. Copy the block between { ... },
+        // 2. Paste it at the end of the list (before the closing '];')
+        // 3. Change the details. 
+        // 4. 'styleClass' options: bg-pattern-1 (Red), bg-pattern-2 (Blue), bg-pattern-3 (Yellow), 
+        //    bg-pattern-4 (Purple), bg-pattern-5 (Pink), bg-pattern-6 (Teal)
+        
+        const games = [
+            {
+                title: "Space Defender",
+                description: "Defend the galaxy from alien invaders.",
+                url: "./games/space-defender/index.html", // Path to your file
+                icon: "rocket", // See Lucide icons for names
+                styleClass: "bg-pattern-2"
+            },
+            {
+                title: "Dungeon Crawler",
+                description: "Explore the deep dark depths.",
+                url: "file:///C:/MyGames/dungeon/game.html",
+                icon: "skull",
+                styleClass: "bg-pattern-1"
+            },
+            {
+                title: "Super Pong",
+                description: "A classic reborn with neon physics.",
+                url: "./pong.html",
+                icon: "circle",
+                styleClass: "bg-pattern-6"
+            },
+            {
+                title: "Raptor Run",
+                description: "Escape the extinction event!",
+                url: "./raptor-run.html",
+                icon: "footprints",
+                styleClass: "bg-pattern-3"
+            },
+            {
+                title: "Chess AI",
+                description: "Can you beat the machine?",
+                url: "./chess/index.html",
+                icon: "crown",
+                styleClass: "bg-pattern-4"
+            },
+            {
+                title: "Mystery Project",
+                description: "Top secret prototype.",
+                url: "#",
+                icon: "code",
+                styleClass: "bg-pattern-5"
+            }
+        ];
+
+        // --- RENDER LOGIC ---
+
+        const grid = document.getElementById('gamesGrid');
+        const searchInput = document.getElementById('searchInput');
+        const clearBtn = document.getElementById('clearBtn');
+        const noResults = document.getElementById('noResults');
+
+        // Function to create icons dynamically
+        function createIcon(iconName) {
+            return `<i data-lucide="${iconName}" class="w-12 h-12 text-white/90 drop-shadow-md"></i>`;
+        }
+
+        function renderGames(filterText = "") {
+            grid.innerHTML = "";
+            let count = 0;
+
+            const lowerFilter = filterText.toLowerCase();
+
+            games.forEach(game => {
+                // Search logic: check title or description
+                if (game.title.toLowerCase().includes(lowerFilter) || 
+                    game.description.toLowerCase().includes(lowerFilter)) {
+                    
+                    count++;
+                    
+                    const card = document.createElement('a');
+                    card.href = game.url;
+                    // Open in new tab? Uncomment next line:
+                    // card.target = "_blank"; 
+                    card.className = `game-card block rounded-xl h-48 relative cursor-pointer no-underline group ${game.styleClass}`;
+                    
+                    card.innerHTML = `
+                        <!-- Background Overlay -->
+                        <div class="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition duration-300"></div>
+                        
+                        <!-- Content -->
+                        <div class="relative z-10 h-full flex flex-col justify-between p-5">
+                            <div class="self-start p-2 bg-black/20 rounded-lg backdrop-blur-sm group-hover:bg-white/20 transition">
+                                ${createIcon(game.icon)}
+                            </div>
+                            <div>
+                                <h3 class="text-2xl font-bold text-white mb-1 drop-shadow-sm tracking-tight">${game.title}</h3>
+                                <p class="text-white/80 text-sm leading-tight line-clamp-2 font-medium">${game.description}</p>
+                            </div>
+                        </div>
+
+                        <!-- Hover "Play" Indicator -->
+                        <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-300 bg-black/40 backdrop-blur-[2px]">
+                            <span class="bg-green-500 text-white px-6 py-2 rounded-full font-bold shadow-lg transform scale-90 group-hover:scale-100 transition">
+                                PLAY
+                            </span>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                }
+            });
+
+            // Handle No Results
+            if (count === 0) {
+                noResults.classList.remove('hidden');
+            } else {
+                noResults.classList.add('hidden');
+            }
+
+            // Re-initialize icons for the new elements
+            lucide.createIcons();
+        }
+
+        // --- EVENT LISTENERS ---
+
+        searchInput.addEventListener('input', (e) => {
+            const val = e.target.value;
+            renderGames(val);
+            if (val.length > 0) clearBtn.classList.remove('hidden');
+            else clearBtn.classList.add('hidden');
+        });
+
+        clearBtn.addEventListener('click', () => {
+            searchInput.value = "";
+            renderGames();
+            clearBtn.classList.add('hidden');
+            searchInput.focus();
+        });
+
+        // Initial Calls
+        // Run the logo animation setup
+        setupAnimation();
+        // Render the game grid after a small delay
+        setTimeout(renderGames, 500); 
+        // Create icons for static elements initially
+        lucide.createIcons();
+
+    </script>
+</body>
+</html>
