@@ -1,6 +1,4 @@
-// game/singleplayer/singleplayer.js
-
-// --- CORE VOXEL CONFIGURATION ---
+§§// --- CORE VOXEL CONFIGURATION ---
 export const CHUNK_SIZE = 16;
 export const CHUNK_HEIGHT = 64;
 export const WORLD_RADIUS = 3;
@@ -14,35 +12,44 @@ export const PLAYER_RADIUS = 0.3;
 
 // Block types and colors
 export const blockMaterials = {
-    1: { color: 0x4CAF50, name: "Grass", roughness: 0.9, metalness: 0.1, id: 1 },
-    2: { color: 0x654321, name: "Dirt", roughness: 0.9, metalness: 0.0, id: 2 },
-    3: { color: 0x666666, name: "Stone", roughness: 0.8, metalness: 0.0, id: 3 },
-    4: { color: 0x1976D2, name: "Water", roughness: 0.5, metalness: 0.1, transparent: true, opacity: 0.7, id: 4 }
+    1: { color: 0x4CAF50, name: 'Grass', roughness: 0.9, metalness: 0.1, id: 1 },
+    2: { color: 0x654321, name: 'Dirt', roughness: 0.9, metalness: 0.0, id: 2 },
+    3: { color: 0x666666, name: 'Stone', roughness: 0.8, metalness: 0.0, id: 3 },
+    4: { color: 0x1976D2, name: 'Water', roughness: 0.5, metalness: 0.1, transparent: true, opacity: 0.7, id: 4 }
 };
 
 export const BLOCK_TYPE_IDS = Object.values(blockMaterials).map(m => m.id);
 
-// --- THREE.JS GLOBALS ---
+// Initialize Three.js components
 export let scene, camera, renderer, simplex, raycaster;
-export let yawObject, pitchObject;
+export const chunks = new Map();
+export const worldGroup = new THREE.Group();
 
-import { worldGroup, generateWorld } from "./world/world.js";
+export let yawObject;
+export let pitchObject;
+
 import {
     setupPointerLockControls,
     setupKeyboardControls,
     setupBlockInteraction,
-    updatePlayerMovement
-} from "./player/player.js";
+    updatePlayerMovement,
+    updateBlockSelectorUI
+} from "./player.js";
 
-/**
- * Initializes the 3D environment and procedural noise generator.
- */
+import { generateWorld } from "./world.js";
+
 function init() {
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x87ceeb);
     scene.fog = new THREE.Fog(0x87ceeb, 10, 100);
 
-    simplex = new SimplexNoise();
+    if (typeof SimplexNoise !== 'undefined') {
+        simplex = new SimplexNoise();
+    } else {
+        console.error("SimplexNoise library failed to load.");
+        return;
+    }
+
     raycaster = new THREE.Raycaster();
 
     camera = new THREE.PerspectiveCamera(
@@ -58,8 +65,9 @@ function init() {
 
     pitchObject.add(camera);
     yawObject.add(pitchObject);
-    yawObject.position.set(0, SEA_LEVEL * BLOCK_SIZE + 0.001, 0);
     scene.add(yawObject);
+
+    yawObject.position.set(0, SEA_LEVEL * BLOCK_SIZE + 0.001, 0);
 
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -75,19 +83,19 @@ function init() {
 
     scene.add(worldGroup);
 
-    setupPointerLockControls(renderer);
+    setupPointerLockControls();
     setupKeyboardControls();
-    setupBlockInteraction(raycaster, camera);
+    setupBlockInteraction();
 
     generateWorld();
+    updateBlockSelectorUI();
 
-    window.addEventListener("resize", onWindowResize);
-    document.addEventListener("contextmenu", e => e.preventDefault());
+    window.addEventListener('resize', onWindowResize);
+    document.addEventListener('contextmenu', e => e.preventDefault());
 
     animate();
 }
 
-// --- Game Loop ---
 function animate() {
     requestAnimationFrame(animate);
     updatePlayerMovement();
@@ -101,3 +109,4 @@ function onWindowResize() {
 }
 
 window.onload = init;
+    
