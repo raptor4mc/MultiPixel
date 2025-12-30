@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fossil Dig Clicker - Dark Mode</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* =======================================
+           CUSTOM STYLES & LAYOUT (DARK MODE)
+           ======================================= */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a; /* Slate 900 */
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding-top: 20px;
+            padding-bottom: 80px; /* Space for fixed bottom menu */
+        }
+
+        /* Base container for a central, fixed-width game */
+        .game-container {
+            max-width: 900px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            background-color: #1e293b; /* Slate 800 */
+            color: #f1f5f9; /* Light text */
+            min-height: calc(100vh - 100px);
+            border-radius: 16px;
+        }
+
+        /* =======================================
+           HEADER AND STATS
+           ======================================= */
+        .header-panel {
+            background-color: #334155; /* Slate 700 */
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
+        }
+        
+        .stat-counter-box {
+            background-color: #1e293b; /* Slate 800 */
+            border-color: #475569; /* Slate 600 */
+        }
+
+        /* =======================================
+           CLICKER STYLES & ANIMATION
+           ======================================= */
+           
+        #fossil-clicker {
+            transition: transform 0.1s ease-out, box-shadow 0.1s ease-out;
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            max-width: 300px;
+            height: 300px;
+            margin: 0 auto;
+            background-color: #3f3f46; /* Zinc 700 */
+            border: 8px solid #52525b; /* Zinc 600 */
+            box-shadow: 0 10px #27272a; /* Zinc 800 */
+            /* Added large text size for the emoji */
+        }
+
+        #fossil-clicker:hover {
+            background-color: #52525b;
+        }
+
+        #fossil-clicker:active {
+            animation: click-wiggle 0.2s ease-out;
+            box-shadow: 0 5px #27272a;
+        }
+
+        @keyframes click-wiggle {
+            0% { transform: scale(1) translateY(0); }
+            50% { transform: scale(1.05) rotate(1deg); }
+            100% { transform: scale(1) rotate(0deg); }
+        }
+
+        /* Large number particle pop-up */
+        .click-particle {
+            position: absolute;
+            color: #facc15; /* Yellow 400 */
+            font-weight: 700;
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: none;
+            animation: floatup 1s forwards;
+            z-index: 10;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+
+        @keyframes floatup {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-70px) scale(0.8); opacity: 0; }
+        }
+
+        /* Mini fossil particles */
+        .mini-fossil-particle {
+            position: absolute;
+            color: #e5e5e5; /* Gray 200 */
+            font-size: 1.2rem;
+            opacity: 1;
+            pointer-events: none;
+            transition: transform linear, opacity linear;
+            z-index: 10;
+        }
+
+        /* =======================================
+           TABS (FIXED BOTTOM)
+           ======================================= */
+        .tab-buttons-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 50;
+            background-color: #0f172a; /* Slate 900 */
+            border-top: 4px solid #475569; /* Slate 600 */
+            box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.4);
+        }
+
+        .tab-button {
+            background-color: #334155; /* Slate 700 */
+            color: #e2e8f0; /* Light text */
+            transition: all 0.2s;
+            border-radius: 0;
+            border-right: 1px solid #1e293b;
+            box-shadow: none !important;
+        }
+
+        .tab-button.active {
+            border-color: #22c55e; /* Green 500 */
+            background-color: #16a34a; /* Green 600 */
+            color: white;
+            box-shadow: inset 0 3px 0 #0f766e !important;
+            border-top: 3px solid #34d399;
+        }
+
+        .tab-button:not(.active):hover {
+            background-color: #475569;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 20px;
+            background-color: #1e293b; /* Slate 800 */
+            min-height: 400px; 
+            border-radius: 0 0 16px 16px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Geo Buddy styling for dark mode */
+        .geo-buddy-speech {
+            position: relative;
+            background: #334155; /* Slate 700 */
+            border-radius: .4em;
+            padding: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .geo-buddy-speech:after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            right: 20px;
+            width: 0;
+            height: 0;
+            border: 10px solid transparent;
+            border-top-color: #334155; /* Match speech bubble background */
+            border-bottom: 0;
+            border-right: 0;
+            margin-bottom: -10px;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-10">
+
+    <div class="game-container">
+        <!-- Main Header Panel (Stats & Game Title) -->
+        <div class="header-panel space-y-4">
+            <h1 class="text-4xl font-extrabold text-center text-emerald-400 tracking-wider">
+                FOSSIL DIG CLICKER
+            </h1>
+            
+            <!-- Fossil Counter -->
+            <div class="text-center p-4 stat-counter-box rounded-lg shadow-inner">
+                <div id="fossil-count" class="text-6xl font-bold text-amber-300">0</div>
+                <div class="text-xl text-gray-400">Fossils Discovered</div>
+            </div>
+
+            <!-- Stats -->
+            <div class="flex justify-around text-center border-t border-b border-gray-600 py-4">
+                <div>
+                    <div id="fpc-stat" class="text-2xl font-semibold text-gray-300">1</div>
+                    <div class="text-sm text-gray-500">Fossils / Click (FPC)</div>
+                </div>
+                <div>
+                    <div id="fps-stat" class="text-2xl font-semibold text-gray-300">0.0</div>
+                    <div class="text-sm text-gray-500">Fossils / Second (FPS)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabbed Content Area -->
+        <div class="shadow-2xl rounded-xl overflow-hidden">
+            <!-- Tab Content Containers -->
+            <div id="tab-content-container">
+                
+                <!-- 1. DIG SITE TAB -->
+                <div id="tab-digsite" class="tab-content active flex flex-col items-center justify-center space-y-8">
+                    <div class="flex-grow flex justify-center items-center relative py-8">
+                        <!-- Updated to use the 🦴 emoji and a large text size -->
+                        <button id="fossil-clicker" class="rounded-full hover:ring-8 text-[120px]" aria-label="Dig for Fossils">
+                            🦴
+                        </button>
+                    </div>
+                    <p class="text-center text-sm text-gray-400">Click the fossil to dig manually. Don't let your automatons do all the work!</p>
+                </div>
+
+                <!-- 2. EXCAVATION TAB (Buildings) -->
+                <div id="tab-excavation" class="tab-content overflow-y-auto max-h-[500px]">
+                    <h2 class="text-3xl font-bold text-emerald-400 mb-4 border-b border-gray-600 pb-2">Excavation Buildings (Passive/Click Power)</h2>
+                    <div id="upgrade-list" class="space-y-3">
+                        <!-- Building buttons will be dynamically inserted here -->
+                    </div>
+                </div>
+
+                <!-- 3. RESEARCH TAB (One-time Multipliers) -->
+                <div id="tab-research" class="tab-content overflow-y-auto max-h-[500px]">
+                    <h2 class="text-3xl font-bold text-emerald-400 mb-4 border-b border-gray-600 pb-2">Research Upgrades (Multiplicative Boosts)</h2>
+                    <div id="research-list" class="space-y-3">
+                        <!-- Research buttons will be dynamically inserted here -->
+                    </div>
+                </div>
+
+                <!-- 4. NEWS & EVENTS TAB -->
+                <div id="tab-news" class="tab-content">
+                    <h2 class="text-3xl font-bold text-emerald-400 mb-4 border-b border-gray-600 pb-2">Geo Buddy & Field News</h2>
+                    
+                    <div class="flex items-end space-x-4">
+                        <!-- Geo Buddy Character -->
+                        <div class="flex flex-col items-center">
+                            <span class="text-6xl">🧑‍🔧</span>
+                            <div class="font-bold text-sm text-gray-300">Geo Buddy</div>
+                        </div>
+
+                        <!-- Speech Bubble -->
+                        <div class="flex-grow geo-buddy-speech text-gray-200">
+                            <p id="geo-buddy-message" class="italic">Welcome to the Dig Site! We're counting on you to uncover the past.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-8 p-4 bg-gray-700 rounded-lg shadow-inner border border-gray-600">
+                        <h3 class="text-xl font-semibold text-amber-300 mb-3">Fossil Tracker Report</h3>
+                        <p id="tracker-report" class="text-gray-400">Initial report: No significant findings yet. Keep clicking!</p>
+                    </div>
+
+                    <div id="news-feed" class="mt-6 space-y-2 max-h-48 overflow-y-auto">
+                        <!-- Dynamic news items will appear here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tab Buttons (Fixed at Bottom) -->
+    <div class="tab-buttons-bar">
+        <div class="flex max-w-lg mx-auto rounded-t-lg overflow-hidden">
+            <button id="tab-digsite-btn" class="tab-button flex-1 p-3 text-lg font-bold transition duration-150" onclick="showTab('digsite')">
+                <span role="img" aria-label="Dig Site">⛏️</span> Dig Site
+            </button>
+            <button id="tab-excavation-btn" class="tab-button flex-1 p-3 text-lg font-bold transition duration-150" onclick="showTab('excavation')">
+                <span role="img" aria-label="Excavation">🔨</span> Excavation
+            </button>
+            <button id="tab-research-btn" class="tab-button flex-1 p-3 text-lg font-bold transition duration-150" onclick="showTab('research')">
+                <span role="img" aria-label="Research">🔬</span> Research
+            </button>
+            <button id="tab-news-btn" class="tab-button flex-1 p-3 text-lg font-bold transition duration-150" onclick="showTab('news')">
+                <span role="img" aria-label="News">📰</span> News & Buddy
+            </button>
+        </div>
+    </div>
+
+
+    <script>
+        // =======================================
+        // GAME STATE VARIABLES
+        // =======================================
+        
+        let fossils = 0;
+        let baseFPC = 1; 
+        let baseFPS = 0; 
+        
+        let fpcMultiplier = 1.0; 
+        let fpsMultiplier = 1.0; 
+        let activeTab = 'digsite'; // Current active tab
+        let newsCounter = 0; // For cycling Geo Buddy messages
+
+        // Increased multiplier to slow down progression (was 1.15)
+        const BUILDING_COST_MULTIPLIER = 1.20; 
+
+        // =======================================
+        // BUILDING & RESEARCH DEFINITIONS
+        // Costs have been increased for slower progression.
+        // =======================================
+
+        /** @type {Building[]} Incremental, repeatable purchases. */
+        const buildings = [
+            // FPC Buildings (Manual Clicking Power)
+            { id: 0, name: "Hand Brush", icon: "🧹", cost: 30, fpcIncrease: 1, fpsIncrease: 0, count: 0 },
+            { id: 1, name: "Chisel Set", icon: "🔨", cost: 250, fpcIncrease: 5, fpsIncrease: 0, count: 0 },
+            { id: 2, name: "Motorized Drill", icon: "⚙️", cost: 2500, fpcIncrease: 20, fpsIncrease: 0, count: 0 },
+            { id: 3, name: "Vibrating Sieve", icon: "筛", cost: 15000, fpcIncrease: 80, fpsIncrease: 0, count: 0 },
+            { id: 4, name: "Heavy Duty Excavator", icon: "🚜", cost: 80000, fpcIncrease: 250, fpsIncrease: 0, count: 0 },
+            
+            // FPS Buildings (Passive Income)
+            { id: 5, name: "Excavation Site", icon: "⛺", cost: 1500, fpcIncrease: 0, fpsIncrease: 10, count: 0 },
+            { id: 6, name: "Paleontology Team", icon: "🧑‍🔬", cost: 12000, fpcIncrease: 0, fpsIncrease: 50, count: 0 },
+            { id: 7, name: "Museum Grant", icon: "🏛️", cost: 100000, fpcIncrease: 0, fpsIncrease: 500, count: 0 },
+            { id: 8, name: "DNA Sequencer", icon: "🧬", cost: 800000, fpcIncrease: 0, fpsIncrease: 5000, count: 0 },
+            { id: 9, name: "Geological Survey", icon: "🗺️", cost: 4000000, fpcIncrease: 0, fpsIncrease: 20000, count: 0 },
+            { id: 10, name: "Underwater Excavation", icon: "🚢", cost: 25000000, fpcIncrease: 0, fpsIncrease: 100000, count: 0 },
+            { id: 11, name: "Space Paleontology", icon: "🚀", cost: 200000000, fpcIncrease: 0, fpsIncrease: 500000, count: 0 },
+            { id: 12, name: "Prehistoric Time Gate", icon: "🕰️", cost: 1000000000, fpcIncrease: 0, fpsIncrease: 5000000, count: 0 }
+        ];
+
+        /** @type {Research[]} One-time, multiplicative purchases. */
+        const research = [
+            // Costs significantly increased
+            { id: 13, name: "Optimal Brushing", icon: "✨", cost: 3000, fpcMultiplier: 2.0, fpsMultiplier: 1.0, bought: false, description: "Doubles manual digging power (FPC x2)." },
+            { id: 14, name: "Advanced Scanning", icon: "🛰️", cost: 30000, fpcMultiplier: 1.0, fpsMultiplier: 2.0, bought: false, description: "Doubles automated excavation speed (FPS x2)." },
+            { id: 15, name: "Carbon Dating Efficiency", icon: "🧪", cost: 60000, fpcMultiplier: 1.0, fpsMultiplier: 1.5, bought: false, description: "Increases passive income by 50% (FPS x1.5)." },
+            { id: 16, name: "Optimized Clicking Algorithm", icon: "🖱️", cost: 150000, fpcMultiplier: 4.0, fpsMultiplier: 1.0, bought: false, description: "Quadruples manual output (FPC x4)." },
+            { id: 17, name: "Universal Fossil Finder", icon: "🔭", cost: 1500000, fpcMultiplier: 1.0, fpsMultiplier: 5.0, bought: false, description: "Massively boosts passive discovery (FPS x5)." },
+            { id: 18, name: "T-Rex Discovery Bonus", icon: "🦖", cost: 5000000, fpcMultiplier: 3.0, fpsMultiplier: 3.0, bought: false, description: "Triples all income (FPC & FPS x3)." },
+            { id: 19, name: "Prehistoric Portal", icon: "🌀", cost: 30000000, fpcMultiplier: 10.0, fpsMultiplier: 10.0, bought: false, description: "Opens a portal to an ancient field, boosting ALL income x10!" }
+        ];
+        
+        // Geo Buddy messages that cycle
+        const geoBuddyMessages = [
+            "We've got a great find on Sector Gamma! Just a tiny one, but it's progress.",
+            "Remember, every click counts, especially when you're waiting for the big passive gains to kick in!",
+            "Did you know the cost of the next Excavation Site is rising? Better buy quick!",
+            "I heard about a massive find in the Marianas Trench. We need more ships!",
+            "Our research teams are working overtime to find new multipliers. Keep funding them!",
+            "The ground humidity is perfect for digging today. High morale!",
+            "Keep an eye on the Fossil Tracker, we're close to a new milestone!"
+        ];
+
+        // =======================================
+        // DOM ELEMENTS AND UTILITIES
+        // =======================================
+
+        const fossilCountEl = document.getElementById('fossil-count');
+        const fpcStatEl = document.getElementById('fpc-stat');
+        const fpsStatEl = document.getElementById('fps-stat');
+        const clickerEl = document.getElementById('fossil-clicker');
+        const upgradeListEl = document.getElementById('upgrade-list'); 
+        const researchListEl = document.getElementById('research-list'); 
+        const geoBuddyEl = document.getElementById('geo-buddy-message');
+        const trackerReportEl = document.getElementById('tracker-report');
+        const newsFeedEl = document.getElementById('news-feed');
+
+        /**
+         * Number formatter for large numbers (e.g., 1,234,567.8).
+         * @type {Intl.NumberFormat}
+         */
+        const formatter = new Intl.NumberFormat('en-US', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 1,
+        });
+
+        // =======================================
+        // GAME LOGIC AND CALCULATIONS
+        // =======================================
+        
+        /**
+         * Calculates the current effective FPC and FPS based on base values and multipliers.
+         * @returns {{fpc: number, fps: number}} The effective stats.
+         */
+        function calculateStats() {
+            const effectiveFPC = baseFPC * fpcMultiplier;
+            const effectiveFPS = baseFPS * fpsMultiplier;
+            return { fpc: effectiveFPC, fps: effectiveFPS };
+        }
+
+        /**
+         * Updates the primary UI elements (fossil count, FPC, FPS) and the 
+         * enabled/disabled state of all buttons in the active tabs.
+         */
+        function updateUI() {
+            const stats = calculateStats();
+            
+            // 1. Update main stats
+            fossilCountEl.textContent = formatter.format(Math.floor(fossils));
+            fpcStatEl.textContent = formatter.format(Math.floor(stats.fpc));
+            fpsStatEl.textContent = formatter.format(stats.fps);
+
+            // 2. Update Excavation (Building) Buttons
+            if (activeTab === 'excavation') {
+                buildings.forEach(building => {
+                    const buttonEl = document.getElementById(`buy-building-${building.id}`);
+                    const costEl = document.getElementById(`cost-building-${building.id}`);
+
+                    if (buttonEl) {
+                        const isAffordable = fossils >= building.cost;
+                        buttonEl.disabled = !isAffordable;
+                        buttonEl.classList.toggle('opacity-50', !isAffordable);
+                        if (costEl) costEl.textContent = formatter.format(Math.ceil(building.cost));
+                    }
+                });
+            }
+
+            // 3. Update Research Buttons
+            if (activeTab === 'research') {
+                research.forEach(item => {
+                    if (item.bought) return; 
+
+                    const buttonEl = document.getElementById(`buy-research-${item.id}`);
+                    if (buttonEl) {
+                        const isAffordable = fossils >= item.cost;
+                        buttonEl.disabled = !isAffordable;
+                        buttonEl.classList.toggle('opacity-50', !isAffordable);
+                    }
+                });
+            }
+            
+            // 4. Update News/Tracker Tab
+            if (activeTab === 'news') {
+                trackerReportEl.innerHTML = `
+                    Total Excavators: <b>${buildings.reduce((sum, b) => sum + b.count, 0)}</b>.<br>
+                    Current Total FPS: <b>${formatter.format(stats.fps)}</b>.<br>
+                    Next Geo Buddy message in ${Math.ceil((10 - newsCounter) / 10)} seconds.
+                `;
+            }
+        }
+        
+        /**
+         * Creates a visual particle effect (main number and mini fossils) when the fossil is clicked.
+         * @param {Event} event The click event object.
+         * @param {number} amount The amount of fossils gained.
+         */
+        function createClickParticle(event, amount) {
+            const rect = clickerEl.getBoundingClientRect();
+            // Center X and Y coordinates of the main clicker bone
+            const clickX = rect.left + rect.width / 2;
+            const clickY = rect.top + rect.height / 2;
+            
+            // Generate more mini particles as FPC increases
+            const particleAmount = Math.max(3, Math.min(10, Math.floor(amount / 50) + 1)); 
+
+            // 1. Main particle (the big number)
+            const mainParticle = document.createElement('div');
+            mainParticle.textContent = `+${formatter.format(Math.floor(amount))} F`; 
+            mainParticle.className = 'click-particle text-3xl';
+            mainParticle.style.left = `${clickX}px`;
+            mainParticle.style.top = `${clickY}px`;
+            document.body.appendChild(mainParticle);
+            setTimeout(() => { mainParticle.remove(); }, 1000);
+
+            // 2. Mini fossil particles
+            for (let i = 0; i < particleAmount; i++) {
+                const miniParticle = document.createElement('div');
+                miniParticle.textContent = '🦴'; // Mini bone emoji 
+                miniParticle.className = 'mini-fossil-particle';
+
+                // Start position centered around the clicker, with a small random jitter
+                miniParticle.style.left = `${clickX + (Math.random() - 0.5) * 20}px`;
+                miniParticle.style.top = `${clickY + (Math.random() - 0.5) * 20}px`;
+                
+                // Random destination (flies mostly upwards and outwards)
+                const destX = clickX + (Math.random() - 0.5) * 200;
+                const destY = clickY + (Math.random() - 1.5) * 200; 
+                const duration = 0.8 + Math.random() * 0.4;
+                const rotation = Math.random() * 720 * (Math.random() > 0.5 ? 1 : -1); // Random rotation
+
+                // Set up the transition/animation properties
+                miniParticle.style.transition = `transform ${duration}s ease-out, opacity ${duration}s ease-in`;
+                
+                // Add particle to DOM
+                document.body.appendChild(miniParticle);
+
+                // Apply transform after a tiny delay to ensure transition is applied
+                setTimeout(() => {
+                    miniParticle.style.transform = `translate(${destX - clickX}px, ${destY - clickY}px) rotate(${rotation}deg) scale(0.5)`;
+                    miniParticle.style.opacity = '0';
+                }, 10);
+                
+                // Remove from DOM after animation
+                setTimeout(() => {
+                    miniParticle.remove();
+                }, duration * 1000);
+            }
+        }
+
+        /**
+         * Handles the manual click/dig action.
+         * @param {Event} event The click event object.
+         */
+        function manualClick(event) {
+            const stats = calculateStats();
+            fossils += stats.fpc;
+            updateUI();
+            
+            createClickParticle(event, stats.fpc); 
+        }
+
+        /**
+         * Handles purchasing a repeatable building.
+         * @param {number} id The ID of the building to purchase.
+         */
+        function buyBuilding(id) {
+            const building = buildings.find(b => b.id === id);
+
+            if (building && fossils >= building.cost) {
+                fossils -= building.cost;
+                
+                baseFPC += (building.fpcIncrease || 0);
+                baseFPS += (building.fpsIncrease || 0);
+                building.count++;
+
+                // Increase next cost exponentially
+                building.cost = building.cost * BUILDING_COST_MULTIPLIER;
+                
+                // Re-render only the building list to update counts and costs
+                initBuildings();
+
+                updateUI();
+                logNews(`Purchased ${building.name}! Total: x${building.count}.`);
+            }
+        }
+        
+        /**
+         * Handles purchasing a one-time research upgrade.
+         * @param {number} id The ID of the research to purchase.
+         */
+        function buyResearch(id) {
+            const item = research.find(r => r.id === id);
+
+            if (item && !item.bought && fossils >= item.cost) {
+                fossils -= item.cost;
+                
+                fpcMultiplier *= item.fpcMultiplier;
+                fpsMultiplier *= item.fpsMultiplier;
+                item.bought = true;
+
+                // Re-render research list to display the purchased state
+                initResearch();
+
+                updateUI();
+                logNews(`Research Complete: ${item.name} activated!`);
+            }
+        }
+
+        // =======================================
+        // UI RENDERING FUNCTIONS
+        // =======================================
+        
+        /**
+         * Toggles the active tab display.
+         * @param {string} tabId - The ID of the tab content container (e.g., 'digsite').
+         */
+        function showTab(tabId) {
+            activeTab = tabId;
+
+            // Hide all tab content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            // Deactivate all tab buttons
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('active');
+            });
+
+            // Show the selected tab content and activate the corresponding button
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+            document.getElementById(`tab-${tabId}-btn`).classList.add('active');
+            
+            // Re-render specific content for the Excavation/Research tabs on switch
+            if (tabId === 'excavation') initBuildings();
+            if (tabId === 'research') initResearch();
+
+            updateUI();
+        }
+
+        /**
+         * Dynamically generates the HTML for all repeatable building purchases.
+         */
+        function initBuildings() {
+            let html = '<div class="space-y-3">';
+            buildings.forEach(building => {
+                const fpcChange = building.fpcIncrease || 0;
+                const fpsChange = building.fpsIncrease || 0;
+                const effectText = (fpcChange > 0 ? `+${fpcChange} FPC` : '') + 
+                                   (fpsChange > 0 ? (fpcChange > 0 ? ' & ' : '') + `+${fpsChange} FPS` : '');
+                
+                const bgColor = building.fpcIncrease > 0 ? 'bg-zinc-700 hover:bg-zinc-600' : 'bg-slate-700 hover:bg-slate-600';
+                const borderColor = building.fpcIncrease > 0 ? 'border-amber-500' : 'border-emerald-500';
+
+                html += `
+                    <button 
+                        id="buy-building-${building.id}" 
+                        class="w-full text-left p-3 flex justify-between items-center ${bgColor} rounded-lg shadow-md transition duration-150 disabled:cursor-not-allowed disabled:bg-gray-800 disabled:opacity-50 border ${borderColor}" 
+                        onclick="buyBuilding(${building.id})"
+                        aria-label="Buy ${building.name}"
+                    >
+                        <!-- Info Panel -->
+                        <div class="flex items-center space-x-3">
+                            <span class="text-3xl">${building.icon}</span>
+                            <div class="flex-grow">
+                                <div class="font-bold text-gray-200">${building.name} (x<span id="count-building-${building.id}">${building.count}</span>)</div>
+                                <div class="text-xs text-gray-400">${effectText}</div>
+                            </div>
+                        </div>
+
+                        <!-- Cost/Buy Button -->
+                        <div class="text-right ml-2">
+                            <div class="text-lg font-semibold text-amber-300">
+                                <span id="cost-building-${building.id}">${formatter.format(Math.ceil(building.cost))}</span> F
+                            </div>
+                            <div class="text-xs text-emerald-400 font-medium">Purchase</div>
+                        </div>
+                    </button>
+                `;
+            });
+            html += '</div>';
+            upgradeListEl.innerHTML = html;
+        }
+        
+        /**
+         * Dynamically generates the HTML for all one-time research upgrades.
+         */
+        function initResearch() {
+            let html = '<div class="space-y-3">';
+            research.forEach(item => {
+                let boostText = '';
+                if (item.fpcMultiplier > 1 && item.fpsMultiplier > 1) {
+                    boostText = `Multiplies FPC and FPS by x${item.fpcMultiplier}.`;
+                } else if (item.fpcMultiplier > 1) {
+                    boostText = `Multiplies FPC by x${item.fpcMultiplier}.`;
+                } else if (item.fpsMultiplier > 1) {
+                    boostText = `Multiplies FPS by x${item.fpsMultiplier}.`;
+                }
+
+                if (item.bought) {
+                    // Purchased Item Style
+                    html += `
+                        <div 
+                            id="buy-research-${item.id}" 
+                            class="w-full text-center p-3 flex flex-col items-center justify-center bg-emerald-700/50 rounded-lg shadow-md cursor-default border border-emerald-500"
+                            aria-label="Research Complete: ${item.name}"
+                        >
+                            <div class="font-bold text-center text-white p-1 flex items-center">
+                                <span class="text-xl mr-2">✅</span> RESEARCH COMPLETE: ${item.name}
+                            </div>
+                            <div class="text-xs text-gray-300">${boostText}</div>
+                        </div>
+                    `;
+                } else {
+                    // Unpurchased Item Style
+                    html += `
+                        <button 
+                            id="buy-research-${item.id}" 
+                            class="w-full text-left p-3 flex flex-col justify-start items-start bg-blue-700/50 hover:bg-blue-700 rounded-lg shadow-md transition duration-150 disabled:cursor-not-allowed disabled:bg-gray-800 disabled:opacity-50 border border-blue-500" 
+                            onclick="buyResearch(${item.id})"
+                            aria-label="Research ${item.name}"
+                        >
+                            <div class="flex justify-between w-full items-center mb-1">
+                                <div class="font-bold text-blue-300 flex items-center">
+                                    <span class="text-xl mr-2">${item.icon}</span>
+                                    ${item.name}
+                                </div>
+                                <div class="text-lg font-semibold text-amber-300">
+                                    ${formatter.format(item.cost)} F
+                                </div>
+                            </div>
+                            <div class="text-xs text-blue-400 font-medium">${boostText}</div>
+                            <div class="text-sm text-gray-400 italic mt-1">${item.description}</div>
+                        </button>
+                    `;
+                }
+            });
+            html += '</div>';
+            researchListEl.innerHTML = html;
+        }
+
+        /**
+         * Adds a message to the News Feed tab.
+         * @param {string} message - The message content.
+         */
+        function logNews(message) {
+            const now = new Date();
+            const timeString = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+            
+            const newsItem = document.createElement('div');
+            newsItem.className = 'text-sm p-2 bg-slate-700 rounded shadow-sm border border-slate-600';
+            newsItem.innerHTML = `<span class="text-gray-400 font-mono">[${timeString}]</span> ${message}`;
+            
+            // Prepend new item to the top
+            newsFeedEl.prepend(newsItem);
+            
+            // Limit news feed to 15 items
+            while (newsFeedEl.children.length > 15) {
+                newsFeedEl.removeChild(newsFeedEl.lastChild);
+            }
+        }
+        
+        /**
+         * Cycles the Geo Buddy's message.
+         */
+        function updateGeoBuddy() {
+            newsCounter++;
+            if (newsCounter >= 10) { // Every 10 game loops (1 second)
+                const randomIndex = Math.floor(Math.random() * geoBuddyMessages.length);
+                geoBuddyEl.textContent = geoBuddyMessages[randomIndex];
+                newsCounter = 0;
+            }
+        }
+
+        // =======================================
+        // MAIN GAME LOOP AND INITIALIZATION
+        // =======================================
+
+        /**
+         * The main game loop for passive FPS income and background updates. Runs every 100ms.
+         */
+        function gameLoop() {
+            const stats = calculateStats();
+            // Add fossils based on FPS scaled by the loop interval (0.1 seconds)
+            fossils += stats.fps / 10; 
+            
+            updateGeoBuddy();
+            updateUI();
+        }
+
+        /**
+         * Entry point for game initialization.
+         */
+        window.onload = () => {
+             // 1. Attach event listener for manual clicking
+             clickerEl.addEventListener('click', manualClick);
+
+             // 2. Initialize the view to the default tab
+             showTab(activeTab); 
+
+             // 3. Log initial news message
+             logNews("Game started. Welcome to the Fossil Dig Site!");
+
+             // 4. Start the passive income loop
+             setInterval(gameLoop, 100);
+
+             // Initial UI update
+             updateUI();
+        };
+
+        // Make functions globally accessible for inline HTML calls (like onclick)
+        window.showTab = showTab;
+        window.buyBuilding = buyBuilding;
+        window.buyResearch = buyResearch;
+
+    </script>
+</body>
+</html>
