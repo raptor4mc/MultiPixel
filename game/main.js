@@ -195,7 +195,7 @@ function triggerAction(name) {
             "SinglePlayer": "singleplayer/singleplayer.html",
             "MultiPlayer": "multiplayer/multiplayer.html",
             "Coding": "coding/coding.html",
-            "Rapturo": "mods/Rapturo.html",
+            "Rapturo": "Rapturo/Rapturo.html",
             "Credits": "credits/credits.html"
         };
 
