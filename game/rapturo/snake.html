@@ -1,0 +1,1209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Snake Arena (8-Way Movement + Joystick)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+        
+        /* Custom CSS for the smooth, dark aesthetic */
+        body {
+            font-family: 'VT323', monospace;
+            background-color: #0d121c; /* Very Dark Background */
+        }
+        
+        .game-container {
+            width: 100%;
+            max-width: 900px; /* Increased max width */
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        #gameCanvas {
+            display: block;
+            background-color: #1a202c; /* Dark board background */
+            border: 4px solid #3d4a60;
+            border-radius: 12px;
+            box-shadow: 0 0 50px rgba(0, 200, 255, 0.3), inset 0 0 15px rgba(0, 100, 255, 0.2);
+            /* Important for touch events: setting touch-action */
+            touch-action: none; 
+        }
+
+        .game-status {
+            text-shadow: 0 0 8px #000;
+            padding: 10px;
+            border-radius: 6px;
+            transition: background-color 0.3s;
+        }
+
+        .paused-indicator {
+            background-color: rgba(255, 255, 0, 0.1);
+            color: #fbd38d;
+            animation: pulse 1.5s infinite alternate;
+        }
+
+        @keyframes pulse {
+            from { opacity: 1; }
+            to { opacity: 0.7; }
+        }
+
+        .snake-score-item {
+            padding: 8px 12px;
+            border-radius: 8px;
+            margin-bottom: 4px;
+            font-size: 1.2rem;
+            line-height: 1.2;
+            box-shadow: 1px 1px 5px rgba(0,0,0,0.7);
+            border-left: 5px solid;
+            transition: opacity 0.3s;
+        }
+        
+        /* Specific border colors for AI levels */
+        .ai-dumb { border-left-color: #e53e3e; background-color: #e53e3e33; }
+        .ai-greedy { border-left-color: #f6ad55; background-color: #f6ad5533; }
+        .ai-smart { border-left-color: #48bb78; background-color: #48bb7833; }
+        .player-score { border-left-color: #4299e1; background-color: #4299e133; }
+        
+        /* New AI Colors */
+        .ai-dumb.dark-red { border-left-color: #9b2c2c; background-color: #9b2c2c33; }
+        .ai-greedy.dark-orange { border-left-color: #c05621; background-color: #c0562133; }
+        .ai-smart.dark-green { border-left-color: #276749; background-color: #27674933; }
+        .ai-greedy.gold { border-left-color: #d69e2e; background-color: #d69e2e33; }
+        .ai-smart.cyan { border-left-color: #06b6d4; background-color: #06b6d433; }
+        .ai-dumb.magenta { border-left-color: #d946ef; background-color: #d946ef33; }
+        .ai-greedy.indigo { border-left-color: #6366f1; background-color: #6366f133; }
+
+
+        .dead { opacity: 0.5; filter: grayscale(100%); }
+    </style>
+</head>
+<body class="p-4 text-white">
+
+    <div class="game-container flex flex-col items-center">
+        
+        <!-- Title will be drawn by the animation initially and set here afterwards -->
+        <h1 id="gameTitle" class="text-4xl text-blue-400 mb-4 game-status opacity-0"></h1>
+        
+        <!-- Canvas size increased to 800x800 -->
+        <canvas id="gameCanvas" width="800" height="800"></canvas>
+        
+        <div id="statusMessage" class="text-xl text-yellow-300 mt-4 game-status text-center paused-indicator">
+            <!-- Initial message will be set after animation -->
+        </div>
+
+        <div class="w-full mt-6 p-4 bg-gray-800 rounded-xl shadow-lg">
+            <h2 class="text-2xl text-white mb-3 border-b border-gray-700 pb-2">Scores & AI Difficulty (8 Snakes!)</h2>
+            <div id="scoreBoard" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <!-- Scores will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        // Constants for game setup
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const GRID_SIZE = 50; // Increased grid size
+        const TILE_SIZE = canvas.width / GRID_SIZE;
+        const FOOD_COUNT = 30; // Increased food count
+        const GAME_SPEED_MS = 80; // Slightly faster game speed for a larger map
+        const GAME_TITLE_EL = document.getElementById('gameTitle');
+
+        // 8 Possible Movement Directions (Cardinal + Diagonal)
+        const DIRECTIONS_8 = [
+            {x: 1, y: 0}, {x: -1, y: 0}, {x: 0, y: 1}, {x: 0, y: -1}, // Cardinal
+            {x: 1, y: 1}, {x: 1, y: -1}, {x: -1, y: 1}, {x: -1, y: -1} // Diagonal
+        ];
+
+        // Food configuration (first type used for death drops)
+        const FOOD_TYPES = [
+            { score: 1, color: '#fbd38d', radiusFactor: 0.25, chance: 0.6 },    // Small, Yellow/Gold (Death Droplet)
+            { score: 5, color: '#9f7aea', radiusFactor: 0.35, chance: 0.3 },    // Medium, Purple
+            { score: 10, color: '#4fd1c5', radiusFactor: 0.45, chance: 0.1 }    // Large, Cyan
+        ];
+
+        // Game state variables
+        let lastUpdateTime = 0;
+        let isPaused = true;
+        let gameOver = false;
+        let snakes = [];
+        let food = [];
+        const statusMessageEl = document.getElementById('statusMessage');
+
+        // Starry background data (generated once)
+        let stars = [];
+        const NUM_STARS = 150; // More stars for the larger canvas
+
+        // Configuration for 8 Snakes
+        const SNAKE_CONFIGS = [
+            // Player
+            { x: 10, y: 10, color: '#4299e1', isPlayer: true, aiLevel: null, name: 'Player (You)', cssClass: 'player-score' },
+            // AIs (7 total, varied difficulty and position)
+            { x: 40, y: 10, color: '#e53e3e', isPlayer: false, aiLevel: 'dumb', name: 'AI 1 (Dumb)', cssClass: 'ai-dumb' },
+            { x: 10, y: 40, color: '#f6ad55', isPlayer: false, aiLevel: 'greedy', name: 'AI 2 (Greedy)', cssClass: 'ai-greedy' },
+            { x: 40, y: 40, color: '#48bb78', isPlayer: false, aiLevel: 'smart', name: 'AI 3 (Smart)', cssClass: 'ai-smart' },
+            { x: 25, y: 5, color: '#9b2c2c', isPlayer: false, aiLevel: 'dumb', name: 'AI 4 (Dumb)', cssClass: 'ai-dumb dark-red' },
+            { x: 5, y: 25, color: '#c05621', isPlayer: false, aiLevel: 'greedy', name: 'AI 5 (Greedy)', cssClass: 'ai-greedy dark-orange' },
+            { x: 45, y: 25, color: '#06b6d4', isPlayer: false, aiLevel: 'smart', name: 'AI 6 (Smart)', cssClass: 'ai-smart cyan' },
+            { x: 25, y: 45, color: '#d946ef', isPlayer: false, aiLevel: 'dumb', name: 'AI 7 (Dumb)', cssClass: 'ai-dumb magenta' },
+        ];
+        
+        // --- Input Tracking ---
+        let keysPressed = {};
+        
+        // --- Joystick State ---
+        let joystick = {
+            active: false,
+            center: { x: 0, y: 0 }, // Center of the joystick base (where touch started)
+            handle: { x: 0, y: 0 }, // Current position of the handle
+            radius: 80,             // Base radius (in canvas pixels)
+            handleRadius: 30,       // Handle radius
+            touchIdentifier: null,  // To track multi-touch
+            maxTravel: 60           // Max distance handle can move from center
+        };
+        
+        // --- Animation State ---
+        let isAnimating = true;
+
+
+        // --- Utility Functions ---
+
+        /**
+         * Converts screen coordinates to canvas coordinates.
+         */
+        const getTouchPos = (e) => {
+            const rect = canvas.getBoundingClientRect();
+            // Scale touch position relative to canvas size
+            return {
+                x: (e.clientX - rect.left) * (canvas.width / rect.width),
+                y: (e.clientY - rect.top) * (canvas.height / rect.height)
+            };
+        };
+
+        /**
+         * Calculates the Manhattan distance between two points, accounting for wrapping.
+         */
+        const manhattanDistance = (p1, p2) => {
+            let dx = Math.abs(p1.x - p2.x);
+            let dy = Math.abs(p1.y - p2.y);
+            
+            // Account for wrapping
+            dx = Math.min(dx, GRID_SIZE - dx);
+            dy = Math.min(dy, GRID_SIZE - dy);
+
+            return dx + dy;
+        }
+
+        /**
+         * Checks if a coordinate is occupied by any snake body segment.
+         */
+        const isOccupied = (x, y, ignoreSnake = null) => {
+            for (const snake of snakes) {
+                if (snake.isDead) continue;
+                
+                const tailIndex = snake.body.length - 1; 
+                for (let i = 0; i < snake.body.length; i++) {
+                    if (snake.body[i].x === x && snake.body[i].y === y) {
+                        // Allow the snake to move into the spot its tail is leaving
+                        if (snake === ignoreSnake && i === tailIndex) continue;
+                        return true;
+                    }
+                }
+            }
+            if (food.some(f => f.x === x && f.y === y)) {
+                return true;
+            }
+            return false;
+        };
+
+        /**
+         * Generates a random, unoccupied grid coordinate for food.
+         */
+        const getRandomCoordinate = () => {
+            let x, y, attempts = 0;
+            do {
+                x = Math.floor(Math.random() * GRID_SIZE);
+                y = Math.floor(Math.random() * GRID_SIZE);
+                attempts++;
+                if (attempts > GRID_SIZE * GRID_SIZE * 2) {
+                    console.error("Failed to find free space for food.");
+                    return null; 
+                }
+            } while (isOccupied(x, y));
+
+            let selectedFood = FOOD_TYPES[0]; 
+            const rand = Math.random();
+            let cumulativeChance = 0;
+
+            for(const type of FOOD_TYPES) {
+                cumulativeChance += type.chance;
+                if (rand < cumulativeChance) {
+                    selectedFood = type;
+                    break;
+                }
+            }
+
+            return { 
+                x, 
+                y, 
+                score: selectedFood.score, 
+                color: selectedFood.color, 
+                radiusFactor: selectedFood.radiusFactor
+            };
+        };
+
+
+        /**
+         * Breadth-First Search (BFS) for pathfinding in the wrapped grid (8 directions).
+         */
+        const bfs = (start, target, snake) => {
+            const queue = [{ x: start.x, y: start.y, path: [] }];
+            const visited = new Set(`${start.x},${start.y}`);
+            const directions = DIRECTIONS_8; // Use 8 directions
+
+            while (queue.length > 0) {
+                const { x, y, path } = queue.shift();
+
+                if (x === target.x && y === target.y) {
+                    return path; 
+                }
+
+                for (const dir of directions) {
+                    // Wrapping Coordinates
+                    const nx = (x + dir.x + GRID_SIZE) % GRID_SIZE; 
+                    const ny = (y + dir.y + GRID_SIZE) % GRID_SIZE;
+                    const coordKey = `${nx},${ny}`;
+
+                    if (visited.has(coordKey)) continue;
+
+                    // Check collision: occupied by any snake body (ignoring the searching snake's tail)
+                    if (isOccupied(nx, ny, snake)) continue;
+
+                    visited.add(coordKey);
+                    queue.push({ x: nx, y: ny, path: [...path, {x: nx, y: ny}] });
+                }
+            }
+            return null; 
+        };
+
+        /**
+         * Counts the number of safe, reachable empty cells (8 directions).
+         */
+        const countReachableEmptyCells = (start, snake) => {
+            const queue = [{ x: start.x, y: start.y }];
+            const visited = new Set(`${start.x},${start.y}`);
+            const directions = DIRECTIONS_8; // Use 8 directions
+            let count = 0;
+            
+            while (queue.length > 0) {
+                const { x, y } = queue.shift();
+                count++;
+
+                for (const dir of directions) {
+                    // Wrapping Coordinates
+                    const nx = (x + dir.x + GRID_SIZE) % GRID_SIZE; 
+                    const ny = (y + dir.y + GRID_SIZE) % GRID_SIZE;
+                    const coordKey = `${nx},${ny}`;
+
+                    if (visited.has(coordKey)) continue;
+                    if (isOccupied(nx, ny, snake)) continue;
+
+                    visited.add(coordKey);
+                    queue.push({ x: nx, y: ny });
+                }
+            }
+            return count;
+        };
+
+
+        // --- Snake Class ---
+
+        class Snake {
+            constructor(startX, startY, color, isPlayer, aiLevel = null, name = 'Player', cssClass = '') {
+                // Initial body setup (3 segments)
+                this.body = [{ x: startX, y: startY }, { x: startX - 1, y: startY }, { x: startX - 2, y: startY }]; 
+                this.color = color;
+                this.direction = { x: 1, y: 0 }; // Initial direction 
+                this.pendingDirection = { x: 1, y: 0 }; 
+                this.score = 0;
+                this.isPlayer = isPlayer;
+                this.aiLevel = aiLevel; 
+                this.name = name;
+                this.isDead = false;
+                this.cssClass = cssClass;
+            }
+
+            setDirection(dx, dy) {
+                // Ensure the new direction is not the exact opposite of the current direction
+                // This prevents 180 degree turns (e.g., (1, 0) -> (-1, 0) or (1, 1) -> (-1, -1))
+                if (this.direction.x !== -dx || this.direction.y !== -dy) {
+                    this.pendingDirection = { x: dx, y: dy };
+                }
+            }
+
+            move() {
+                if (this.isDead) return;
+
+                this.direction = this.pendingDirection;
+
+                // WRAPPING MOVEMENT
+                const newHead = {
+                    x: (this.body[0].x + this.direction.x + GRID_SIZE) % GRID_SIZE,
+                    y: (this.body[0].y + this.direction.y + GRID_SIZE) % GRID_SIZE
+                };
+
+                // Check for collision with self or other snakes
+                if (this.checkCollision(newHead)) {
+                    this.isDead = true;
+                    if (this.isPlayer) {
+                        gameOver = true;
+                    }
+                    
+                    // --- DEATH DROP LOGIC ---
+                    const dropAmount = Math.floor(this.body.length / 2);
+                    
+                    for (let i = 0; i < dropAmount; i++) {
+                        const segment = this.body[i];
+                        if (segment && segment.x !== undefined) {
+                            // Use the coordinates of the dead snake's body to place food
+                            if (!isOccupied(segment.x, segment.y)) { 
+                                const droppedFood = {
+                                    x: segment.x,
+                                    y: segment.y,
+                                    score: FOOD_TYPES[0].score, // Smallest food type
+                                    color: FOOD_TYPES[0].color,
+                                    radiusFactor: FOOD_TYPES[0].radiusFactor
+                                };
+                                food.push(droppedFood);
+                            }
+                        }
+                    }
+                    return;
+                }
+
+                this.body.unshift(newHead);
+
+                let ateFood = false;
+                for (let i = 0; i < food.length; i++) {
+                    if (newHead.x === food[i].x && newHead.y === food[i].y) {
+                        this.score += food[i].score;
+                        // Grow the snake by adding a placeholder segment
+                        this.body.push({}); 
+                        food.splice(i, 1); 
+                        ateFood = true;
+                        break;
+                    }
+                }
+
+                if (!ateFood) {
+                    this.body.pop(); // Remove tail if no food eaten
+                } else {
+                    placeFood(1); // Respawn general food
+                }
+            }
+
+            checkCollision(head) {
+                // Self Collision (check all segments except the current head)
+                for (let i = 1; i < this.body.length; i++) {
+                    if (head.x === this.body[i].x && head.y === this.body[i].y) {
+                        return true;
+                    }
+                }
+
+                // Other Snake Collision
+                for (const other of snakes) {
+                    if (other === this || other.isDead) continue;
+                    
+                    // Head-to-Head Collision
+                    if (head.x === other.body[0].x && head.y === other.body[0].y) {
+                        if (this.body.length >= other.body.length) {
+                             other.isDead = true; 
+                             statusMessageEl.textContent = `${this.name} eliminated ${other.name}!`;
+                        } else {
+                             return true; // This snake (the smaller one) dies
+                        }
+                    }
+
+                    // Collision with other snake's body
+                    for (let i = 0; i < other.body.length; i++) {
+                        if (head.x === other.body[i].x && head.y === other.body[i].y) {
+                            return true;
+                        }
+                    }
+                }
+
+                return false;
+            }
+
+            calculateAIMove() {
+                if (this.isDead || this.isPlayer) return;
+
+                let bestFood = null;
+                let minDistance = Infinity;
+
+                if (food.length > 0) {
+                    const head = this.body[0];
+                    // Find the best food (prioritizing score and proximity)
+                    let sortedFood = [...food].sort((a, b) => b.score - a.score); 
+
+                    for (const f of sortedFood) {
+                        const dist = manhattanDistance(head, f);
+                        if (dist < minDistance) {
+                            minDistance = dist;
+                            bestFood = f;
+                        } else if (dist === minDistance && f.score > bestFood.score) {
+                            bestFood = f;
+                        }
+                    }
+                }
+
+                // AI Strategy Dispatch
+                if (this.aiLevel === 'dumb') {
+                    this.ai_Dumb(bestFood);
+                } else if (this.aiLevel === 'greedy') {
+                    this.ai_Greedy(bestFood);
+                } else if (this.aiLevel === 'smart') {
+                    this.ai_Smart(bestFood);
+                }
+            }
+
+            ai_Dumb(targetFood) {
+                // Randomly change direction 30% of the time, or if current direction is unsafe
+                if (Math.random() < 0.7) return; 
+
+                const head = this.body[0];
+                const possibleMoves = DIRECTIONS_8.filter(dir => this.direction.x !== -dir.x || this.direction.y !== -dir.y);
+
+                const safeMoves = possibleMoves.filter(dir => {
+                    const nextHead = { 
+                        x: (head.x + dir.x + GRID_SIZE) % GRID_SIZE,
+                        y: (head.y + dir.y + GRID_SIZE) % GRID_SIZE
+                    };
+                    return !this.checkCollision(nextHead);
+                });
+
+                if (safeMoves.length > 0) {
+                    const newDir = safeMoves[Math.floor(Math.random() * safeMoves.length)];
+                    this.setDirection(newDir.x, newDir.y);
+                }
+            }
+
+            ai_Greedy(targetFood) {
+                const head = this.body[0];
+                const possibleMoves = DIRECTIONS_8.filter(dir => this.direction.x !== -dir.x || this.direction.y !== -dir.y);
+
+                let bestMove = null;
+                let bestDistance = Infinity;
+
+                for (const dir of possibleMoves) {
+                    const nextHead = { 
+                        x: (head.x + dir.x + GRID_SIZE) % GRID_SIZE,
+                        y: (head.y + dir.y + GRID_SIZE) % GRID_SIZE
+                    };
+                    
+                    if (this.checkCollision(nextHead)) continue;
+
+                    if (targetFood) {
+                        const dist = manhattanDistance(nextHead, targetFood);
+                        if (dist < bestDistance) {
+                            bestDistance = dist;
+                            bestMove = dir;
+                        }
+                    } else {
+                        // If no food, just pick the first safe move found
+                        if (!bestMove) bestMove = dir; 
+                    }
+                }
+
+                if (bestMove) {
+                    this.setDirection(bestMove.x, bestMove.y);
+                } else {
+                    this.ai_Dumb(targetFood);
+                }
+            }
+
+            ai_Smart(targetFood) {
+                const head = this.body[0];
+                let path = null;
+                
+                if (targetFood) {
+                    path = bfs(head, targetFood, this);
+                }
+
+                if (path && path.length > 0) {
+                    // Follow the path
+                    const nextStep = path[0];
+                    const nextDir = { x: nextStep.x - head.x, y: nextStep.y - head.y };
+                    this.setDirection(nextDir.x, nextDir.y);
+                } else {
+                    // No safe path to food (or no food). Look for max open space.
+                    const possibleMoves = DIRECTIONS_8.filter(dir => this.direction.x !== -dir.x || this.direction.y !== -dir.y);
+
+                    let bestMove = null;
+                    let maxOpenSpace = -1;
+
+                    for (const dir of possibleMoves) {
+                        const nextHead = { 
+                            x: (head.x + dir.x + GRID_SIZE) % GRID_SIZE,
+                            y: (head.y + dir.y + GRID_SIZE) % GRID_SIZE
+                        };
+                        
+                        if (this.checkCollision(nextHead)) continue;
+
+                        let spaceCount = countReachableEmptyCells(nextHead, this);
+                        
+                        if (spaceCount > maxOpenSpace) {
+                            maxOpenSpace = spaceCount;
+                            bestMove = dir;
+                        }
+                    }
+
+                    if (bestMove) {
+                        this.setDirection(bestMove.x, bestMove.y);
+                    } else {
+                        // All directions lead to a crash or dead end, use last resort dumb move
+                        this.ai_Dumb(targetFood);
+                    }
+                }
+            }
+        }
+
+        // --- Game Setup & Drawing ---
+        
+        const generateStars = () => {
+             for (let i = 0; i < NUM_STARS; i++) {
+                stars.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    radius: Math.random() * 1.5 + 0.5, 
+                    alpha: Math.random() * 0.5 + 0.5, 
+                    speed: Math.random() * 0.05 
+                });
+            }
+        }
+
+        const drawStarryBackground = () => {
+            for (let i = 0; i < NUM_STARS; i++) {
+                const star = stars[i];
+                
+                star.alpha = 0.5 + 0.5 * Math.sin(Date.now() * star.speed / 1000); 
+
+                ctx.fillStyle = `rgba(255, 255, 255, ${star.alpha})`;
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        
+        /**
+         * Draws the virtual joystick on the canvas.
+         */
+        const drawJoystick = () => {
+            if (!joystick.active) return;
+            
+            // Draw joystick base (outer circle)
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = 'rgba(0, 255, 255, 0.6)';
+            ctx.fillStyle = 'rgba(66, 153, 225, 0.4)'; // Blue transparent
+            ctx.beginPath();
+            ctx.arc(joystick.center.x, joystick.center.y, joystick.radius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Draw joystick handle (inner circle)
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = 'rgba(255, 255, 255, 0.8)';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'; // White transparent
+            ctx.beginPath();
+            ctx.arc(joystick.handle.x, joystick.handle.y, joystick.handleRadius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.shadowBlur = 0;
+        };
+
+
+        const initializeGame = () => {
+            gameOver = false;
+            isPaused = true;
+            snakes = [];
+            food = [];
+            joystick.active = false; // Reset joystick state
+
+            if (stars.length === 0) {
+                generateStars();
+            }
+
+            SNAKE_CONFIGS.forEach(config => {
+                const newSnake = new Snake(
+                    config.x, config.y, config.color, config.isPlayer, config.aiLevel, config.name, config.cssClass
+                );
+                // Simple initial diagonal directions for varied start
+                if (config.x < GRID_SIZE / 2 && config.y < GRID_SIZE / 2) newSnake.direction = {x: 1, y: 1};
+                else if (config.x > GRID_SIZE / 2 && config.y < GRID_SIZE / 2) newSnake.direction = {x: -1, y: 1};
+                else if (config.x < GRID_SIZE / 2 && config.y > GRID_SIZE / 2) newSnake.direction = {x: 1, y: -1};
+                else if (config.x > GRID_SIZE / 2 && config.y > GRID_SIZE / 2) newSnake.direction = {x: -1, y: -1};
+                newSnake.pendingDirection = newSnake.direction;
+                snakes.push(newSnake);
+            });
+
+            placeFood(FOOD_COUNT);
+            
+            statusMessageEl.textContent = 'Press SPACE or TAP screen to START! | PC: WASD/Arrows. Mobile: Use Joystick.';
+            statusMessageEl.classList.add('paused-indicator');
+        };
+
+        const placeFood = (count) => {
+            for (let i = 0; i < count; i++) {
+                if (food.length < FOOD_COUNT) {
+                    const newFood = getRandomCoordinate();
+                    if (newFood) {
+                         food.push(newFood);
+                    }
+                }
+            }
+        };
+
+        const draw = () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            drawStarryBackground();
+            drawJoystick(); // Draw the joystick if active
+
+            // Draw food
+            for (const f of food) {
+                const centerX = f.x * TILE_SIZE + TILE_SIZE / 2;
+                const centerY = f.y * TILE_SIZE + TILE_SIZE / 2;
+                const foodRadius = TILE_SIZE * f.radiusFactor;
+
+                ctx.shadowColor = f.color;
+                ctx.shadowBlur = foodRadius * 2;
+                ctx.fillStyle = f.color;
+
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, foodRadius, 0, 2 * Math.PI);
+                ctx.fill();
+                
+                ctx.shadowBlur = 0;
+            }
+
+            // Draw snakes
+            const segmentRadius = (TILE_SIZE / 2) * 0.9; 
+            for (const snake of snakes) {
+                
+                ctx.shadowColor = snake.isDead ? 'transparent' : snake.color;
+                ctx.shadowBlur = 10;
+                
+                for (let i = 0; i < snake.body.length; i++) {
+                    const segment = snake.body[i];
+                    if (segment.x === undefined) continue; 
+
+                    const centerX = segment.x * TILE_SIZE + TILE_SIZE / 2;
+                    const centerY = segment.y * TILE_SIZE + TILE_SIZE / 2;
+
+                    let fillColor = snake.isDead ? 'rgba(128, 128, 128, 0.5)' : snake.color;
+
+                    if (i === 0 && !snake.isDead) {
+                        const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, segmentRadius);
+                        gradient.addColorStop(0, 'white'); 
+                        gradient.addColorStop(0.7, snake.color);
+                        gradient.addColorStop(1, fillColor);
+                        fillColor = gradient;
+                    } 
+                    
+                    ctx.fillStyle = fillColor;
+
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, segmentRadius, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Draw 'eyes' on the head
+                    if (i === 0 && !snake.isDead) {
+                        ctx.shadowBlur = 0; 
+                        const eyeOffset = TILE_SIZE / 8;
+                        const eyeSize = 3;
+                        const eyeColor = 'black';
+                        
+                        // Calculate eye position relative to direction
+                        let dx = snake.direction.x * (segmentRadius/2) / (Math.abs(snake.direction.x) + Math.abs(snake.direction.y) || 1);
+                        let dy = snake.direction.y * (segmentRadius/2) / (Math.abs(snake.direction.x) + Math.abs(snake.direction.y) || 1);
+                        
+                        ctx.fillStyle = eyeColor;
+                        ctx.beginPath();
+                        
+                        // Draw eyes perpendicular to the current movement vector
+                        if (Math.abs(snake.direction.x) >= Math.abs(snake.direction.y)) {
+                            // Horizontal or diagonal with strong horizontal component
+                            ctx.arc(centerX + dx, centerY - eyeOffset, eyeSize, 0, Math.PI * 2); 
+                            ctx.arc(centerX + dx, centerY + eyeOffset, eyeSize, 0, Math.PI * 2); 
+                        } else {
+                            // Vertical or diagonal with strong vertical component
+                            ctx.arc(centerX - eyeOffset, centerY + dy, eyeSize, 0, Math.PI * 2); 
+                            ctx.arc(centerX + eyeOffset, centerY + dy, eyeSize, 0, Math.PI * 2); 
+                        }
+
+                        ctx.fill();
+                        ctx.shadowBlur = 10; 
+                    }
+                }
+                 ctx.shadowBlur = 0;
+            }
+
+            // Draw game over overlay
+            if (gameOver) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = 'white';
+                ctx.font = '50px "VT323", monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText('ARENA CLOSED', canvas.width / 2, canvas.height / 2 - 30);
+                ctx.font = '24px "VT323", monospace';
+                ctx.fillText(statusMessageEl.textContent, canvas.width / 2, canvas.height / 2 + 10);
+                ctx.fillText('Press SPACE/Tap to Restart', canvas.width / 2, canvas.height / 2 + 50);
+            }
+        };
+
+        const updateScoreboard = () => {
+            const scoreBoard = document.getElementById('scoreBoard');
+            scoreBoard.innerHTML = ''; 
+
+            const sortedSnakes = [...snakes].sort((a, b) => b.score - a.score);
+
+            sortedSnakes.forEach(snake => {
+                const statusText = snake.isDead ? ' (DEAD)' : '';
+                
+                const scoreItem = document.createElement('div');
+                scoreItem.className = `snake-score-item flex justify-between items-center ${snake.cssClass} ${snake.isDead ? 'dead' : ''}`;
+                scoreItem.innerHTML = `
+                    <span class="font-bold">${snake.name}</span>
+                    <span class="text-xl">${snake.score}${statusText}</span>
+                `;
+                scoreBoard.appendChild(scoreItem);
+            });
+
+            const playerSnake = snakes.find(s => s.isPlayer);
+            if (playerSnake && playerSnake.isDead && !gameOver) {
+                gameOver = true;
+                statusMessageEl.textContent = 'GAME OVER! You crashed into a rival snake.';
+            }
+        };
+
+
+        // --- Input and Direction Calculation (Keyboard) ---
+
+        /**
+         * Calculates the new direction based on currently pressed keys (for diagonal movement).
+         */
+        const calculateKeyboardDirection = (snake) => {
+            let dx = 0;
+            let dy = 0;
+
+            // Determine vertical component
+            if (keysPressed['w'] || keysPressed['arrowup']) {
+                dy = -1; // Up
+            } else if (keysPressed['s'] || keysPressed['arrowdown']) {
+                dy = 1; // Down
+            }
+
+            // Determine horizontal component
+            if (keysPressed['a'] || keysPressed['arrowleft']) {
+                dx = -1; // Left
+            } else if (keysPressed['d'] || keysPressed['arrowright']) {
+                dx = 1; // Right
+            }
+
+            // If a direction is determined (cardinal or diagonal)
+            if (dx !== 0 || dy !== 0) {
+                snake.setDirection(dx, dy);
+            }
+            // If no direction key is pressed, the snake continues in its current direction.
+        };
+        
+        // --- Touch Handlers (Joystick) ---
+        
+        const handleTouchStart = (e) => {
+            e.preventDefault(); 
+            
+            const playerSnake = snakes.find(s => s.isPlayer);
+            if (!playerSnake) return;
+
+            if (gameOver) {
+                initializeGame();
+                isPaused = false;
+                return;
+            }
+
+            if (isPaused) {
+                isPaused = false;
+                statusMessageEl.textContent = 'Game ON!';
+                statusMessageEl.classList.remove('paused-indicator');
+            }
+            
+            if (joystick.active) return; // Only allow one touch for control
+
+            const touch = e.changedTouches[0];
+            const pos = getTouchPos(touch);
+
+            joystick.center = { x: pos.x, y: pos.y };
+            joystick.handle = { x: pos.x, y: pos.y };
+            joystick.active = true;
+            joystick.touchIdentifier = touch.identifier;
+        };
+        
+        const handleTouchMove = (e) => {
+            if (!joystick.active || isPaused || gameOver) return;
+            e.preventDefault(); 
+
+            let touch = null;
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                if (e.changedTouches[i].identifier === joystick.touchIdentifier) {
+                    touch = e.changedTouches[i];
+                    break;
+                }
+            }
+            if (!touch) return;
+            
+            const pos = getTouchPos(touch);
+            const playerSnake = snakes.find(s => s.isPlayer);
+            if (!playerSnake || playerSnake.isDead) return;
+
+            const dx = pos.x - joystick.center.x;
+            const dy = pos.y - joystick.center.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            let newHandleX = pos.x;
+            let newHandleY = pos.y;
+            
+            // Limit handle movement (clamping)
+            if (distance > joystick.maxTravel) {
+                const angle = Math.atan2(dy, dx);
+                newHandleX = joystick.center.x + Math.cos(angle) * joystick.maxTravel;
+                newHandleY = joystick.center.y + Math.sin(angle) * joystick.maxTravel;
+            }
+
+            joystick.handle = { x: newHandleX, y: newHandleY };
+            
+            // --- Direction Calculation based on Handle Position ---
+            
+            // Use normalized displacement from center
+            const travelX = newHandleX - joystick.center.x;
+            const travelY = newHandleY - joystick.center.y;
+            
+            let finalDx = 0;
+            let finalDy = 0;
+
+            // Threshold to register movement (e.g., 20% of max travel)
+            const threshold = joystick.maxTravel * 0.3; 
+
+            if (Math.abs(travelX) > threshold) {
+                finalDx = travelX > 0 ? 1 : -1;
+            }
+            if (Math.abs(travelY) > threshold) {
+                finalDy = travelY > 0 ? 1 : -1;
+            }
+
+            if (finalDx !== 0 || finalDy !== 0) {
+                playerSnake.setDirection(finalDx, finalDy);
+            }
+        };
+
+        const handleTouchEnd = (e) => {
+            let touchFound = false;
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                if (e.changedTouches[i].identifier === joystick.touchIdentifier) {
+                    touchFound = true;
+                    break;
+                }
+            }
+
+            if (touchFound) {
+                joystick.active = false;
+                joystick.touchIdentifier = null;
+            }
+        };
+
+        // --- Boot Animation Implementation (Refactored) ---
+
+        const TARGET_TITLE = "SLITHER ARENA";
+        const SOURCE_TITLE = "RELIMINTOR";
+        const TOTAL_DURATION = 3500;
+        const PHASE_1_DURATION = 1500; // Suck in time
+        const PHASE_2_DELAY = 1800;    // Pause before reveal
+        const PHASE_2_END = 3300;      // Reveal end time
+        
+        const FONT_SIZE = 55;
+        const CHAR_WIDTH = 30;
+
+        const runBootAnimation = () => {
+            return new Promise(resolve => {
+                let animationStartTime = null;
+
+                const CENTER_X = canvas.width / 2;
+                const CENTER_Y = canvas.height / 2;
+                
+                // Final Target Positions (SLITHER ARENA)
+                const SLITHER_X_OFFSET = -180; 
+                const ARENA_X_OFFSET = 120;
+                
+                // Merge points (Position of L and N in the final title)
+                const mergeL = { x: CENTER_X + SLITHER_X_OFFSET + CHAR_WIDTH, y: CENTER_Y }; // X for L
+                const mergeN = { x: CENTER_X + ARENA_X_OFFSET + CHAR_WIDTH * 3, y: CENTER_Y }; // X for N
+                
+                // Helper to draw text with glow
+                const drawText = (text, x, y, color = '#4299e1', glow = 15) => {
+                    ctx.shadowBlur = glow;
+                    ctx.shadowColor = color;
+                    ctx.fillStyle = color;
+                    ctx.fillText(text, x, y);
+                    ctx.shadowBlur = 0;
+                };
+
+                // Source characters R E L I M I N T O R
+                const sourceChars = [
+                    // R E -> L
+                    { char: 'R', startX: CENTER_X - 150, merge: mergeL, delay: 0, color: '#e53e3e' },
+                    { char: 'E', startX: CENTER_X - 120, merge: mergeL, delay: 100, color: '#f6ad55' },
+                    // L stays, but others merge into it
+                    { char: 'L', startX: CENTER_X - 90, merge: mergeL, delay: 200, color: '#4299e1', isCore: true }, 
+                    // I M I -> L
+                    { char: 'I', startX: CENTER_X - 60, merge: mergeL, delay: 300, color: '#48bb78' },
+                    { char: 'M', startX: CENTER_X - 30, merge: mergeL, delay: 400, color: '#9f7aea' },
+                    { char: 'I', startX: CENTER_X, merge: mergeL, delay: 500, color: '#06b6d4' },
+                    // N stays, but others merge into it
+                    { char: 'N', startX: CENTER_X + 30, merge: mergeN, delay: 600, color: '#4299e1', isCore: true }, 
+                    // T O R -> N
+                    { char: 'T', startX: CENTER_X + 60, merge: mergeN, delay: 700, color: '#d946ef' },
+                    { char: 'O', startX: CENTER_X + 90, merge: mergeN, delay: 800, color: '#6366f1' },
+                    { char: 'R', startX: CENTER_X + 120, merge: mergeN, delay: 900, color: '#9b2c2c' },
+                ];
+                
+                // Target characters S L I T H E R   A R E N A
+                const targetChars = [
+                    // S L I T H E R (Emerge from L)
+                    { char: 'S', targetX: CENTER_X + SLITHER_X_OFFSET, merge: mergeL, delay: 0, color: '#fbd38d' },
+                    { char: 'L', targetX: CENTER_X + SLITHER_X_OFFSET + CHAR_WIDTH, merge: mergeL, delay: 100, color: '#4299e1', isCore: true },
+                    { char: 'I', targetX: CENTER_X + SLITHER_X_OFFSET + CHAR_WIDTH*2, merge: mergeL, delay: 200, color: '#f6ad55' },
+                    { char: 'T', targetX: CENTER_X + SLITHER_X_OFFSET + CHAR_WIDTH*3, merge: mergeL, delay: 300, color: '#48bb78' },
+                    { char: 'H', targetX: CENTER_X + SLITHER_X_OFFSET + CHAR_WIDTH*4, merge: mergeL, delay: 400, color: '#9f7aea' },
+                    { char: 'E', targetX: CENTER_X + SLITHER_X_OFFSET + CHAR_WIDTH*5, merge: mergeL, delay: 500, color: '#06b6d4' },
+                    { char: 'R', targetX: CENTER_X + SLITHER_X_OFFSET + CHAR_WIDTH*6, merge: mergeL, delay: 600, color: '#9b2c2c' },
+
+                    // A R E N A (Emerge from N)
+                    { char: 'A', targetX: CENTER_X + ARENA_X_OFFSET, merge: mergeN, delay: 0, color: '#fbd38d' },
+                    { char: 'R', targetX: CENTER_X + ARENA_X_OFFSET + CHAR_WIDTH, merge: mergeN, delay: 100, color: '#4299e1' },
+                    { char: 'E', targetX: CENTER_X + ARENA_X_OFFSET + CHAR_WIDTH*2, merge: mergeN, delay: 200, color: '#f6ad55' },
+                    { char: 'N', targetX: CENTER_X + ARENA_X_OFFSET + CHAR_WIDTH*3, merge: mergeN, delay: 300, color: '#48bb78', isCore: true },
+                    { char: 'A', targetX: CENTER_X + ARENA_X_OFFSET + CHAR_WIDTH*4, merge: mergeN, delay: 400, color: '#9f7aea' },
+                ];
+
+
+                const animateBoot = (timestamp) => {
+                    if (!animationStartTime) {
+                        animationStartTime = timestamp;
+                    }
+
+                    const elapsed = timestamp - animationStartTime;
+
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    drawStarryBackground();
+                    
+                    // Draw title background box
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                    ctx.fillRect(0, CENTER_Y - 80, canvas.width, 160);
+                    
+                    ctx.textAlign = 'center';
+                    ctx.font = `${FONT_SIZE}px "VT323", monospace`;
+                    
+                    // --- PHASE 1: SUCK IN (0ms to PHASE_1_DURATION) ---
+                    if (elapsed < PHASE_1_DURATION) {
+                        const progress = elapsed / PHASE_1_DURATION; // 0 to 1
+
+                        sourceChars.forEach(data => {
+                            if (data.isCore) {
+                                // Core letters L and N stay put
+                                ctx.globalAlpha = 1.0;
+                                drawText(data.char, data.merge.x, data.merge.y, data.color, 15);
+                            } else {
+                                // Other letters move to merge point and fade out
+                                const p = Math.max(0, (elapsed - data.delay) / (PHASE_1_DURATION - data.delay));
+                                
+                                if (p < 1) {
+                                    const currentX = data.startX + (data.merge.x - data.startX) * p;
+                                    const currentY = CENTER_Y + (data.merge.y - CENTER_Y) * p;
+                                    const alpha = 1.0 - p;
+                                    ctx.globalAlpha = alpha;
+                                    drawText(data.char, currentX, currentY, data.color, 15 * (1-p));
+                                }
+                            }
+                        });
+                        
+                    // --- PHASE 2: REVEAL (PHASE_2_DELAY to PHASE_2_END) ---
+                    } else if (elapsed >= PHASE_2_DELAY && elapsed < PHASE_2_END) {
+                        const revealTime = elapsed - PHASE_2_DELAY;
+                        
+                        targetChars.forEach(data => {
+                            const p = Math.max(0, (revealTime - data.delay) / (PHASE_2_END - PHASE_2_DELAY)); // 0 to 1
+                            
+                            if (p >= 0 && p <= 1) {
+                                const startX = data.merge.x;
+                                const startY = data.merge.y;
+                                
+                                const currentX = startX + (data.targetX - startX) * p;
+                                const currentY = startY + (CENTER_Y - startY) * p;
+                                
+                                const alpha = p;
+                                ctx.globalAlpha = alpha;
+                                drawText(data.char, currentX, currentY, data.color, 15 * p);
+                            } else if (p > 1) {
+                                // Final position once reveal is done
+                                ctx.globalAlpha = 1.0;
+                                drawText(data.char, data.targetX, CENTER_Y, data.color, 15);
+                            }
+                        });
+
+                    // --- FINAL STATE ---
+                    } else if (elapsed >= PHASE_2_END) {
+                        targetChars.forEach(data => {
+                            ctx.globalAlpha = 1.0;
+                            drawText(data.char, data.targetX, CENTER_Y, data.color, 15);
+                        });
+                    }
+
+
+                    ctx.globalAlpha = 1.0; // Reset global alpha for next draw cycle
+
+                    // Check if animation is truly finished
+                    if (elapsed < TOTAL_DURATION) {
+                         requestAnimationFrame(animateBoot);
+                    } else {
+                        // Finalize HTML text for accessibility/SEO
+                        GAME_TITLE_EL.textContent = TARGET_TITLE + " - 8-Way Movement";
+                        GAME_TITLE_EL.classList.remove('opacity-0');
+                        isAnimating = false;
+                        resolve();
+                    }
+                };
+
+                // Clear canvas before starting the animation
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                drawStarryBackground();
+                requestAnimationFrame(animateBoot);
+            });
+        };
+
+
+        // --- Game Loop and Events ---
+
+        const updateGame = () => {
+            // Calculate moves for AIs first
+            for (const snake of snakes) {
+                if (!snake.isPlayer && !snake.isDead) {
+                    snake.calculateAIMove();
+                }
+            }
+            
+            // Move all snakes
+            for (const snake of snakes) {
+                snake.move();
+            }
+
+            updateScoreboard();
+
+            // End condition
+            const aliveSnakes = snakes.filter(s => !s.isDead);
+            if (aliveSnakes.length <= 1 && !gameOver) {
+                gameOver = true;
+                if (aliveSnakes.length === 1) {
+                    const winner = aliveSnakes[0];
+                    statusMessageEl.textContent = `${winner.name} is the last snake standing and wins!`;
+                } else {
+                    statusMessageEl.textContent = 'Everyone perished! TIE.';
+                }
+                statusMessageEl.classList.remove('paused-indicator');
+            }
+        };
+
+        const gameLoop = (timestamp) => {
+            // Only draw the standard game elements if not animating
+            if (!isAnimating) {
+                if (!gameOver && !isPaused) {
+                    if (timestamp - lastUpdateTime > GAME_SPEED_MS) {
+                        updateGame();
+                        lastUpdateTime = timestamp;
+                    }
+                }
+                draw(); 
+            }
+            
+            requestAnimationFrame(gameLoop);
+        };
+
+        document.addEventListener('keydown', (e) => {
+            if (isAnimating) return; 
+
+            const playerSnake = snakes.find(s => s.isPlayer);
+            if (!playerSnake) return;
+
+            if (e.code === 'Space') {
+                if (gameOver) {
+                    initializeGame();
+                    isPaused = false;
+                } else {
+                    isPaused = !isPaused;
+                    statusMessageEl.textContent = isPaused ? 'Game PAUSED. Press SPACE to resume.' : 'Game ON!';
+                    statusMessageEl.classList.toggle('paused-indicator', isPaused);
+                }
+                e.preventDefault(); 
+                return;
+            }
+            
+            if (isPaused || gameOver || playerSnake.isDead) return;
+
+            const key = e.key.toLowerCase();
+            const isDirectionKey = ['w', 's', 'a', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key);
+
+            if (isDirectionKey) {
+                keysPressed[key] = true;
+                calculateKeyboardDirection(playerSnake);
+                e.preventDefault(); 
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            if (isAnimating) return;
+
+            const playerSnake = snakes.find(s => s.isPlayer);
+            if (!playerSnake || playerSnake.isDead || gameOver) return;
+
+            const key = e.key.toLowerCase();
+            const isDirectionKey = ['w', 's', 'a', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key);
+
+            if (isDirectionKey) {
+                delete keysPressed[key];
+                calculateKeyboardDirection(playerSnake);
+            }
+        });
+
+        // Initialize and start the loop
+        window.onload = async function() {
+            // 1. Initialize Game Setup (no drawing yet)
+            initializeGame();
+            updateScoreboard();
+
+            // 2. Run Boot Animation
+            await runBootAnimation();
+            
+            // 3. Start Game Loop after animation completes
+            // Note: Canvas input handlers are added here, after animation completes
+            canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+            canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+            canvas.addEventListener('touchend', handleTouchEnd);
+            canvas.addEventListener('touchcancel', handleTouchEnd); 
+            
+            // Start the main game loop
+            gameLoop(0); 
+        };
+
+    </script>
+</body>
+</html>
