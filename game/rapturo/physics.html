@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pixel Physics Lab</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #0f172a; /* Slate 900 */
+            color: #e2e8f0; /* Slate 200 */
+            overflow: hidden;
+            touch-action: none;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            height: 100vh; /* Full viewport height */
+        }
+        
+        /* Flex container for the canvas area */
+        #main-area {
+            flex-grow: 1;
+            position: relative;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        canvas {
+            image-rendering: pixelated;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            /* Maximize size within the flex container */
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        /* Custom Scrollbar for element picker */
+        .element-scroll::-webkit-scrollbar {
+            height: 6px;
+        }
+        .element-scroll::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        .element-scroll::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 3px;
+        }
+
+        .tool-btn {
+            transition: all 0.2s;
+        }
+        .tool-btn:active {
+            transform: scale(0.95);
+        }
+        .tool-btn.active {
+            border-color: #38bdf8;
+            background-color: #1e293b;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);
+        }
+
+        /* Toolbar is now part of the flex flow, not absolute */
+        #toolbar {
+            width: 100%;
+            background: rgba(15, 23, 42, 0.95);
+            border-top: 1px solid #334155;
+            padding-bottom: env(safe-area-inset-bottom); /* Handle mobile safe areas */
+            z-index: 20;
+        }
+
+        /* Header remains absolute to float over the top if needed, or we can flex it. 
+           Let's keep it absolute for immersion but ensure it doesn't block interaction 
+           if we had controls there. */
+        #header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 10;
+            pointer-events: none;
+        }
+        .interactive {
+            pointer-events: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Overlay -->
+    <div id="header" class="p-4 flex justify-between items-start bg-gradient-to-b from-slate-900/90 to-transparent">
+        <div>
+            <h1 class="text-xl font-bold text-sky-400 drop-shadow-md">Pixel Lab</h1>
+            <p class="text-xs text-slate-400" id="fps-counter">FPS: 60 | Particles: 0</p>
+        </div>
+        <div class="flex gap-2 interactive">
+            <button id="clear-btn" class="bg-red-900/50 hover:bg-red-600 text-white px-3 py-1 rounded text-sm border border-red-700 backdrop-blur-sm transition">Clear</button>
+            <button id="pause-btn" class="bg-slate-700/50 hover:bg-slate-600 text-white px-3 py-1 rounded text-sm border border-slate-600 backdrop-blur-sm transition">Pause</button>
+        </div>
+    </div>
+
+    <!-- Main Canvas Area -->
+    <div id="main-area">
+        <canvas id="simCanvas"></canvas>
+    </div>
+
+    <!-- Bottom Toolbar (Solid Floor) -->
+    <div id="toolbar">
+        <div class="p-2">
+            <!-- Brush Settings -->
+            <div class="flex items-center justify-between mb-2 px-2">
+                <div class="flex items-center gap-3">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Size</span>
+                    <input type="range" id="brush-size" min="1" max="10" value="3" class="w-24 accent-sky-500 cursor-pointer">
+                    <span id="brush-val" class="text-xs text-slate-300 w-4">3</span>
+                </div>
+                <div class="text-xs text-slate-500 hidden md:block">
+                    Left Click: Draw | Right Click: Erase
+                </div>
+            </div>
+
+            <!-- Elements Scroll -->
+            <div class="element-scroll flex gap-2 overflow-x-auto pb-2 px-1 select-none">
+                <!-- Buttons injected by JS -->
+            </div>
+        </div>
+    </div>
+
+<script>
+/**
+ * PIXEL PHYSICS ENGINE
+ * --------------------
+ */
+
+const CONFIG = {
+    width: 200, 
+    height: 200, 
+    targetFPS: 60
+};
+
+// Element Types
+const ELEMENTS = {
+    EMPTY: { id: 0, name: 'Eraser', color: '#000000', type: 'empty' },
+    SAND: { id: 1, name: 'Sand', color: ['#fde047', '#facc15', '#eab308'], type: 'powder', density: 10 },
+    DIRT: { id: 15, name: 'Dirt', color: ['#795548', '#5d4037', '#4e342e'], type: 'powder', density: 12 }, 
+    STONE: { id: 2, name: 'Stone', color: ['#94a3b8', '#64748b', '#475569'], type: 'static', density: 100 },
+    WATER: { id: 3, name: 'Water', color: ['#38bdf8', '#0ea5e9'], type: 'liquid', density: 5, viscosity: 1 },
+    WOOD: { id: 4, name: 'Wood', color: ['#a97142', '#8b5a2b'], type: 'static', density: 50, flammable: 15 },
+    FIRE: { id: 5, name: 'Fire', color: ['#ef4444', '#f97316', '#fbbf24'], type: 'gas', density: -1, life: 10 },
+    SMOKE: { id: 6, name: 'Smoke', color: ['#334155', '#1e293b'], type: 'gas', density: -2, life: 60 },
+    STEAM: { id: 7, name: 'Steam', color: ['#e2e8f0', '#cbd5e1'], type: 'gas', density: -1, life: 80 },
+    ACID: { id: 8, name: 'Acid', color: ['#84cc16', '#65a30d'], type: 'liquid', density: 5.5 },
+    OIL: { id: 9, name: 'Oil', color: ['#78350f', '#92400e'], type: 'liquid', density: 2, flammable: 80 },
+    LAVA: { id: 10, name: 'Lava', color: ['#ea580c', '#c2410c', '#7c2d12'], type: 'liquid', density: 20, viscosity: 0.1 },
+    GUNPOWDER: { id: 11, name: 'Gunpowder', color: ['#4a4a4a', '#2d2d2d'], type: 'powder', density: 9, flammable: 90 },
+    WAX: { id: 12, name: 'Wax', color: ['#fef3c7', '#fde68a'], type: 'static', density: 30, flammable: 5 },
+    PLANT: { id: 13, name: 'Plant', color: ['#22c55e', '#16a34a', '#15803d'], type: 'static', density: 40, flammable: 40 },
+    ICE: { id: 14, name: 'Ice', color: ['#cffafe', '#a5f3fc'], type: 'static', density: 4, meltRate: 1 }
+};
+
+// UI State
+let currentElement = ELEMENTS.SAND;
+let brushSize = 3;
+let isPaused = false;
+let isMouseDown = false;
+let mouseX = 0;
+let mouseY = 0;
+let frameCount = 0;
+let lastFpsTime = 0;
+
+// Engine Globals
+const canvas = document.getElementById('simCanvas');
+const ctx = canvas.getContext('2d', { alpha: false });
+const mainArea = document.getElementById('main-area');
+
+// Grid Data
+let grid = new Uint8Array(CONFIG.width * CONFIG.height);
+let lifeGrid = new Uint8Array(CONFIG.width * CONFIG.height); 
+let imgData = ctx.createImageData(CONFIG.width, CONFIG.height);
+let buf32 = new Uint32Array(imgData.data.buffer);
+
+const elementContainer = document.querySelector('.element-scroll');
+
+// --- INITIALIZATION ---
+
+function init() {
+    setupCanvas();
+    setupUI();
+    window.addEventListener('resize', setupCanvas);
+    
+    // Mouse Events on main area to catch drags outside canvas
+    mainArea.addEventListener('mousedown', e => { isMouseDown = true; handleInput(e); });
+    window.addEventListener('mouseup', () => isMouseDown = false);
+    mainArea.addEventListener('mousemove', e => {
+        if(isMouseDown) handleInput(e);
+        updateMousePos(e);
+    });
+    
+    // Touch Events
+    mainArea.addEventListener('touchstart', e => { isMouseDown = true; handleInput(e, true); e.preventDefault(); }, {passive: false});
+    window.addEventListener('touchend', () => isMouseDown = false);
+    mainArea.addEventListener('touchmove', e => {
+        if(isMouseDown) handleInput(e, true);
+        e.preventDefault();
+    }, {passive: false});
+
+    document.addEventListener('contextmenu', event => event.preventDefault());
+
+    lastFpsTime = performance.now();
+    requestAnimationFrame(loop);
+}
+
+function setupCanvas() {
+    // Fit canvas into the main-area flex box
+    const rect = mainArea.getBoundingClientRect();
+    const containerW = rect.width;
+    const containerH = rect.height;
+    
+    const aspect = CONFIG.width / CONFIG.height;
+    
+    let displayW = containerW;
+    let displayH = containerW / aspect;
+
+    // Constrain by height if needed
+    if (displayH > containerH) {
+        displayH = containerH;
+        displayW = containerH * aspect;
+    }
+
+    canvas.width = CONFIG.width;
+    canvas.height = CONFIG.height;
+    
+    canvas.style.width = `${Math.floor(displayW)}px`;
+    canvas.style.height = `${Math.floor(displayH)}px`;
+    
+    // Ensure buffers are ready
+    if (grid.length !== CONFIG.width * CONFIG.height) {
+        grid = new Uint8Array(CONFIG.width * CONFIG.height);
+        lifeGrid = new Uint8Array(CONFIG.width * CONFIG.height);
+        imgData = ctx.createImageData(CONFIG.width, CONFIG.height);
+        buf32 = new Uint32Array(imgData.data.buffer);
+    }
+}
+
+function setupUI() {
+    Object.values(ELEMENTS).forEach(el => {
+        const btn = document.createElement('button');
+        btn.className = `tool-btn min-w-[70px] h-16 rounded-lg border border-slate-700 bg-slate-800 flex flex-col items-center justify-center gap-1 ${el.name === 'Sand' ? 'active' : ''}`;
+        
+        const dot = document.createElement('div');
+        dot.className = 'w-6 h-6 rounded-full border border-slate-600 shadow-sm';
+        let mainColor = Array.isArray(el.color) ? el.color[1] || el.color[0] : el.color;
+        dot.style.backgroundColor = mainColor;
+        
+        const label = document.createElement('span');
+        label.className = 'text-xs text-slate-300 font-medium';
+        label.innerText = el.name;
+
+        btn.appendChild(dot);
+        btn.appendChild(label);
+        
+        btn.onclick = () => {
+            document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentElement = el;
+        };
+        
+        elementContainer.appendChild(btn);
+    });
+
+    document.getElementById('brush-size').addEventListener('input', (e) => {
+        brushSize = parseInt(e.target.value);
+        document.getElementById('brush-val').innerText = brushSize;
+    });
+
+    document.getElementById('clear-btn').addEventListener('click', () => {
+        grid.fill(0);
+        lifeGrid.fill(0);
+    });
+
+    document.getElementById('pause-btn').addEventListener('click', (e) => {
+        isPaused = !isPaused;
+        e.target.innerText = isPaused ? "Play" : "Pause";
+        e.target.classList.toggle('bg-green-700/50');
+        e.target.classList.toggle('bg-slate-700/50');
+    });
+}
+
+// --- INPUT HANDLER ---
+
+function updateMousePos(e, isTouch) {
+    const rect = canvas.getBoundingClientRect();
+    const clientX = isTouch ? e.touches[0].clientX : e.clientX;
+    const clientY = isTouch ? e.touches[0].clientY : e.clientY;
+    
+    // Map coords to canvas grid
+    const scaleX = CONFIG.width / rect.width;
+    const scaleY = CONFIG.height / rect.height;
+    
+    mouseX = Math.floor((clientX - rect.left) * scaleX);
+    mouseY = Math.floor((clientY - rect.top) * scaleY);
+}
+
+function handleInput(e, isTouch = false) {
+    updateMousePos(e, isTouch);
+    if (mouseX < 0 || mouseX >= CONFIG.width || mouseY < 0 || mouseY >= CONFIG.height) return;
+
+    let typeToDraw = currentElement.id;
+    if (!isTouch && e.buttons === 2) typeToDraw = 0; 
+    
+    drawSquare(mouseX, mouseY, brushSize, typeToDraw);
+}
+
+// Square brush by default
+function drawSquare(cx, cy, r, typeId) {
+    // r acts as radius, so width is roughly 2r
+    for (let y = cy - r; y <= cy + r; y++) {
+        for (let x = cx - r; x <= cx + r; x++) {
+            if (x >= 0 && x < CONFIG.width && y >= 0 && y < CONFIG.height) {
+                const idx = y * CONFIG.width + x;
+                // Don't overwrite if not empty, unless erasing or replacing water
+                if (typeId === 0 || grid[idx] === 0 || grid[idx] === ELEMENTS.WATER.id) {
+                    if (Math.random() > 0.05) { // Slight noise for texture
+                        grid[idx] = typeId;
+                        lifeGrid[idx] = 0; 
+                    }
+                }
+            }
+        }
+    }
+}
+
+// --- HELPER FUNCTIONS ---
+
+function swap(i1, i2) {
+    const temp = grid[i1];
+    grid[i1] = grid[i2];
+    grid[i2] = temp;
+    
+    const tempL = lifeGrid[i1];
+    lifeGrid[i1] = lifeGrid[i2];
+    lifeGrid[i2] = tempL;
+}
+
+// --- PHYSICS LOOP ---
+
+function loop(timestamp) {
+    frameCount++;
+    if (timestamp - lastFpsTime >= 1000) {
+        let particleCount = 0;
+        for(let i=0; i<grid.length; i+=10) if(grid[i]!==0) particleCount+=10;
+        document.getElementById('fps-counter').innerText = `FPS: ${frameCount} | Particles: ~${particleCount}`;
+        frameCount = 0;
+        lastFpsTime = timestamp;
+    }
+
+    if (!isPaused) {
+        updatePhysics();
+    }
+    draw();
+    requestAnimationFrame(loop);
+}
+
+const PROPS = new Array(20).fill({});
+Object.values(ELEMENTS).forEach(el => PROPS[el.id] = el);
+
+function updatePhysics() {
+    for (let y = CONFIG.height - 1; y >= 0; y--) {
+        const leftToRight = Math.random() > 0.5;
+        const startX = leftToRight ? 0 : CONFIG.width - 1;
+        const endX = leftToRight ? CONFIG.width : -1;
+        const stepX = leftToRight ? 1 : -1;
+
+        for (let x = startX; x !== endX; x += stepX) {
+            const idx = y * CONFIG.width + x;
+            const type = grid[idx];
+            
+            if (type === 0) continue;
+            
+            const props = PROPS[type];
+
+            // --- FIRE LOGIC ---
+            if (type === ELEMENTS.FIRE.id) {
+                // Randomly extinguish
+                lifeGrid[idx]++;
+                if (lifeGrid[idx] > props.life) {
+                    if (Math.random() > 0.5) grid[idx] = 0; 
+                    else {
+                        grid[idx] = ELEMENTS.SMOKE.id;
+                        lifeGrid[idx] = 0;
+                    }
+                    continue;
+                }
+
+                // Burn Neighbors
+                const neighbors = [idx-1, idx+1, idx-CONFIG.width, idx+CONFIG.width];
+                for (let n of neighbors) {
+                    if (n >= 0 && n < grid.length && grid[n] !== 0) {
+                        const nType = grid[n];
+                        const nProps = PROPS[nType];
+                        
+                        if (nProps.flammable) {
+                            // Chance to ignite neighbor
+                            if (Math.random() * 100 < nProps.flammable) {
+                                grid[n] = ELEMENTS.FIRE.id;
+                                lifeGrid[n] = 0; 
+                            }
+                        } else if (nType === ELEMENTS.WATER.id) {
+                            grid[idx] = 0; // Fire dies
+                            grid[n] = ELEMENTS.STEAM.id; // Water boils
+                        } else if (nType === ELEMENTS.ICE.id) {
+                            grid[n] = ELEMENTS.WATER.id; // Ice melts
+                        }
+                    }
+                }
+            }
+            
+            // --- MOVEMENT BEHAVIORS ---
+
+            // 1. GAS
+            if (props.type === 'gas') {
+                // Movement (Up)
+                const up = idx - CONFIG.width;
+                if (y > 0) {
+                    if (grid[up] === 0) {
+                        swap(idx, up);
+                    } else {
+                        const dir = Math.random() > 0.5 ? 1 : -1;
+                        const upSide = up + dir;
+                        if (x + dir >= 0 && x + dir < CONFIG.width && grid[upSide] === 0) {
+                            swap(idx, upSide);
+                        }
+                    }
+                }
+                continue;
+            }
+
+            // 2. POWDERS (Includes Dirt)
+            if (props.type === 'powder') {
+                const down = idx + CONFIG.width;
+                if (y < CONFIG.height - 1) {
+                    if (grid[down] === 0) {
+                        swap(idx, down);
+                    } else if (PROPS[grid[down]].type === 'liquid') {
+                        swap(idx, down);
+                    } else {
+                        const dir = Math.random() > 0.5 ? 1 : -1;
+                        const downSide = down + dir;
+                        if (x + dir >= 0 && x + dir < CONFIG.width) {
+                             if (grid[downSide] === 0 || PROPS[grid[downSide]].type === 'liquid') {
+                                swap(idx, downSide);
+                             }
+                        }
+                    }
+                }
+                continue;
+            }
+
+            // 3. LIQUIDS
+            if (props.type === 'liquid') {
+                const down = idx + CONFIG.width;
+                
+                if (y < CONFIG.height - 1) {
+                    if (grid[down] === 0) {
+                        swap(idx, down);
+                        continue;
+                    }
+                    const belowType = grid[down];
+                    const belowProps = PROPS[belowType];
+                    if (belowProps.type === 'liquid' && props.density > belowProps.density) {
+                        if(Math.random() > 0.5) swap(idx, down);
+                        continue;
+                    }
+                }
+
+                const dir = Math.random() > 0.5 ? 1 : -1;
+                const side = idx + dir;
+                
+                if (x + dir >= 0 && x + dir < CONFIG.width) {
+                    if (grid[side] === 0) {
+                        swap(idx, side);
+                    } 
+                    else if (PROPS[grid[side]].type === 'liquid' && props.density > PROPS[grid[side]].density) {
+                         swap(idx, side);
+                    }
+                }
+
+                // ACID LOGIC
+                if (type === ELEMENTS.ACID.id) {
+                    const neighbors = [idx+1, idx-1, idx+CONFIG.width];
+                    for (let n of neighbors) {
+                        if (n >= 0 && n < grid.length && grid[n] !== 0 && grid[n] !== ELEMENTS.ACID.id && grid[n] !== ELEMENTS.FIRE.id) {
+                            if (Math.random() < 0.05) {
+                                grid[n] = 0; 
+                                grid[idx] = Math.random() > 0.5 ? 0 : ELEMENTS.SMOKE.id; 
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // LAVA LOGIC
+                if (type === ELEMENTS.LAVA.id) {
+                    const neighbors = [idx-1, idx+1, idx-CONFIG.width, idx+CONFIG.width];
+                    for (let n of neighbors) {
+                        if(n >=0 && n < grid.length) {
+                             if (grid[n] === ELEMENTS.WATER.id) {
+                                grid[idx] = ELEMENTS.STONE.id;
+                                grid[n] = ELEMENTS.STEAM.id;
+                                break;
+                             }
+                        }
+                    }
+                    if (Math.random() < 0.0001) grid[idx] = ELEMENTS.STONE.id;
+                }
+            }
+
+            // 4. SOLIDS/STATIC & BIOLOGY
+            if (props.type === 'static' || props.flammable) {
+                // PLANT BIOLOGY
+                if (type === ELEMENTS.PLANT.id) {
+                    const neighbors = [idx-1, idx+1, idx-CONFIG.width, idx+CONFIG.width];
+                    for (let n of neighbors) {
+                        if (n >= 0 && n < grid.length) {
+                            // Absorb Smoke
+                            if (grid[n] === ELEMENTS.SMOKE.id) {
+                                grid[n] = 0;
+                            }
+                            // Grow into Dirt
+                            else if (grid[n] === ELEMENTS.DIRT.id) {
+                                // 2% chance per frame to grow
+                                if (Math.random() < 0.02) {
+                                    grid[n] = ELEMENTS.PLANT.id;
+                                    lifeGrid[n] = 0;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // WOOD DECAY LOGIC
+                if (type === ELEMENTS.WOOD.id) {
+                    let nearWater = false;
+                    const neighbors = [idx-1, idx+1, idx-CONFIG.width, idx+CONFIG.width];
+                    
+                    for (let n of neighbors) {
+                        if (n >= 0 && n < grid.length && grid[n] === ELEMENTS.WATER.id) {
+                            nearWater = true;
+                            break;
+                        }
+                    }
+
+                    if (nearWater) {
+                        lifeGrid[idx]++;
+                    } else {
+                        // Slowly "repair" or stop tracking decay if not near water
+                        if (lifeGrid[idx] > 0) lifeGrid[idx]--;
+                    }
+                    
+                    // Decay threshold (Approx 10 seconds * 60 FPS = 600 frames)
+                    if (lifeGrid[idx] > 600) { 
+                        grid[idx] = ELEMENTS.DIRT.id;
+                        lifeGrid[idx] = 0;
+                    }
+                }
+
+                // ICE MELTING
+                if (type === ELEMENTS.ICE.id) {
+                    if (Math.random() < 0.001) grid[idx] = ELEMENTS.WATER.id;
+                }
+            }
+        }
+    }
+}
+
+// --- RENDERER ---
+
+const COLOR_CACHE = {};
+
+function parseColor(hex) {
+    hex = hex.replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    return (255 << 24) | (b << 16) | (g << 8) | r;
+}
+
+Object.values(ELEMENTS).forEach(el => {
+    if (Array.isArray(el.color)) {
+        COLOR_CACHE[el.id] = el.color.map(c => parseColor(c));
+    } else {
+        COLOR_CACHE[el.id] = [parseColor(el.color)];
+    }
+});
+
+function draw() {
+    for (let i = 0; i < grid.length; i++) {
+        const type = grid[i];
+        if (type === 0) {
+            buf32[i] = 0xFF000000;
+        } else {
+            const colors = COLOR_CACHE[type];
+            const variant = (i ^ (i >> 3)) % colors.length;
+            buf32[i] = colors[variant];
+        }
+    }
+    ctx.putImageData(imgData, 0, 0);
+}
+
+init();
+
+</script>
+</body>
+</html>
