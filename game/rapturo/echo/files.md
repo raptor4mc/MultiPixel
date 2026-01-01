@@ -1,0 +1,60 @@
+/echoes-of-the-unbuilt
+│
+├─ index.html
+├─ package.json              (optional, if using bundler)
+│
+├─ /src
+│   │
+│   ├─ main.js                # Entry point
+│   ├─ config.js              # Global config / constants
+│   │
+│   ├─ /core
+│   │   ├─ game.js            # Game loop & state
+│   │   ├─ time.js            # Time scale / pause / rewind
+│   │   ├─ input.js           # Keyboard & mouse
+│   │   └─ entropy.js         # Entropy calculation
+│   │
+│   ├─ /rules
+│   │   ├─ rules.js           # Rule definitions (data)
+│   │   ├─ ruleEngine.js      # Apply / revoke / resolve rules
+│   │   └─ conflicts.js       # Rule conflict handling
+│   │
+│   ├─ /world
+│   │   ├─ world.js           # World container
+│   │   ├─ region.js          # Region + rule overrides
+│   │   └─ anchors.js         # Rule anchor points
+│   │
+│   ├─ /entities
+│   │   ├─ entity.js          # Base entity
+│   │   ├─ player.js          # Player controller
+│   │   ├─ npc.js             # NPC + beliefs
+│   │   └─ object.js          # Physics objects
+│   │
+│   ├─ /ai
+│   │   ├─ beliefs.js         # Belief storage & decay
+│   │   └─ behavior.js        # Simple decision logic
+│   │
+│   ├─ /render
+│   │   ├─ renderer.js        # Three.js setup
+│   │   ├─ effects.js         # Entropy / glitch visuals
+│   │   └─ ui.js              # Minimal HUD & overlays
+│   │
+│   ├─ /data
+│   │   ├─ endings.js         # Ending conditions
+│   │   └─ lore.js            # Optional world fragments
+│   │
+│   └─ /util
+│       ├─ math.js
+│       ├─ random.js
+│       └─ debug.js
+│
+├─ /assets
+│   ├─ /shaders
+│   ├─ /sounds
+│   └─ /textures
+│
+├─ /notes
+│   ├─ scope.md               # What NOT to build
+│   └─ ideas.md               # Park ideas safely
+│
+└─ README.md
