@@ -1,6 +1,6 @@
 /echoes-of-the-unbuilt
 │
-├─ index.html
+├─ echo.html
 ├─ package.json              (optional, if using bundler)
 │
 ├─ /src
