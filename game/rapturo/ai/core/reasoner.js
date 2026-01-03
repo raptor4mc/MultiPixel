@@ -1,4 +1,55 @@
 // game/rapturo/ai/core/reasoner.js
+import { RuleEngine } from './rules.js';
+import { Planner } from './planner.js';
+
+export class Reasoner {
+    constructor(logger, memory, config) {
+        this.logger = logger;
+        this.memory = memory;
+        this.config = config;
+        this.rules = new RuleEngine();
+        this.planner = new Planner();
+        
+        this.state = 'IDLE';
+        this.isRunning = false;
+    }
+
+    async cycle() {
+        if (!this.isRunning) return;
+
+        // 1. PERCEIVE
+        this.setState('PERCEIVE');
+        const inputs = this.memory.getNewInputs();
+        await this.wait();
+        
+        // 2. REASON (Logic processing)
+        this.setState('REASON');
+        let analysis = { intent: "none", weights: { threat: 0 } };
+        if (inputs.length > 0) {
+            // Analyze the last thing the user said
+            analysis = this.rules.analyze(inputs[inputs.length - 1]);
+            this.logger.log(`Analysis: Intent=${analysis.intent} | Threat=${analysis.weights.threat.toFixed(2)}`);
+        }
+        await this.wait();
+
+        // 3. PLAN (Goal setting)
+        this.setState('PLAN');
+        const goal = this.planner.determineGoal(analysis, inputs.length);
+        const action = this.planner.getAction(goal);
+        this.logger.log(`Goal Set: ${goal}`);
+        await this.wait();
+        
+        // 4. ACT
+        this.setState('ACT');
+        this.logger.log(`>> AI Response: ${action}`);
+        await this.wait();
+
+        this.cycle();
+    }
+    
+    // ... rest of the helper methods (wait, setState) from previous part
+}
+// game/rapturo/ai/core/reasoner.js
 export class Reasoner {
     constructor(logger, memory, config) {
         this.logger = logger;
