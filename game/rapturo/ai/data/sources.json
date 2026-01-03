@@ -1,1 +1,11 @@
-
+{
+    "entities": {
+        "user": { "type": "human", "trust_level": 5 },
+        "system": { "type": "ai", "core": "rapturo_v1" }
+    },
+    "keywords": {
+        "danger": { "weight": -0.8, "category": "threat" },
+        "help": { "weight": 0.5, "category": "social" },
+        "optimize": { "weight": 0.9, "category": "task" }
+    }
+}
