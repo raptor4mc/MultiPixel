@@ -3,28 +3,98 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Voxel World - First Person</title>
-
-    <!-- Tailwind CSS -->
+    <title>MultiPixel - IVE FIXED THE BLOCKS</title>
+    <!-- Load Tailwind CSS for modern styling -->
     <script src="https://cdn.tailwindcss.com"></script>
-
-    <!-- Three.js -->
+    <!-- Load Three.js for 3D rendering -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-
-    <!-- Simplex Noise -->
+    <!-- Load Simplex Noise for procedural generation -->
     <script src="https://cdn.jsdelivr.net/npm/simplex-noise@2.4.0/simplex-noise.min.js"></script>
-
-    <link rel="stylesheet" href="./singleplayer.css">
+    <style>
+        /* Custom CSS for a clean, immersive experience */
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+            background-color: #1a1a2e; /* Deep purple background */
+        }
+        #info-panel {
+            position: absolute;
+            top: 0;
+            left: 0;
+            padding: 1rem;
+            background-color: rgba(0, 0, 0, 0.6);
+            color: white;
+            z-index: 10;
+            border-bottom-right-radius: 8px;
+            font-size: 0.8rem;
+        }
+        #instructions {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 1.5rem;
+            background-color: rgba(0, 0, 0, 0.85);
+            color: white;
+            border-radius: 12px;
+            text-align: center;
+            line-height: 1.6;
+            z-index: 100;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            cursor: pointer;
+            transition: opacity 0.3s ease-in-out;
+        }
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 10px;
+            height: 10px;
+            margin-top: -5px;
+            margin-left: -5px;
+            border-radius: 50%;
+            background: white;
+            opacity: 0; /* Hidden until Pointer Lock is active */
+            z-index: 99;
+            pointer-events: none;
+        }
+        #block-selector {
+            position: absolute;
+            bottom: 1rem;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 0.75rem 1.5rem;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            border-radius: 12px;
+            z-index: 10;
+            font-size: 1rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+        .text-neon-green {
+            color: #39ff14;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
 </head>
 <body>
 
+    <!-- Info Panel -->
     <div id="info-panel">
-        <p><strong>Voxel World Demo</strong></p>
+        <p><strong>MultiPixel Demo</strong></p>
         <p>Chunks Loaded: <span id="chunks-count">0</span></p>
         <p class="mt-2">Movement: <span class="text-neon-green">WASD</span></p>
         <p>Jump: <span class="text-neon-green">SPACE</span></p>
     </div>
 
+    <!-- Instructions Overlay -->
     <div id="instructions" class="font-mono">
         <p class="text-xl font-bold mb-2">Click to Play</p>
         <p>Movement: <span class="text-neon-green">W A S D</span></p>
@@ -34,13 +104,796 @@
         <p class="mt-4 text-sm text-gray-400">Press ESC to exit control mode.</p>
     </div>
 
+    <!-- Block Selector HUD -->
     <div id="block-selector">
         <span>Selected Block: </span>
         <span id="selected-block-name" class="text-yellow-400">Dirt</span>
     </div>
 
+    <!-- Crosshair -->
     <div id="crosshair"></div>
 
-    <script src="./singleplayer.js"></script>
+    <script>
+        // --- CORE VOXEL CONFIGURATION ---
+        const CHUNK_SIZE = 16;
+        const CHUNK_HEIGHT = 64;
+        const WORLD_RADIUS = 3; 
+        const BLOCK_SIZE = 1;
+        const SEA_LEVEL = 20;
+        
+        // Player height and eye level constants
+        const PLAYER_HEIGHT = 2.0 * BLOCK_SIZE; 
+        const EYE_HEIGHT = 1.8 * BLOCK_SIZE;    
+        const PLAYER_RADIUS = 0.3; // Used for collision checking
+
+        // Block types and colors 
+        const blockMaterials = {
+            1: { color: 0x4CAF50, name: 'Grass', roughness: 0.9, metalness: 0.1, id: 1 }, 
+            2: { color: 0x654321, name: 'Dirt', roughness: 0.9, metalness: 0.0, id: 2 }, 
+            3: { color: 0x666666, name: 'Stone', roughness: 0.8, metalness: 0.0, id: 3 }, 
+            4: { color: 0x1976D2, name: 'Water', roughness: 0.5, metalness: 0.1, transparent: true, opacity: 0.7, id: 4 }
+        };
+        const BLOCK_TYPE_IDS = Object.values(blockMaterials).map(m => m.id);
+
+        // Initialize Three.js components
+        let scene, camera, renderer, simplex, raycaster;
+        const chunks = new Map();
+        const worldGroup = new THREE.Group();
+        
+        let yawObject;   
+        let pitchObject; 
+        
+        // Player/Control State
+        const player = {
+            velocity: new THREE.Vector3(),
+            direction: new THREE.Vector3(),
+            moveSpeed: 0.1,
+            rotationSpeed: 0.002,
+            isJumping: false,
+            canMove: false,
+            keys: {} // Store pressed keys
+        };
+        const gravity = -0.01;
+        const jumpPower = 0.15;
+        let currentBlockType = 2; // Default to Dirt
+
+        /**
+         * Initializes the 3D environment and procedural noise generator.
+         */
+        function init() {
+            // Setup Scene and Simplex Noise
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87ceeb); // Light blue sky
+            scene.fog = new THREE.Fog(0x87ceeb, 10, 100); 
+
+            if (typeof SimplexNoise !== 'undefined') {
+                simplex = new SimplexNoise();
+            } else {
+                console.error("SimplexNoise library failed to load. Cannot generate terrain.");
+                return;
+            }
+            
+            // Raycaster setup
+            raycaster = new THREE.Raycaster();
+
+            // Setup Camera (Perspective)
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            
+            // --- FIRST-PERSON CONTROL STRUCTURE ---
+            yawObject = new THREE.Object3D();
+            pitchObject = new THREE.Object3D();
+            pitchObject.position.y = EYE_HEIGHT; 
+            
+            pitchObject.add(camera);
+            yawObject.add(pitchObject);
+            scene.add(yawObject);
+
+            yawObject.position.set(0, SEA_LEVEL * BLOCK_SIZE + 0.001, 0);
+
+            // Setup Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            document.body.appendChild(renderer.domElement);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x404040, 1.0); 
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 2.0); 
+            directionalLight.position.set(20, 50, 20);
+            scene.add(directionalLight);
+
+            scene.add(worldGroup);
+
+            // Add Controls & Handlers
+            setupPointerLockControls();
+            setupKeyboardControls();
+            setupBlockInteraction();
+            
+            // Generate initial chunks
+            generateWorld();
+            updateBlockSelectorUI();
+
+            // Event Listeners
+            window.addEventListener('resize', onWindowResize);
+            document.addEventListener('contextmenu', (event) => event.preventDefault()); // Prevent right-click context menu
+
+            // Start the animation loop
+            animate();
+        }
+
+        /**
+         * Updates the UI to show the currently selected block.
+         */
+        function updateBlockSelectorUI() {
+            const blockName = blockMaterials[currentBlockType].name;
+            document.getElementById('selected-block-name').textContent = blockName;
+        }
+        
+        /**
+         * Sets up block breaking and placing via mouse clicks.
+         */
+        function setupBlockInteraction() {
+            window.addEventListener('pointerdown', onPointerDown, false);
+        }
+
+        function onPointerDown(event) {
+            if (!player.canMove) return;
+
+            // Set raycaster origin to camera position and direction to center of screen
+            raycaster.setFromCamera({ x: 0, y: 0 }, camera); 
+            
+            // Intersect only the opaque meshes (grass, dirt, stone) for interaction
+            const opaqueMeshes = [];
+            worldGroup.children.forEach(chunkGroup => {
+                chunkGroup.children.forEach(mesh => {
+                    // Check if the material is not transparent (i.e., not water)
+                    if (mesh.material && !mesh.material.transparent) {
+                        opaqueMeshes.push(mesh);
+                    }
+                });
+            });
+
+            const intersects = raycaster.intersectObjects(opaqueMeshes, false);
+
+            if (intersects.length > 0) {
+                const intersect = intersects[0];
+                const blockMesh = intersect.object;
+                
+                // Find the chunkGroup associated with this mesh
+                const chunkGroup = blockMesh.parent; 
+
+                // 1. Determine Block World Coordinates (wx, wy, wz)
+                // Use the face normal to push the point slightly away from the center of the face
+                const point = intersect.point;
+                const normal = intersect.face.normal;
+
+                // Block coordinate (center of the block)
+                let targetPos;
+                if (event.button === 0) { // LMB: Break block (target center)
+                    // Push slightly INWARD from the surface to find the center of the broken block
+                    targetPos = point.clone().sub(normal.clone().multiplyScalar(0.01));
+                } else if (event.button === 2) { // RMB: Place block (placement center)
+                    // Push slightly OUTWARD from the surface to find the center of the placement block
+                    targetPos = point.clone().add(normal.clone().multiplyScalar(0.01));
+                } else {
+                    return;
+                }
+
+                // Integer world coordinates (x, y, z) of the block
+                const wx = Math.floor(targetPos.x / BLOCK_SIZE + 0.5);
+                const wy = Math.floor(targetPos.y / BLOCK_SIZE + 0.5);
+                const wz = Math.floor(targetPos.z / BLOCK_SIZE + 0.5);
+
+                // 2. Find the correct chunk data and indices
+                const cx = Math.floor(wx / CHUNK_SIZE);
+                const cz = Math.floor(wz / CHUNK_SIZE);
+                
+                // Find chunk by ID (The intersected mesh's parent should be the chunk group)
+                const chunkId = `${cx},${cz}`;
+                const targetChunkGroup = chunks.get(chunkId);
+
+                if (!targetChunkGroup) {
+                    console.error("Chunk not found for interaction coordinates.");
+                    return;
+                }
+
+                const chunkData = targetChunkGroup.userData.chunkData;
+                
+                // Local coordinates within the chunk
+                const lx = wx - targetChunkGroup.userData.cx * CHUNK_SIZE;
+                const lz = wz - targetChunkGroup.userData.cz * CHUNK_SIZE;
+                const ly = wy;
+
+                // Check bounds before indexing
+                if (lx < 0 || lx >= CHUNK_SIZE || ly < 0 || ly >= CHUNK_HEIGHT || lz < 0 || lz >= CHUNK_SIZE) {
+                     // This should ideally not happen if raycasting is correctly limited to loaded chunks
+                    return;
+                }
+
+                // Index into the 1D chunkData array
+                const blockIndex = lx + ly * CHUNK_SIZE + lz * CHUNK_SIZE * CHUNK_HEIGHT;
+
+                // --- Break Block (LMB) ---
+                if (event.button === 0) { 
+                    // Only break if the block is not air and not water
+                    if (chunkData[blockIndex] !== 0 && chunkData[blockIndex] !== 4) {
+                        chunkData[blockIndex] = 0; // Set to air
+                        updateChunkGeometry(targetChunkGroup, chunkData);
+                    }
+                } 
+                // --- Place Block (RMB) ---
+                else if (event.button === 2) { 
+                    // Check if placement coordinates are valid (within chunk height)
+                    if (ly >= 0 && ly < CHUNK_HEIGHT) {
+                        
+                        // Check if block being placed intersects with player position
+                        const placeBBox = new THREE.Box3(
+                            new THREE.Vector3(wx - 0.5 * BLOCK_SIZE, wy - 0.5 * BLOCK_SIZE, wz - 0.5 * BLOCK_SIZE),
+                            new THREE.Vector3(wx + 0.5 * BLOCK_SIZE, wy + 0.5 * BLOCK_SIZE, wz + 0.5 * BLOCK_SIZE)
+                        );
+
+                        // Player BBox is based on yawObject position
+                        const playerBBox = new THREE.Box3(
+                            new THREE.Vector3(yawObject.position.x - PLAYER_RADIUS, yawObject.position.y, yawObject.position.z - PLAYER_RADIUS),
+                            new THREE.Vector3(yawObject.position.x + PLAYER_RADIUS, yawObject.position.y + PLAYER_HEIGHT, yawObject.position.z + PLAYER_RADIUS)
+                        );
+                        
+                        // Check if space is air and doesn't intersect player
+                        if (!playerBBox.intersectsBox(placeBBox) && chunkData[blockIndex] === 0) {
+                            chunkData[blockIndex] = currentBlockType; 
+                            updateChunkGeometry(targetChunkGroup, chunkData);
+                        } else {
+                            // Cannot place block inside player or on an occupied space.
+                        }
+                    }
+                }
+            }
+        }
+
+        // --- Control Functions ---
+
+        /**
+         * Sets up the browser's Pointer Lock API for looking around with the mouse.
+         */
+        function setupPointerLockControls() {
+            const instructions = document.getElementById('instructions');
+            const crosshair = document.getElementById('crosshair');
+            const element = document.body;
+
+            const pointerlockchange = function () {
+                if (document.pointerLockElement === element) {
+                    player.canMove = true;
+                    instructions.style.opacity = 0;
+                    crosshair.style.opacity = 1;
+                    renderer.domElement.style.cursor = 'none';
+                } else {
+                    player.canMove = false;
+                    instructions.style.opacity = 1;
+                    crosshair.style.opacity = 0;
+                    renderer.domElement.style.cursor = 'pointer';
+                }
+            };
+
+            const onMouseMove = function (event) {
+                if (!player.canMove) return;
+
+                const movementX = event.movementX || event.mozMovementX || event.webkitMovementX || 0;
+                const movementY = event.movementY || event.mozMovementY || event.webkitMovementY || 0;
+
+                yawObject.rotation.y -= movementX * player.rotationSpeed;
+                pitchObject.rotation.x -= movementY * player.rotationSpeed;
+                pitchObject.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitchObject.rotation.x));
+            };
+
+            document.addEventListener('pointerlockchange', pointerlockchange);
+            document.addEventListener('mousemove', onMouseMove);
+
+            instructions.addEventListener('click', function () {
+                element.requestPointerLock = element.requestPointerLock || element.mozRequestPointerLock || element.webkitRequestPointerLock;
+                element.requestPointerLock();
+            });
+        }
+        
+        /**
+         * Sets up keyboard event listeners for movement (WASD, Space) and block switching (Q/E).
+         */
+        function setupKeyboardControls() {
+            document.addEventListener('keydown', (event) => {
+                const key = event.key.toLowerCase();
+                player.keys[key] = true;
+
+                if (!player.canMove) return;
+
+                // Block Switching (Q/E)
+                const currentIndex = BLOCK_TYPE_IDS.indexOf(currentBlockType);
+                let nextIndex = currentIndex;
+
+                if (key === 'q') {
+                    nextIndex = (currentIndex - 1 + BLOCK_TYPE_IDS.length) % BLOCK_TYPE_IDS.length;
+                    currentBlockType = BLOCK_TYPE_IDS[nextIndex];
+                    updateBlockSelectorUI();
+                } else if (key === 'e') {
+                    nextIndex = (currentIndex + 1) % BLOCK_TYPE_IDS.length;
+                    currentBlockType = BLOCK_TYPE_IDS[nextIndex];
+                    updateBlockSelectorUI();
+                }
+            });
+
+            document.addEventListener('keyup', (event) => {
+                player.keys[event.key.toLowerCase()] = false;
+            });
+        }
+
+        /**
+         * Gets the height of the terrain at a given world (wx, wz) position.
+         */
+        function getGroundHeight(wx, wz) {
+            const noiseScale = 0.05;
+            const roughness = 0.02;
+
+            const noiseValue = simplex.noise2D(wx * noiseScale, wz * noiseScale);
+            const detailNoise = simplex.noise2D(wx * roughness, wz * roughness);
+
+            let height = Math.floor((noiseValue + 1) * 0.5 * (CHUNK_HEIGHT * 0.4)) + 1;
+            height += Math.floor((detailNoise + 1) * 0.5 * 5); 
+            
+            // Return height in world units (BLOCK_SIZE is 1)
+            return Math.max(height, SEA_LEVEL);
+        }
+
+
+        /**
+         * Updates player movement and applies gravity.
+         */
+        function updatePlayerMovement() {
+            if (!player.canMove) return;
+
+            const moveSpeed = player.moveSpeed;
+            player.direction.set(0, 0, 0);
+
+            const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(yawObject.quaternion);
+            const right = new THREE.Vector3(1, 0, 0).applyQuaternion(yawObject.quaternion);
+            
+            forward.y = 0;
+            forward.normalize();
+            right.y = 0;
+            right.normalize();
+
+            // Handle WASD input
+            if (player.keys['w']) player.direction.add(forward);
+            if (player.keys['s']) player.direction.sub(forward);
+            if (player.keys['a']) player.direction.sub(right);
+            if (player.keys['d']) player.direction.add(right);
+            
+            player.direction.normalize();
+
+            player.velocity.x = player.direction.x * moveSpeed;
+            player.velocity.z = player.direction.z * moveSpeed;
+            
+            player.velocity.y += gravity;
+
+            if (player.keys[' '] && !player.isJumping) {
+                player.velocity.y = jumpPower;
+                player.isJumping = true;
+            }
+
+            yawObject.position.add(player.velocity);
+
+            // Simple Collision/Ground Check:
+            const groundY = getGroundHeight(yawObject.position.x, yawObject.position.z);
+            // We check the player's feet (yawObject.position.y is the base of the player)
+            const playerFeetY = yawObject.position.y;
+            
+            if (playerFeetY <= groundY) {
+                yawObject.position.y = groundY; 
+                player.velocity.y = 0;
+                player.isJumping = false;
+            }
+        }
+
+
+        // --- World Generation Functions ---
+        
+        /**
+         * Generates the entire visible world by iterating over chunk coordinates.
+         */
+        function generateWorld() {
+            let count = 0;
+            for (let cx = -WORLD_RADIUS; cx <= WORLD_RADIUS; cx++) {
+                for (let cz = -WORLD_RADIUS; cz <= WORLD_RADIUS; cz++) {
+                    const chunkGroup = createChunk(cx, cz);
+                    worldGroup.add(chunkGroup);
+                    chunks.set(`${cx},${cz}`, chunkGroup);
+                    count++;
+                }
+            }
+            document.getElementById('chunks-count').textContent = count;
+        }
+
+        /**
+         * Generates the 1D array of voxel data for a chunk.
+         */
+        function generateChunkData(cx, cz) {
+             const chunkData = new Array(CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE);
+             const noiseScale = 0.05;
+             const roughness = 0.02;
+
+             for (let x = 0; x < CHUNK_SIZE; x++) {
+                 for (let z = 0; z < CHUNK_SIZE; z++) {
+                     const wx = cx * CHUNK_SIZE + x;
+                     const wz = cz * CHUNK_SIZE + z;
+
+                     const noiseValue = simplex.noise2D(wx * noiseScale, wz * noiseScale);
+                     const detailNoise = simplex.noise2D(wx * roughness, wz * roughness);
+
+                     let height = Math.floor((noiseValue + 1) * 0.5 * (CHUNK_HEIGHT * 0.4)) + 1;
+                     height += Math.floor((detailNoise + 1) * 0.5 * 5);
+                     height = Math.max(1, Math.min(CHUNK_HEIGHT, height)); // Terrain height in block units
+
+                     for (let y = 0; y < CHUNK_HEIGHT; y++) {
+                         const index = x + y * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
+                         let type = 0; // Air
+
+                         if (y < height) {
+                             // Below terrain surface
+                             if (y >= height - 1 && y > SEA_LEVEL) {
+                                 type = 1; // 1: Grass (surface on land)
+                             } else if (y >= height - 1 && y <= SEA_LEVEL) {
+                                 type = 2; // 2: Dirt (surface near or under shallow water)
+                             } else if (y < height - 1) {
+                                 type = (y > height - 6) ? 2 : 3; // 2: Dirt, 3: Stone
+                             }
+                         } else if (y >= height && y <= SEA_LEVEL) {
+                             // Water column above terrain and below sea level
+                             type = 4; // 4: Water
+                         }
+                         chunkData[index] = type;
+                     }
+                 }
+             }
+             return chunkData;
+        }
+
+        /**
+         * Creates the initial chunk group, generating data and geometry.
+         */
+        function createChunk(cx, cz) {
+            const chunkData = generateChunkData(cx, cz);
+
+            const chunkGroup = new THREE.Group();
+            // Store metadata on the group for easy access during interaction
+            chunkGroup.userData.chunkData = chunkData;
+            chunkGroup.userData.cx = cx;
+            chunkGroup.userData.cz = cz;
+            
+            // Generate initial meshes
+            updateChunkGeometry(chunkGroup, chunkData);
+
+            return chunkGroup;
+        }
+
+        /**
+         * Re-generates the meshes for a given chunk based on its updated data.
+         * Used for both initial generation and runtime updates.
+         */
+        function updateChunkGeometry(chunkGroup, chunkData) {
+            // 1. Dispose of existing meshes to free memory
+            while(chunkGroup.children.length > 0){
+                const mesh = chunkGroup.children[0];
+                if (mesh.geometry) mesh.geometry.dispose();
+                if (Array.isArray(mesh.material)) {
+                    mesh.material.forEach(m => m.dispose());
+                } else if (mesh.material) {
+                    mesh.material.dispose();
+                }
+                chunkGroup.remove(mesh);
+            }
+            
+            /**
+             * Helper: push a single face (two triangles) to buffer arrays
+             * IMPORTANT: Vertex winding order must be Counter-Clockwise (CCW) when viewed from the outside
+             * for correct rendering with backface culling.
+             */
+            function pushFace(targetPositions, targetNormals, targetColors, targetIndices, targetUVs, faceCount, vx, vy, vz, size, normal, baseColor, faceIndex) {
+                const h = size / 2;
+                const vertexStart = faceCount * 4;
+                const corners = []; // Array to hold the 4 vertices for the face
+                
+                // UVs for a single face: (0, 1), (0, 0), (1, 0), (1, 1)
+                const uvs = [0, 1, 0, 0, 1, 0, 1, 1]; 
+
+                // --- 1. Vertex Positions (CCW Winding Order) ---
+                switch (faceIndex) {
+                    case 0: // +X: (Normal 1, 0, 0)
+                        corners.push(
+                            [vx + h, vy + h, vz + h],  // Front-Top-Right (0)
+                            [vx + h, vy - h, vz + h],  // Front-Bottom-Right (1)
+                            [vx + h, vy - h, vz - h],  // Back-Bottom-Right (2)
+                            [vx + h, vy + h, vz - h]   // Back-Top-Right (3)
+                        );
+                        break;
+                    case 1: // -X: (Normal -1, 0, 0)
+                        corners.push(
+                            [vx - h, vy + h, vz - h],  // Back-Top-Left (0)
+                            [vx - h, vy - h, vz - h],  // Back-Bottom-Left (1)
+                            [vx - h, vy - h, vz + h],  // Front-Bottom-Left (2)
+                            [vx - h, vy + h, vz + h]   // Front-Top-Left (3)
+                        );
+                        break;
+                    case 2: // +Y: (Normal 0, 1, 0 - Top Face)
+                        // FIX: Reordered vertices to ensure Counter-Clockwise (CCW) winding order when viewed from +Y.
+                        corners.push(
+                            [vx - h, vy + h, vz + h], // Front-Top-Left (0)
+                            [vx + h, vy + h, vz + h], // Front-Top-Right (3) 
+                            [vx + h, vy + h, vz - h], // Back-Top-Right (2)
+                            [vx - h, vy + h, vz - h]  // Back-Top-Left (1) 
+                        );
+                        break;
+                    case 3: // -Y: (Normal 0, -1, 0 - Bottom Face)
+                        corners.push(
+                            [vx - h, vy - h, vz - h], // Back-Bottom-Left (0)
+                            [vx + h, vy - h, vz - h], // Back-Bottom-Right (1)
+                            [vx + h, vy - h, vz + h], // Front-Bottom-Right (2)
+                            [vx - h, vy - h, vz + h]  // Front-Bottom-Left (3)
+                        );
+                        break;
+                    case 4: // +Z: (Normal 0, 0, 1 - Front Face)
+                        corners.push(
+                            [vx - h, vy + h, vz + h], // Top-Left (0)
+                            [vx - h, vy - h, vz + h], // Bottom-Left (1)
+                            [vx + h, vy - h, vz + h], // Bottom-Right (2)
+                            [vx + h, vy + h, vz + h]  // Top-Right (3)
+                        );
+                        break;
+                    case 5: // -Z: (Normal 0, 0, -1 - Back Face)
+                        corners.push(
+                            [vx + h, vy + h, vz - h], // Top-Right (0)
+                            [vx + h, vy - h, vz - h], // Bottom-Right (1)
+                            [vx - h, vy - h, vz - h], // Bottom-Left (2)
+                            [vx - h, vy + h, vz - h]  // Top-Left (3)
+                        );
+                        break;
+                }
+                
+                // --- 2. Simple Face Shading (Visual Enhancement) ---
+                let shade = 1.0;
+                if (faceIndex === 2) { // Top face (+Y)
+                    shade = 1.0; 
+                } else if (faceIndex === 3) { // Bottom face (-Y)
+                    shade = 0.5; 
+                } else { // Side faces (+/- X, +/- Z)
+                    shade = 0.8; 
+                }
+
+                // --- 3. Push to Buffers ---
+                for (let v of corners) {
+                    targetPositions.push(v[0], v[1], v[2]);
+                    targetNormals.push(normal.x, normal.y, normal.z);
+                    // Apply shading to the base color
+                    targetColors.push(baseColor.r * shade, baseColor.g * shade, baseColor.b * shade);
+                }
+
+                // Push UVs (4 pairs)
+                targetUVs.push(...uvs);
+
+                // Push indices (two triangles: 0,1,2 and 0,2,3 for CCW)
+                targetIndices.push(vertexStart, vertexStart + 1, vertexStart + 2);
+                targetIndices.push(vertexStart, vertexStart + 2, vertexStart + 3);
+            }
+
+
+            // 2. Mesh Generation (Occlusion Culling)
+            const opaquePositions = [];
+            const opaqueNormals = [];
+            const opaqueColors = [];
+            const opaqueIndices = [];
+            const opaqueUVs = []; // NEW UV BUFFER
+            
+            const waterPositions = [];
+            const waterNormals = [];
+            const waterColors = [];
+            const waterIndices = [];
+            const waterUVs = []; // NEW UV BUFFER
+
+            // Define Normals in the order they will be checked (0 to 5)
+            const faceNormals = [
+                new THREE.Vector3(1, 0, 0),   // 0: +X
+                new THREE.Vector3(-1, 0, 0),  // 1: -X
+                new THREE.Vector3(0, 1, 0),   // 2: +Y (Top)
+                new THREE.Vector3(0, -1, 0),  // 3: -Y (Bottom)
+                new THREE.Vector3(0, 0, 1),   // 4: +Z (Front)
+                new THREE.Vector3(0, 0, -1)   // 5: -Z (Back)
+            ];
+
+            // Offsets for checking neighbors (MUST match faceNormals order)
+            const neighborOffsets = [
+                [1, 0, 0],   // 0: +X
+                [-1, 0, 0],  // 1: -X
+                [0, 1, 0],   // 2: +Y
+                [0, -1, 0],  // 3: -Y
+                [0, 0, 1],   // 4: +Z
+                [0, 0, -1]   // 5: -Z
+            ];
+
+            let opaqueFaceCount = 0;
+            let waterFaceCount = 0;
+            
+            const tempColor = new THREE.Color();
+            const cx = chunkGroup.userData.cx;
+            const cz = chunkGroup.userData.cz;
+
+            /** Helper to get voxel type at local coordinates */
+            const getVoxel = (x, y, z) => {
+                if (x < 0 || x >= CHUNK_SIZE || y < 0 || y >= CHUNK_HEIGHT || z < 0 || z >= CHUNK_SIZE) {
+                    // Treat outside bounds as air (but not for neighbor check across chunks, which is not implemented yet)
+                    // For now, only check boundary blocks against air
+                    if (x < 0 || x >= CHUNK_SIZE || z < 0 || z >= CHUNK_SIZE) {
+                        return 0; 
+                    }
+                    if (y < 0 || y >= CHUNK_HEIGHT) {
+                        return 0; // Below or above world limits is air
+                    }
+                }
+                const index = x + y * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
+                return chunkData[index];
+            };
+
+            for (let x = 0; x < CHUNK_SIZE; x++) {
+                for (let y = 0; y < CHUNK_HEIGHT; y++) {
+                    for (let z = 0; z < CHUNK_SIZE; z++) {
+                        const type = getVoxel(x, y, z);
+
+                        if (type === 0) continue; // Skip air
+
+                        const isCurrentBlockWater = type === 4;
+
+                        for (let i = 0; i < 6; i++) {
+                            const [dx, dy, dz] = neighborOffsets[i];
+                            const neighborType = getVoxel(x + dx, y + dy, z + dz);
+                            const isNeighborWater = neighborType === 4;
+
+                            // Face Rendering Logic (Occlusion Culling):
+                            let isExposed = neighborType === 0;
+
+                            if (isCurrentBlockWater) {
+                                // Draw water surface/bottom if facing air (0) or a land block (1, 2, 3)
+                                if (neighborType !== 4 && neighborType !== 0) {
+                                    isExposed = true; 
+                                }
+                                // Only draw top/bottom faces for water to prevent z-fighting/sort issues through the sides
+                                if (i !== 2 && i !== 3 && neighborType === 4) continue; 
+
+                            } else { 
+                                // Opaque block: Draw if neighbor is air (0) or water (4)
+                                isExposed = neighborType === 0 || isNeighborWater;
+                            }
+                            
+                            if (isExposed) {
+                                
+                                // --- PER-FACE COLORING LOGIC (For Grass Block) ---
+                                let faceColor;
+                                // i=2 corresponds to the +Y face (Top face)
+                                if (type === 1) { // Grass Block
+                                    // Top face is Grass color, side/bottom faces are Dirt color
+                                    faceColor = (i === 2) ? blockMaterials[1].color : blockMaterials[2].color;
+                                } else {
+                                    faceColor = blockMaterials[type].color;
+                                }
+                                tempColor.set(faceColor);
+
+                                // Determine buffer
+                                const isWaterBlock = type === 4;
+                                const targetPositions = isWaterBlock ? waterPositions : opaquePositions;
+                                const targetNormals = isWaterBlock ? waterNormals : opaqueNormals;
+                                const targetColors = isWaterBlock ? waterColors : opaqueColors;
+                                const targetIndices = isWaterBlock ? waterIndices : opaqueIndices;
+                                const targetUVs = isWaterBlock ? waterUVs : opaqueUVs; // Use correct UV buffer
+                                
+                                // Calculate block center in world space (relative to chunk origin)
+                                const vx = x * BLOCK_SIZE + (cx * CHUNK_SIZE * BLOCK_SIZE);
+                                const vy = y * BLOCK_SIZE;
+                                const vz = z * BLOCK_SIZE + (cz * CHUNK_SIZE * BLOCK_SIZE);
+                                
+                                // Push face geometry, passing the face index (i) for correct vertex lookup
+                                pushFace(
+                                    targetPositions, 
+                                    targetNormals, 
+                                    targetColors, 
+                                    targetIndices,
+                                    targetUVs, // Pass UV buffer
+                                    isWaterBlock ? waterFaceCount++ : opaqueFaceCount++,
+                                    vx,
+                                    vy,
+                                    vz,
+                                    BLOCK_SIZE,
+                                    faceNormals[i],
+                                    tempColor,
+                                    i // Pass the face index here
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 3. Create Meshes
+            
+            // --- OPAQUE MESH (Grass, Dirt, Stone) ---
+            if (opaquePositions.length > 0) {
+                const opaqueGeometry = new THREE.BufferGeometry();
+                opaqueGeometry.setAttribute('position', new THREE.Float32BufferAttribute(opaquePositions, 3));
+                opaqueGeometry.setAttribute('normal', new THREE.Float32BufferAttribute(opaqueNormals, 3));
+                opaqueGeometry.setAttribute('color', new THREE.Float32BufferAttribute(opaqueColors, 3));
+                opaqueGeometry.setAttribute('uv', new THREE.Float32BufferAttribute(opaqueUVs, 2)); // ADD UVs
+                opaqueGeometry.setIndex(opaqueIndices);
+                
+                const opaqueMaterial = new THREE.MeshStandardMaterial({
+                    vertexColors: true,
+                    roughness: 0.9,
+                    metalness: 0.1,
+                    transparent: false,
+                    depthWrite: true, 
+                    depthTest: true,
+                    // If you wanted to load an image texture, you would add:
+                    // map: new THREE.TextureLoader().load('path/to/texture.png'),
+                });
+                const opaqueMesh = new THREE.Mesh(opaqueGeometry, opaqueMaterial);
+                chunkGroup.add(opaqueMesh);
+            }
+
+            // --- TRANSPARENT WATER MESH ---
+            if (waterPositions.length > 0) {
+                const waterGeometry = new THREE.BufferGeometry();
+                waterGeometry.setAttribute('position', new THREE.Float32BufferAttribute(waterPositions, 3));
+                waterGeometry.setAttribute('normal', new THREE.Float32BufferAttribute(waterNormals, 3));
+                waterGeometry.setAttribute('color', new THREE.Float32BufferAttribute(waterColors, 3));
+                waterGeometry.setAttribute('uv', new THREE.Float32BufferAttribute(waterUVs, 2)); // ADD UVs
+                waterGeometry.setIndex(waterIndices);
+                
+                const waterMaterial = new THREE.MeshStandardMaterial({
+                    vertexColors: true,
+                    transparent: true,
+                    opacity: blockMaterials[4].opacity, 
+                    side: THREE.DoubleSide, // Render both sides for water
+                    depthWrite: false, // Important for transparency sorting
+                    roughness: blockMaterials[4].roughness,
+                    metalness: blockMaterials[4].metalness
+                });
+
+                const waterMesh = new THREE.Mesh(waterGeometry, waterMaterial);
+                waterMesh.renderOrder = 1; 
+                chunkGroup.add(waterMesh);
+            }
+        }
+
+
+        // --- Game Loop ---
+        
+        /**
+         * Handles the rendering loop and controls update.
+         */
+        function animate() {
+            requestAnimationFrame(animate);
+            updatePlayerMovement(); 
+            renderer.render(scene, camera);
+        }
+
+        /**
+         * Handles window resize events.
+         */
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // Start the application when the window loads
+        window.onload = function () {
+            init();
+        }
+
+    </script>
 </body>
 </html>
