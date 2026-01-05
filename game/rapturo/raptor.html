@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Raptor Run</title>
+    <!-- Load Tailwind CSS for utility classes and the default font -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Tone.js for game audio -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <style>
+        /* Custom styles for the game environment */
+        @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+
+        body {
+            background-color: #0d0d1a; /* Dark background */
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden; /* Prevent scrolling */
+        }
+
+        #game-container {
+            width: 90%;
+            max-width: 800px;
+            aspect-ratio: 16 / 9; /* Standard widescreen ratio */
+            box-shadow: 0 0 40px rgba(0, 255, 255, 0.4); /* Cyan glow */
+            border: 4px solid #00ffff; /* Cyan border */
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #game-canvas {
+            background-color: #1a1a33; /* Static background color */
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* UI OVERLAY STYLES (Pause/Menu) */
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            display: none; 
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            z-index: 10;
+            backdrop-filter: blur(8px); 
+            border-radius: 8px;
+        }
+
+        .game-title {
+            font-family: 'VT323', monospace;
+            font-size: 4rem;
+            text-shadow: 0 0 15px #00bfff; 
+            margin-bottom: 0.5rem;
+        }
+
+        .action-button {
+            padding: 0.75rem 2rem;
+            margin-top: 1.5rem;
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: #0d0d1a;
+            background: linear-gradient(45deg, #00ffff, #ff00ff); 
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 0 10px #00ffff, 0 5px 0px #aa00aa; 
+            transform: translateY(0);
+        }
+
+        .action-button:hover {
+            box-shadow: 0 0 20px #ff00ff, 0 5px 0px #00ffff;
+            transform: translateY(-2px);
+        }
+
+        .action-button:active {
+            box-shadow: 0 0 5px #00ffff, 0 2px 0px #aa00aa;
+            transform: translateY(3px);
+        }
+
+        .score-text {
+            color: #00ffff;
+            text-shadow: 0 0 8px rgba(0, 255, 255, 0.6);
+            font-weight: 600;
+        }
+
+        /* Pause Button Styling */
+        #pause-button {
+            background-color: rgba(30, 30, 30, 0.8);
+            border: 2px solid #00ffff;
+            color: #00ffff;
+        }
+        #pause-button:hover {
+            background-color: rgba(60, 60, 60, 0.9);
+        }
+        
+        /* --- SPLASH SCREEN STYLES --- */
+        #splash-screen {
+            position: absolute;
+            inset: 0;
+            display: none; /* Controlled by JS */
+            background-color: #0d0d1a;
+            z-index: 50; 
+            transition: opacity 1s ease-out;
+        }
+
+        #splash-text-container {
+            perspective: 1000px;
+            height: 4rem; /* Match game-title size */
+            position: relative;
+            width: 100%;
+        }
+
+        .splash-word {
+            position: absolute;
+            font-family: 'VT323', monospace;
+            font-size: 3.5rem;
+            color: #00ffff;
+            text-shadow: 0 0 10px #00ffff;
+            transition: all 0.8s cubic-bezier(0.68, -0.55, 0.27, 1.55); /* Springy transition */
+            white-space: nowrap;
+            /* Center positioning logic */
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+    </style>
+</head>
+<body>
+
+<div id="game-container" class="relative">
+    
+    <!-- Splash Screen -->
+    <div id="splash-screen" class="flex flex-col justify-center items-center">
+        <div id="splash-text-container" class="w-full max-w-lg flex justify-center items-center">
+            <!-- Words injected by JS -->
+        </div>
+    </div>
+    
+    <!-- Pause Button -->
+    <button id="pause-button" class="absolute top-4 left-4 z-20 p-2 rounded-lg shadow-xl hidden">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pause">
+            <rect x="6" y="4" width="4" height="16" />
+            <rect x="14" y="4" width="4" height="16" />
+        </svg>
+    </button>
+    
+    <canvas id="game-canvas"></canvas>
+
+    <!-- UI Overlay for Game Over/Start Screen/Pause Menu -->
+    <div id="ui-overlay" class="absolute inset-0 hidden">
+        
+        <!-- Standard Start/Game Over Content -->
+        <div id="menu-standard" class="flex flex-col items-center">
+            <h1 class="game-title">RAPTOR RUN</h1>
+            <p id="score-display" class="score-text text-xl mb-4">Score: 0</p>
+            <p id="message-text" class="text-lg mb-6"></p>
+            <button id="start-button" class="action-button">
+                START GAME (Space/Click)
+            </button>
+        </div>
+
+        <!-- Pause Menu Options (Initially hidden) -->
+        <div id="pause-options" class="hidden flex flex-col items-center">
+            <h2 class="game-title text-5xl mb-8">GAME PAUSED</h2>
+            <button id="resume-button" class="action-button mb-4">
+                RESUME (R)
+            </button>
+            <button id="quit-button" class="action-button" style="
+                background: linear-gradient(45deg, #ff4444, #ff00ff);
+                box-shadow: 0 0 10px #ff00ff, 0 5px 0px #9a0000;
+            ">
+                QUIT
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- GAME CONSTANTS AND INITIALIZATION ---
+    const canvas = document.getElementById('game-canvas');
+    const ctx = canvas.getContext('2d');
+    const uiOverlay = document.getElementById('ui-overlay');
+    
+    // UI element references
+    const pauseButton = document.getElementById('pause-button');
+    const menuStandard = document.getElementById('menu-standard');
+    const pauseOptions = document.getElementById('pause-options');
+    const resumeButton = document.getElementById('resume-button');
+    const quitButton = document.getElementById('quit-button');
+    const startButton = document.getElementById('start-button');
+    const scoreDisplay = document.getElementById('score-display');
+    const messageText = document.getElementById('message-text');
+
+    // Splash Screen references
+    const splashScreen = document.getElementById('splash-screen');
+    const splashTextContainer = document.getElementById('splash-text-container');
+    const initialTitle = "RELIMINTOR";
+    const newTitleWords = ["RAPTOR", "RUN"];
+
+
+    let gameLoopId;
+    let isGameRunning = false;
+    let score = 0;
+    let lastTime = 0;
+
+    // Game Physics Constants
+    const CUBE_SIZE = 50; // Player bounding box size (Used for drawing)
+    const GRAVITY = 2000; 
+    const JUMP_VELOCITY = -600; 
+    const COLLISION_EPSILON = 2; // Check 2 pixels above the base line for ground collisions
+    
+    // Hitbox Constants (Tighter for better jump clearance)
+    const PLAYER_HITBOX_WIDTH = 40;
+    const PLAYER_HITBOX_HEIGHT = 40;
+    
+    // Speed Constants (Progressive difficulty)
+    const GAME_SPEED_BASE = 300; // Starting horizontal speed
+    const SPEED_INCREMENT_PER_SCORE = 1.0; 
+    let currentSpeed = GAME_SPEED_BASE; 
+
+    const GROUND_HEIGHT = 50;
+    const PI_HALF = Math.PI / 2; 
+
+    // Obstacle Spacing Constant: Minimum safe gap size
+    const GAP_BASE = 100; // Remains 100, but multipliers are increased below. 
+
+    // Scrolling/Parallax Constants
+    let backgroundOffset = 0;
+    let groundDetailOffset = 0;
+    const BACKGROUND_SCROLL_FACTOR = 0.15; 
+    const GROUND_DETAIL_SCROLL_FACTOR = 1.0; 
+
+    // Player State
+    let player = {
+        x: 50,
+        y: 0,
+        vy: 0, 
+        isJumping: false,
+        size: CUBE_SIZE,
+        color: '#00bfff', 
+        isLanded: false, 
+        runFrame: 0, // 0 or 1 for running animation
+        frameTimer: 0, // Timer for frame transition
+        frameDuration: 0.1, // Duration per frame in seconds (will scale with speed)
+    };
+
+    // Obstacle Structure: { x: number, type: 'cone' | 'platform', width: number, height: number }
+    let obstacles = [];
+    let obstacleIndex = 0; 
+
+    // Level Data - Multipliers for GAP_BASE. 
+    // ALL multipliers are 2.0 or higher to ensure a minimum 200px gap.
+    const levelData = [
+        // --- 4-Beat Introduction Pattern (Easy Jumps) ---
+        { x: 2.0, type: 'cone', height: 1 },         // Gap 2.0x (200px)
+        { x: 2.2, type: 'cone', height: 1 },         // Gap 2.2x (220px)
+        { x: 2.5, type: 'cone', height: 1 },         // Gap 2.5x (250px, Longer jump)
+        { x: 2.0, type: 'cone', height: 1 },         // Gap 2.0x (200px, Quick hop, but safe)
+
+        // --- Medium Challenges ---
+        { x: 3.0, type: 'cone', height: 1 },         // Gap 3x (300px, Max single jump)
+        { x: 2.0, type: 'cone', height: 1 },         // Gap 2.0x (200px)
+        { x: 2.2, type: 'cone', height: 1 },         // Gap 2.2x (220px)
+
+        // --- Long Jump and Follow-up (Momentum Check) ---
+        { x: 3.5, type: 'cone', height: 1 },         // Gap 3.5x (350px, Very long jump)
+        { x: 2.2, type: 'cone', height: 1 },         // Gap 2.2x (220px)
+        { x: 2.0, type: 'cone', height: 1 },         // Gap 2.0x (200px)
+
+        // --- Fast Cones (Rhythm Check) ---
+        { x: 2.5, type: 'cone', height: 1 },         // Gap 2.5x (250px)
+        { x: 2.0, type: 'cone', height: 1 },         // Gap 2.0x (200px, Quick double hop)
+        { x: 2.5, type: 'cone', height: 1 },         // Gap 2.5x (250px)
+        
+        { x: 3.0, type: 'cone', height: 1 }          // Gap 3x (300px, Reset jump)
+    ];
+
+    // --- TONE.JS MUSIC SETUP ---
+    let isAudioInitialized = false;
+
+    function initAudio() {
+        if (isAudioInitialized) return;
+        
+        // Slightly lower BPM for a more driving, head-nodding rhythm
+        Tone.Transport.bpm.value = 190; 
+
+        // 1. Lead Synth (Sawtooth wave for that classic synth sound)
+        const leadSynth = new Tone.PolySynth(Tone.Synth, {
+            oscillator: { type: "sawtooth" },
+            envelope: { attack: 0.01, decay: 0.15, sustain: 0.0, release: 0.2, }, // Plucky and bright
+            volume: -10 
+        }).toDestination();
+        
+        // 2. Bass Synth (Square wave for a deep, driving bassline)
+        const bassSynth = new Tone.MonoSynth({
+            oscillator: { type: "square" },
+            envelope: { attack: 0.005, decay: 0.1, sustain: 0.0, release: 0.2, },
+            filterEnvelope: { octaves: 1, attack: 0.05, decay: 0.1, sustain: 0.9, release: 0.5 },
+            volume: -12 
+        }).toDestination();
+
+        // 3. Kick Drum (Punchy and low)
+        const kickSynth = new Tone.MembraneSynth({
+            pitchDecay: 0.03,
+            octaves: 8,
+            envelope: { attack: 0.001, decay: 0.4, sustain: 0.01, release: 0.8, },
+            volume: -5
+        }).toDestination();
+
+        // 4. Snare Drum (White noise for a crisp snare)
+        const snareSynth = new Tone.NoiseSynth({
+            noise: { type: "white" },
+            envelope: { attack: 0.005, decay: 0.15, sustain: 0.0, release: 0.05 },
+            volume: -15
+        }).toDestination();
+
+        // Lead Hook (C minor - G4, Eb4, F4, C4. Repeated and syncopated)
+        const MELODY_PATTERN = [
+            // Measures 1 & 2: The main catchy phrase
+            "G4", null, "Eb4", "F4", null, "C4", null, "G4",  // C-Eb-F-C, with a leading G
+            "G4", null, "Eb4", "F4", null, "C4", null, "G4",
+
+            // Measures 3 & 4: Slight variation moving to F
+            "A4", null, "F4", "G4", null, "D4", null, "A4",  // Am-F-G-D chord roots (Fm/Gm implied)
+            "G4", null, "Eb4", "F4", null, "C4", null, "G4",
+        ];
+        
+        // Driving Bassline (C2, F2, G2)
+        const BASS_PATTERN = [
+            "C2", null, null, null, "F2", null, "G2", null, // C - - - F - G - 
+            "C2", null, null, null, "F2", null, "G2", null,
+
+            "F2", null, null, null, "C2", null, "G2", null,
+            "C2", null, null, null, "G2", null, "C2", null,
+        ];
+
+        // Complex Kick/Snare pattern (Syncopated and driving)
+        const KICK_PATTERN = [
+            "C1", null, "C1", null, null, null, "C1", null, 
+            "C1", null, "C1", null, null, "C1", null, null,
+
+            "C1", null, "C1", null, null, "C1", null, "C1", 
+            "C1", null, null, "C1", null, "C1", null, null,
+        ];
+
+        // Standard Backbeat Snare
+        const SNARE_PATTERN = [
+            null, null, null, null, "E1", null, null, null,
+            null, null, null, null, "E1", null, null, null,
+            
+            null, null, null, null, "E1", null, null, null,
+            null, null, null, null, "E1", null, null, null,
+        ];
+
+
+        new Tone.Sequence((time, notes) => {
+            if (notes) leadSynth.triggerAttackRelease(notes, "16n", time);
+        }, MELODY_PATTERN, "8n").start(0); // Sequence runs at 8n, notes are 16n
+        
+        new Tone.Sequence((time, note) => {
+            if (note) bassSynth.triggerAttackRelease(note, "8n", time);
+        }, BASS_PATTERN, "8n").start(0);
+
+        new Tone.Sequence((time, note) => {
+            if (note) kickSynth.triggerAttackRelease(note, "16n", time);
+        }, KICK_PATTERN, "16n").start(0);
+
+        new Tone.Sequence((time, note) => {
+            if (note) snareSynth.triggerAttackRelease("8n", time); // Trigger the noise burst
+        }, SNARE_PATTERN, "8n").start("4n"); // Start the snare slightly offset for groove
+
+        isAudioInitialized = true;
+    }
+
+    function startMusic() {
+        if (!isAudioInitialized) {
+             Tone.start().then(() => {
+                initAudio();
+                Tone.Transport.start();
+             }).catch(e => console.error("Tone.js failed to start:", e));
+        } else {
+            Tone.Transport.seconds = 0;
+            Tone.Transport.start();
+        }
+    }
+
+    function stopMusic() {
+        Tone.Transport.pause();
+    }
+
+    // --- END TONE.JS MUSIC SETUP ---
+    
+    /**
+     * Checks if a point (px, py) is inside the triangle defined by (v1x, v1y), (v2x, v2y), (v3x, v3y).
+     * Uses the cross-product method.
+     */
+    function isPointInTriangle(px, py, v1x, v1y, v2x, v2y, v3x, v3y) {
+        // Helper function to calculate the sign of a determinant (or cross product z-component)
+        // Determines if point (px, py) is on the same side of the line (v1, v2) as point v3
+        function sign(p1x, p1y, p2x, p2y, p3x, p3y) {
+            return (p1x - p3x) * (p2y - p3y) - (p2x - p3x) * (p1y - p3y);
+        }
+
+        const d1 = sign(px, py, v1x, v1y, v2x, v2y);
+        const d2 = sign(px, py, v2x, v2y, v3x, v3y);
+        const d3 = sign(px, py, v3x, v3y, v1x, v1y);
+
+        const has_neg = (d1 < 0) || (d2 < 0) || (d3 < 0);
+        const has_pos = (d1 > 0) || (d2 > 0) || (d3 > 0);
+
+        // Point is inside or on the edge if it doesn't have both negative and positive signs
+        // This includes points exactly on the boundary.
+        return !(has_neg && has_pos);
+    }
+
+
+    function resizeCanvas() {
+        const container = document.getElementById('game-container');
+        canvas.width = container.clientWidth;
+        canvas.height = container.clientHeight;
+
+        if (!player.isJumping) {
+            player.y = canvas.height - GROUND_HEIGHT - player.size;
+        }
+    }
+
+    function startGame() {
+        if (gameLoopId) {
+            cancelAnimationFrame(gameLoopId);
+        }
+
+        // Reset game state
+        score = 0;
+        obstacleIndex = 0;
+        obstacles = [];
+        currentSpeed = GAME_SPEED_BASE;
+        
+        player.vy = 0;
+        player.isJumping = false;
+        player.isLanded = true; 
+        player.y = canvas.height - GROUND_HEIGHT - player.size; 
+        player.x = 50;
+        player.runFrame = 0; 
+        player.frameTimer = 0;
+        backgroundOffset = 0; 
+        groundDetailOffset = 0; 
+
+        // UI Reset
+        uiOverlay.style.display = 'none';
+        pauseOptions.style.display = 'none';
+        menuStandard.style.display = 'flex';
+        messageText.style.display = 'block';
+        scoreDisplay.style.display = 'block'; 
+        startButton.style.display = 'block';
+
+        pauseButton.style.display = 'block';
+
+        isGameRunning = true;
+        lastTime = performance.now();
+        gameLoopId = requestAnimationFrame(gameLoop);
+
+        startMusic(); 
+
+        // Generate the first two obstacles right away
+        generateNextObstacle(canvas.width);
+        generateNextObstacle(obstacles[obstacles.length - 1].x);
+    }
+    
+    function pauseGame() {
+        if (!isGameRunning) return;
+
+        isGameRunning = false;
+        cancelAnimationFrame(gameLoopId);
+        stopMusic();
+
+        uiOverlay.style.display = 'flex';
+        menuStandard.style.display = 'none';
+        pauseOptions.style.display = 'flex';
+    }
+
+    function resumeGame() {
+        uiOverlay.style.display = 'none';
+        pauseOptions.style.display = 'none';
+        menuStandard.style.display = 'flex';
+        
+        isGameRunning = true;
+        lastTime = performance.now(); 
+        gameLoopId = requestAnimationFrame(gameLoop);
+        Tone.Transport.start();
+    }
+
+    function jump() {
+        if (!player.isJumping && player.isLanded) {
+            player.isJumping = true;
+            player.isLanded = false;
+            player.vy = JUMP_VELOCITY;
+        }
+    }
+
+    function generateNextObstacle(startX) {
+        if (obstacleIndex >= levelData.length) {
+            obstacleIndex = 0;
+        }
+
+        const data = levelData[obstacleIndex];
+        
+        let startPoint;
+        if (obstacles.length > 0) {
+            const lastObs = obstacles[obstacles.length - 1];
+            // The starting point is the END of the previous obstacle...
+            startPoint = lastObs.x + lastObs.width;
+        } else {
+            // ... or the edge of the screen for the first one.
+            startPoint = startX;
+        }
+
+        // Calculate gap based on the safe BASE value (100px minimum landing spot)
+        // The multipliers in levelData ensure a minimum 200px gap.
+        const gapSize = data.x * GAP_BASE; 
+        
+        let newX = startPoint + gapSize; // New obstacle starts after the gap
+
+        const obstacleBase = {
+            x: newX,
+            y: canvas.height - GROUND_HEIGHT,
+            color: '#ff00ff', // Magenta for high contrast
+        };
+
+        const coneHeight = CUBE_SIZE * data.height;
+        let newObstacle = {
+            ...obstacleBase,
+            type: 'cone', // Always 'cone'
+            width: CUBE_SIZE * 0.7, // Widened base for cone appearance
+            height: coneHeight,
+        };
+        newObstacle.y -= coneHeight; // Adjust Y to be the apex
+
+        obstacles.push(newObstacle);
+        obstacleIndex++;
+    }
+
+    function update(deltaTime) {
+        currentSpeed = GAME_SPEED_BASE + score / 10 * SPEED_INCREMENT_PER_SCORE;
+        
+        player.vy += GRAVITY * deltaTime;
+        player.y += player.vy * deltaTime;
+
+        // Animate running frame only when landed
+        if (player.isLanded) {
+            player.frameTimer += deltaTime;
+            // The faster the speed, the faster the animation cycles
+            const effectiveDuration = player.frameDuration * (GAME_SPEED_BASE / currentSpeed);
+            if (player.frameTimer >= effectiveDuration) {
+                player.runFrame = 1 - player.runFrame; // Toggle between 0 and 1
+                player.frameTimer = 0;
+            }
+        } else {
+             // Reset frame to 0 when jumping (for a fixed jumping pose)
+             player.runFrame = 0;
+             player.frameTimer = 0;
+        }
+        
+        player.isLanded = false; 
+        
+        for (let i = obstacles.length - 1; i >= 0; i--) {
+            const obs = obstacles[i];
+            obs.x -= currentSpeed * deltaTime;
+
+            if (obs.x + obs.width < player.x && obs.passed === undefined) {
+                obs.passed = true;
+                score += 10;
+            }
+
+            if (obs.x + obs.width < 0) {
+                obstacles.splice(i, 1);
+            }
+        }
+
+        // Generate next obstacle when the last one is halfway across the screen
+        if (obstacles.length === 0 || canvas.width - obstacles[obstacles.length - 1].x > canvas.width / 2) {
+            // Pass the current screen width for the initial one, otherwise pass the last obstacle's X position
+            const lastX = obstacles.length > 0 ? obstacles[obstacles.length - 1].x : canvas.width;
+            generateNextObstacle(lastX);
+        }
+
+        checkCollision();
+        
+        const groundY = canvas.height - GROUND_HEIGHT - player.size;
+        if (player.y >= groundY) {
+            player.y = groundY;
+            player.vy = 0;
+            player.isJumping = false;
+            player.isLanded = true;
+        }
+
+        const backgroundScroll = currentSpeed * BACKGROUND_SCROLL_FACTOR * deltaTime;
+        backgroundOffset = (backgroundOffset - backgroundScroll) % canvas.width;
+        if (backgroundOffset < 0) { backgroundOffset += canvas.width; }
+
+        const groundScroll = currentSpeed * GROUND_DETAIL_SCROLL_FACTOR * deltaTime;
+        groundDetailOffset = (groundDetailOffset - groundScroll) % CUBE_SIZE; 
+        if (groundDetailOffset < 0) { groundDetailOffset += CUBE_SIZE; }
+
+        scoreDisplay.textContent = `Score: ${score} | Speed: ${currentSpeed.toFixed(1)}`;
+    }
+
+    function checkCollision() {
+        // Player's effective collision box (small, tight to the raptor's body/feet)
+        const pRect = {
+            // Center horizontally within the 50px drawing size
+            x: player.x + (CUBE_SIZE - PLAYER_HITBOX_WIDTH) / 2, 
+            // Position vertically so the bottom edge is at the feet/base line
+            y: player.y + (CUBE_SIZE - PLAYER_HITBOX_HEIGHT), 
+            width: PLAYER_HITBOX_WIDTH,
+            height: PLAYER_HITBOX_HEIGHT,
+        };
+
+        // --- FIX: Define Y-coordinate slightly above the actual ground line (pRect.y + pRect.height)
+        // This compensates for floating point errors when the raptor is landed.
+        const pCollisionY = pRect.y + pRect.height - COLLISION_EPSILON;
+        
+        // Player's key collision points (horizontal)
+        const pCenterBottomX = pRect.x + pRect.width / 2;
+        const pFrontBottomX = pRect.x + pRect.width;
+        const pBackBottomX = pRect.x; 
+
+        for (const obs of obstacles) {
+            // Fast check: If the player's AABB doesn't overlap the obstacle's AABB, skip the complex check
+            if (pRect.x + pRect.width < obs.x || pRect.x > obs.x + obs.width || 
+                pRect.y + pRect.height < obs.y || pRect.y > obs.y + obs.height) {
+                continue;
+            }
+
+            // Since we passed the AABB check, proceed with the precise triangle check for cones
+            if (obs.type === 'cone') {
+                // Cone Vertices (V1: Bottom Left, V2: Apex, V3: Bottom Right)
+                const v1x = obs.x;
+                const v1y = obs.y + obs.height; // Ground line Y
+                const v2x = obs.x + obs.width / 2;
+                const v2y = obs.y; // Apex Y
+                const v3x = obs.x + obs.width;
+                const v3y = obs.y + obs.height; // Ground line Y
+
+                // Check three critical points of the player's hitbox, using pCollisionY (slightly lifted)
+                const hitCenter = isPointInTriangle(pCenterBottomX, pCollisionY, v1x, v1y, v2x, v2y, v3x, v3y);
+                const hitFront = isPointInTriangle(pFrontBottomX, pCollisionY, v1x, v1y, v2x, v2y, v3x, v3y);
+                const hitBack = isPointInTriangle(pBackBottomX, pCollisionY, v1x, v1y, v2x, v2y, v3x, v3y); 
+
+                
+                if (hitCenter || hitFront || hitBack) {
+                    gameOver();
+                    return;
+                }
+            }
+        }
+    }
+
+    function gameOver() {
+        isGameRunning = false;
+        cancelAnimationFrame(gameLoopId);
+        
+        stopMusic();
+
+        uiOverlay.style.display = 'flex';
+        menuStandard.style.display = 'flex'; 
+        pauseOptions.style.display = 'none';
+        pauseButton.style.display = 'none';
+
+        messageText.textContent = `CRASH! You hit a barrier. Your final score is ${score}.`;
+        scoreDisplay.style.display = 'block';
+        
+        startButton.textContent = 'PLAY AGAIN (Space/Click)';
+    }
+
+    /**
+     * Updated to navigate to the specified file path.
+     */
+    function quitToMainMenu() {
+        // Stop game and music immediately
+        isGameRunning = false;
+        cancelAnimationFrame(gameLoopId);
+        stopMusic();
+
+        // Navigate to the requested path
+        window.location.href = 'game/rapturo/rapturo.html';
+    }
+
+    /**
+     * Draws a stylized, three-pose raptor silhouette:
+     * 1. Jump (isJumping: true) - Legs tucked.
+     * 2. Run Frame 0 (isLanded, runFrame: 0) - Back leg extended, front leg bent.
+     * 3. Run Frame 1 (isLanded, runFrame: 1) - Back leg bent, front leg extended.
+     */
+    function drawRaptor(ctx, player) {
+        const x = player.x;
+        const y = player.y;
+        const s = player.size; // Bounding box size (50)
+        const frame = player.runFrame;
+        const color = player.color;
+
+        ctx.fillStyle = color;
+        ctx.shadowColor = color;
+        ctx.shadowBlur = player.isJumping ? 20 : 15;
+
+        ctx.beginPath();
+        
+        // --- DINOSAUR SILHOUETTE ---
+
+        // 1. Foot/Ground level (Base Y)
+        const baseLine = y + s; 
+        
+        // 2. Head and Snout
+        ctx.moveTo(x + s * 1.05, y + s * 0.25); // Snout Tip (more forward)
+        ctx.lineTo(x + s * 0.9, y + s * 0.1);  // Eye/Top of head
+        ctx.lineTo(x + s * 0.75, y + s * 0.2); // Back of skull
+        
+        // 3. Neck and Back
+        ctx.lineTo(x + s * 0.6, y + s * 0.35); // Neck connection
+        ctx.lineTo(x + s * 0.3, y + s * 0.4);  // Mid-back (highest point on the back curve)
+        
+        // 4. Tail base and Tail end
+        ctx.lineTo(x, y + s * 0.55); // Hip/Tail base
+        ctx.lineTo(x - s * 0.4, y + s * 0.6); // Tail curve
+        ctx.lineTo(x - s * 0.1, y + s * 0.7); // Tail tip (slightly down-curved)
+        
+        // 5. Underside/Chest
+        ctx.lineTo(x + s * 0.2, y + s * 0.55); // Bring line up to chest/leg area
+
+        // --- LEGS (Animated based on state) ---
+        const hipX = x + s * 0.15;
+        const hipY = y + s * 0.65;
+        const footY = baseLine; 
+        const lift = s * 0.3; // How high a foot lifts
+
+        if (player.isJumping) {
+            // Jump Frame: Both legs tucked in a tight curve
+            
+            ctx.lineTo(x + s * 0.2, y + s * 0.55); // Connect to body base
+            
+            // Back Leg (Tucked)
+            ctx.moveTo(hipX, hipY);
+            ctx.lineTo(hipX + s * 0.15, hipY + s * 0.2); // Knee bent back
+            ctx.lineTo(hipX + s * 0.3, hipY + s * 0.1); // Foot tucked up
+
+            // Front Leg (Tucked)
+            ctx.moveTo(hipX + s * 0.3, hipY);
+            ctx.lineTo(hipX + s * 0.45, hipY + s * 0.25); // Knee bent forward
+            ctx.lineTo(hipX + s * 0.6, hipY + s * 0.15); // Foot tucked up
+
+        } else if (frame === 0) { 
+            // Run Frame 0: Back leg extended (pushing off), Front leg lifted (moving forward)
+            
+            ctx.lineTo(x + s * 0.2, y + s * 0.55); // Connect to body base
+            
+            // Back Leg (Extended/Ground contact - Foot near the back of the bounding box)
+            ctx.moveTo(hipX, hipY);
+            ctx.lineTo(hipX - s * 0.05, footY - s * 0.05); // Foot slightly behind hip
+
+            // Front Leg (Lifted/Forward motion - Foot lifted high)
+            ctx.moveTo(hipX + s * 0.25, hipY);
+            ctx.lineTo(hipX + s * 0.4, footY - lift);
+            
+        } else { 
+            // Run Frame 1: Back leg lifted (tucked back), Front leg extended (landing/contact)
+            
+            ctx.lineTo(x + s * 0.2, y + s * 0.55); // Connect to body base
+            
+            // Back Leg (Lifted/Tucked back - Foot lifted high)
+            ctx.moveTo(hipX, hipY);
+            ctx.lineTo(hipX - s * 0.05, footY - lift);
+            
+            // Front Leg (Extended/Ground contact - Foot near the front of the bounding box)
+            ctx.moveTo(hipX + s * 0.25, hipY);
+            ctx.lineTo(hipX + s * 0.5, footY - s * 0.05);
+        }
+        
+        // Close the body shape back to the head/chest area
+        ctx.lineTo(x + s * 0.7, y + s * 0.45); // Chest/Throat area
+        ctx.lineTo(x + s * 1.05, y + s * 0.25); // Back to Snout Tip
+
+        ctx.closePath();
+        ctx.fill();
+        ctx.shadowBlur = 0; 
+    }
+
+    function draw() {
+        // --- 0. Draw Static Background ---
+        ctx.fillStyle = '#1a1a33'; 
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+
+        // --- 1. Draw Scrolling Background Pattern (Parallax) ---
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)'; 
+        ctx.lineWidth = 1;
+        const spacing = 60; 
+
+        for (let x = backgroundOffset - canvas.width; x < canvas.width; x += spacing) {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, canvas.height - GROUND_HEIGHT);
+            ctx.stroke();
+        }
+
+
+        // 2. Draw Ground (Dark cyan block)
+        ctx.fillStyle = '#00cccc';
+        ctx.shadowColor = '#00ffff';
+        ctx.shadowBlur = 15;
+        ctx.fillRect(0, canvas.height - GROUND_HEIGHT, canvas.width, GROUND_HEIGHT);
+        ctx.shadowBlur = 0; 
+
+
+        // --- 2.5 Draw Scrolling Ground Detail (Foreground Parallax) ---
+        ctx.strokeStyle = '#008b8b'; 
+        ctx.lineWidth = 2;
+        const lineSpacing = CUBE_SIZE * 0.7; 
+        const lineLength = 10;
+        const groundY = canvas.height - GROUND_HEIGHT;
+
+        for (let x = groundDetailOffset - lineSpacing; x < canvas.width; x += lineSpacing) {
+            ctx.beginPath();
+            ctx.moveTo(x, groundY + GROUND_HEIGHT / 2 - lineLength / 2);
+            ctx.lineTo(x, groundY + GROUND_HEIGHT / 2 + lineLength / 2);
+            ctx.stroke();
+        }
+        
+        // 3. Draw Player (The Raptor!)
+        drawRaptor(ctx, player);
+        
+        // 4. Draw Obstacles (Now only Cones!)
+        for (const obs of obstacles) {
+            ctx.fillStyle = obs.color;
+            ctx.shadowColor = obs.color;
+            ctx.shadowBlur = 10;
+
+            // Obstacles are always drawn as cones now
+            if (obs.type === 'cone') {
+                // Drawing the cone (a simple triangle with a wide base)
+                ctx.beginPath();
+                ctx.moveTo(obs.x, obs.y + obs.height); // Bottom left (V1)
+                ctx.lineTo(obs.x + obs.width / 2, obs.y); // Apex (V2)
+                ctx.lineTo(obs.x + obs.width, obs.y + obs.height); // Bottom right (V3)
+                ctx.closePath();
+                ctx.fill();
+            } 
+            ctx.shadowBlur = 0; 
+        }
+
+        // Draw Score at the top right
+        ctx.fillStyle = '#00ffff';
+        ctx.font = '24px Inter, sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText(`SCORE: ${score}`, canvas.width - 20, 30);
+    }
+
+    // Main game loop
+    function gameLoop(timestamp) {
+        if (!isGameRunning) return;
+
+        const deltaTime = (timestamp - lastTime) / 1000; 
+        lastTime = timestamp;
+
+        update(deltaTime);
+        draw();
+
+        gameLoopId = requestAnimationFrame(gameLoop);
+    }
+
+    // --- SPLASH SCREEN LOGIC ---
+
+    function createSplashWords() {
+        // Clear any previous content
+        splashTextContainer.innerHTML = ''; 
+
+        // 1. Create Relimintor word
+        const relimintor = document.createElement('span');
+        relimintor.textContent = initialTitle;
+        relimintor.classList.add('splash-word', 'word-relimintor');
+        splashTextContainer.appendChild(relimintor);
+
+        // 2. Create Raptor and Run words (hidden and positioned off-screen)
+        const raptor = document.createElement('span');
+        raptor.textContent = newTitleWords[0];
+        raptor.classList.add('splash-word', 'word-raptor');
+        // Initial state: Off-center left, rotated down
+        raptor.style.transform = 'translate(calc(-50% - 70px), 100%) rotateX(-90deg)'; 
+        raptor.style.opacity = 0;
+        splashTextContainer.appendChild(raptor);
+
+        const run = document.createElement('span');
+        run.textContent = newTitleWords[1];
+        run.classList.add('splash-word', 'word-run');
+        // Initial state: Off-center right, rotated up
+        run.style.transform = 'translate(calc(-50% + 60px), -100%) rotateX(90deg)'; 
+        run.style.opacity = 0;
+        splashTextContainer.appendChild(run);
+    }
+
+    function showMainMenu() {
+        // Fade out the splash screen
+        splashScreen.style.opacity = '0';
+
+        // After fade out, remove from DOM flow and show main menu
+        setTimeout(() => {
+            splashScreen.style.display = 'none';
+            
+            // Show the actual start screen
+            uiOverlay.style.display = 'flex';
+            menuStandard.style.display = 'flex';
+            pauseOptions.style.display = 'none';
+            scoreDisplay.textContent = '';
+            messageText.textContent = 'Use SPACE or Click/Tap to jump. The speed increases as you play!';
+
+        }, 1000); // Wait for the 1s CSS transition
+    }
+
+    function handleSplash() {
+        createSplashWords();
+        const relimintor = document.querySelector('.word-relimintor');
+        const raptor = document.querySelector('.word-raptor');
+        const run = document.querySelector('.word-run');
+
+        // 1. Display "RELIMINTOR" for 1.5 seconds
+        setTimeout(() => {
+            // 2. Start the transition animation
+            
+            // Relimintor shrinks/fades
+            relimintor.style.opacity = 0;
+            relimintor.style.transform = 'translate(-50%, -50%) scale(0.1)';
+            
+            // Raptor Run springs into place (transform to final state)
+            // Final state: Centered vertically (-50%), offset horizontally (±)
+            raptor.style.transform = 'translate(calc(-50% - 70px), -50%) rotateX(0deg)';
+            raptor.style.opacity = 1;
+            run.style.transform = 'translate(calc(-50% + 60px), -50%) rotateX(0deg)';
+            run.style.opacity = 1;
+
+            // 3. Wait for animation to finish, then show the main menu
+            setTimeout(() => {
+                showMainMenu();
+            }, 1200); // Animation duration + buffer
+            
+        }, 1500); // Display Relimintor for 1.5 seconds
+    }
+
+
+    // --- INPUT AND EVENT LISTENERS ---
+    
+    document.addEventListener('keydown', (e) => {
+        if (e.code === 'Space' && isGameRunning) {
+            e.preventDefault(); 
+            jump();
+        } else if (e.code === 'Space' && !isGameRunning && uiOverlay.style.display === 'flex' && menuStandard.style.display === 'flex') {
+            e.preventDefault();
+            startGame();
+        }
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.code === 'KeyP' || e.code === 'Escape') {
+            if (isGameRunning) {
+                pauseGame();
+            } else if (uiOverlay.style.display === 'flex' && pauseOptions.style.display === 'flex') {
+                resumeGame();
+            }
+        }
+        if (e.code === 'KeyR' && !isGameRunning && uiOverlay.style.display === 'flex' && pauseOptions.style.display === 'flex') {
+            resumeGame();
+        }
+    });
+
+    canvas.addEventListener('click', () => {
+        if (isGameRunning) {
+            jump();
+        }
+    });
+    
+    startButton.addEventListener('click', startGame);
+    pauseButton.addEventListener('click', pauseGame);
+    resumeButton.addEventListener('click', resumeGame);
+    quitButton.addEventListener('click', quitToMainMenu);
+
+
+    // Initial setup
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+    
+    // Hide UI overlay initially, show splash screen
+    uiOverlay.style.display = 'none'; 
+    splashScreen.style.display = 'flex'; 
+    handleSplash(); // Start the splash sequence
+
+</script>
+</body>
+</html>
