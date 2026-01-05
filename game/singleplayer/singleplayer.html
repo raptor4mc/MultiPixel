@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MultiPixel - Real-Time Collisions Fixed</title>
+    <title>MultiPixel - Safe Spawn Voxel World</title>
     <!-- Load Tailwind CSS for modern styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Load Three.js for 3D rendering -->
@@ -16,7 +16,7 @@
             margin: 0;
             overflow: hidden;
             font-family: 'Inter', sans-serif;
-            background-color: #1a1a2e; /* Deep purple background */
+            background-color: #1a1a2e;
         }
         #info-panel {
             position: absolute;
@@ -55,29 +55,16 @@
             margin-left: -5px;
             border-radius: 50%;
             background: white;
-            opacity: 0; /* Hidden until Pointer Lock is active */
+            opacity: 0;
             z-index: 99;
             pointer-events: none;
         }
-        #block-selector {
-            position: absolute;
-            bottom: 1rem;
-            left: 50%;
-            transform: translateX(-50%);
-            padding: 0.75rem 1.5rem;
-            background-color: rgba(0, 0, 0, 0.7);
-            color: white;
-            border-radius: 12px;
-            z-index: 10;
-            font-size: 1rem;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-        }
         .text-neon-green {
             color: #39ff14;
+        }
+        /* Hotbar Specific Styles */
+        .hotbar-slot {
+            position: relative;
         }
         canvas {
             display: block;
@@ -100,14 +87,13 @@
         <p>Movement: <span class="text-neon-green">W A S D</span></p>
         <p>Jump: <span class="text-neon-green">SPACEBAR</span></p>
         <p>Break: <span class="text-neon-green">LMB</span> | Place: <span class="text-neon-green">RMB</span></p>
-        <p>Select Block: <span class="text-neon-green">Q/E</span></p>
+        <p>Select Block: <span class="text-neon-green">1-6 Keys</span></p>
         <p class="mt-4 text-sm text-gray-400">Press ESC to exit control mode.</p>
     </div>
 
-    <!-- Block Selector HUD -->
-    <div id="block-selector">
-        <span>Selected Block: </span>
-        <span id="selected-block-name" class="text-yellow-400">Dirt</span>
+    <!-- Hotbar HUD (Injected by JS) -->
+    <div id="hotbar" class="fixed bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2 p-2 bg-gray-900/70 backdrop-blur-sm rounded-xl shadow-2xl z-20">
+        <!-- Slots will be injected here by JavaScript -->
     </div>
 
     <!-- Crosshair -->
@@ -116,25 +102,36 @@
     <script>
         // --- CORE VOXEL CONFIGURATION ---
         const CHUNK_SIZE = 16;
-        const CHUNK_HEIGHT = 64;
+        const CHUNK_HEIGHT = 96; 
         const WORLD_RADIUS = 3; 
         const BLOCK_SIZE = 1;
-        const SEA_LEVEL = 20;
+        
+        // Sea level is now set low enough for the island to be dry
+        const SEA_LEVEL = 18; 
+        const BASE_LAND_Y = 20; // Base height for the island
+        const ISLAND_RADIUS = 30; // Radius (in world blocks) where land is forced
         
         // Player height and eye level constants
         const PLAYER_HEIGHT = 2.0 * BLOCK_SIZE; 
         const EYE_HEIGHT = 1.8 * BLOCK_SIZE;    
-        const PLAYER_RADIUS = 0.3; // Used for collision checking
+        const PLAYER_RADIUS = 0.3; 
 
         // Block types and colors 
         const blockMaterials = {
+            0: { color: 0x000000, name: 'Air', id: 0 }, 
             1: { color: 0x4CAF50, name: 'Grass', roughness: 0.9, metalness: 0.1, id: 1 }, 
             2: { color: 0x654321, name: 'Dirt', roughness: 0.9, metalness: 0.0, id: 2 }, 
             3: { color: 0x666666, name: 'Stone', roughness: 0.8, metalness: 0.0, id: 3 }, 
-            4: { color: 0x1976D2, name: 'Water', roughness: 0.5, metalness: 0.1, transparent: true, opacity: 0.7, id: 4 }
+            4: { color: 0x1976D2, name: 'Water', roughness: 0.5, metalness: 0.1, transparent: true, opacity: 0.7, id: 4 },
+            5: { color: 0x8B4513, name: 'Wood Log', roughness: 0.9, metalness: 0.0, id: 5 }, 
+            6: { color: 0x228B22, name: 'Leaves', roughness: 0.9, metalness: 0.0, transparent: true, opacity: 0.8, id: 6 } 
         };
-        const SOLID_BLOCKS = [1, 2, 3]; // Used for collision detection
-        const BLOCK_TYPE_IDS = Object.values(blockMaterials).map(m => m.id);
+        
+        // Block type categories for spawn rules
+        const SOLID_BLOCKS = [1, 2, 3, 5]; 
+        const LIQUID_BLOCKS = [4];
+        const AIR_BLOCK = 0; // Air is implicitly the non-solid, non-liquid placeholder
+        const BLOCK_TYPE_IDS = [1, 2, 3, 5, 6, 4]; 
 
         // Initialize Three.js components
         let scene, camera, renderer, simplex, raycaster;
@@ -152,20 +149,29 @@
             rotationSpeed: 0.002,
             isJumping: false,
             canMove: false,
-            keys: {} // Store pressed keys
+            keys: {}
         };
         const gravity = -0.01;
         const jumpPower = 0.15;
-        let currentBlockType = 2; // Default to Dirt
+        let currentBlockType = BLOCK_TYPE_IDS[0]; 
+
+        /** Helper to check if a block type is solid. */
+        function isSolid(type) {
+            return SOLID_BLOCKS.includes(type);
+        }
+
+        /** Helper to check if a block type is liquid. */
+        function isLiquid(type) {
+            return LIQUID_BLOCKS.includes(type);
+        }
 
         /**
          * Initializes the 3D environment and procedural noise generator.
          */
         function init() {
-            // Setup Scene and Simplex Noise
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x87ceeb); // Light blue sky
-            scene.fog = new THREE.Fog(0x87ceeb, 10, 100); 
+            scene.background = new THREE.Color(0x87ceeb); 
+            scene.fog = new THREE.Fog(0x87ceeb, 20, 150); 
 
             if (typeof SimplexNoise !== 'undefined') {
                 simplex = new SimplexNoise();
@@ -174,7 +180,6 @@
                 return;
             }
             
-            // Raycaster setup
             raycaster = new THREE.Raycaster();
 
             // Setup Camera (Perspective)
@@ -189,10 +194,12 @@
             yawObject.add(pitchObject);
             scene.add(yawObject);
 
-            // Initial position: set to the default terrain height
-            // We use the noise height here for the initial placement only.
-            const initialHeight = getNoiseGroundHeight(0, 0);
-            yawObject.position.set(0, initialHeight * BLOCK_SIZE + 0.5 * BLOCK_SIZE, 0); 
+            // Generate initial chunks and hotbar UI
+            generateWorld();
+            renderHotbar(); 
+
+            // Set initial position using the strict safe spawn logic
+            setInitialPlayerPosition();
 
             // Setup Renderer
             renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -215,52 +222,208 @@
             setupKeyboardControls();
             setupBlockInteraction();
             
-            // Generate initial chunks
-            generateWorld();
-            updateBlockSelectorUI();
-
             // Event Listeners
             window.addEventListener('resize', onWindowResize);
-            document.addEventListener('contextmenu', (event) => event.preventDefault()); // Prevent right-click context menu
+            document.addEventListener('contextmenu', (event) => event.preventDefault()); 
 
             // Start the animation loop
             animate();
         }
 
         /**
-         * Calculates the *initial* ground height using noise (used only for world generation).
+         * Finds a safe spawn location (wx, wy, wz) that strictly adheres to the three rules
+         * by searching a small area around the center (0, 0).
+         * @returns {{wx: number, wy: number, wz: number}} The block coordinates of the player's feet block (bottom air block).
+         */
+        function findSafeSpawnLocation() {
+            // Search a 10x10 area around the origin in world coordinates
+            const SEARCH_RADIUS = 5; 
+            const attempts = [];
+
+            for (let wx = -SEARCH_RADIUS; wx <= SEARCH_RADIUS; wx++) {
+                for (let wz = -SEARCH_RADIUS; wz <= SEARCH_RADIUS; wz++) {
+                    
+                    // 1. Find the highest solid block to establish ground (Rule 1's requirement)
+                    const groundY = getHighestSolidBlockY(wx, wz);
+                    
+                    // If no solid ground found or ground is too high/low, skip
+                    if (groundY < 1 || groundY >= CHUNK_HEIGHT - 2) continue; 
+                    
+                    const spawnY = groundY + 1; // This is the lowest air block occupied by the player
+
+                    // Check if this location satisfies all rules
+                    if (isLocationSafe(wx, spawnY, wz)) {
+                        attempts.push({ wx, wy: spawnY, wz });
+                    }
+                }
+            }
+
+            if (attempts.length === 0) {
+                // Fallback: If no truly safe spot is found, just use the origin's highest ground
+                console.warn("No safe spawn location found based on strict rules. Falling back to (0, 0) highest solid ground.");
+                return { wx: 0, wy: getHighestSolidBlockY(0, 0) + 1, wz: 0 };
+            }
+
+            // Pick a random valid location from the list
+            const chosen = attempts[Math.floor(Math.random() * attempts.length)];
+            console.log(`Successfully located a safe spawn point at block coordinates (${chosen.wx}, ${chosen.wy}, ${chosen.wz})`);
+            return chosen;
+        }
+
+        /**
+         * Checks the three rules for a potential spawn location (wx, wy, wz).
+         * (wx, wy, wz) is the lowest air block occupied by the player's body.
+         * @param {number} wx World X block index
+         * @param {number} wy World Y block index (player's feet block)
+         * @param {number} wz World Z block index
+         */
+        function isLocationSafe(wx, wy, wz) {
+            // Check boundary: needs space for feet block (wy) and head block (wy+1)
+            if (wy < 1 || wy >= CHUNK_HEIGHT - 1) return false; 
+            
+            // --- Rule 1: Must spawn on a Solid Block ---
+            const blockBelowType = getBlockType(wx, wy - 1, wz);
+            if (!isSolid(blockBelowType)) {
+                return false;
+            }
+
+            // --- Rule 2: Player's body space must be Air ---
+            // Player occupies (wx, wy, wz) and (wx, wy + 1, wz). Both must be Air (0).
+            const blockFeetType = getBlockType(wx, wy, wz);
+            const blockHeadType = getBlockType(wx, wy + 1, wz);
+            
+            if (blockFeetType !== AIR_BLOCK || blockHeadType !== AIR_BLOCK) {
+                return false;
+            }
+
+            // --- Rule 3: None of the spaces where you have air can be a liquid ---
+            // Check the 3x3x3 cube centered on the player's feet block (wy)
+            // This covers the blocks from wy-1 (standing block) to wy+1 (head block) and their 3x3 horizontal neighbors.
+            for (let nx = wx - 1; nx <= wx + 1; nx++) {
+                for (let nz = wz - 1; nz <= wz + 1; nz++) {
+                    for (let ny = wy - 1; ny <= wy + 1; ny++) {
+                        
+                        // Skip the block we are standing on (wx, wy-1, wz) as it's guaranteed SOLID by Rule 1
+                        if (nx === wx && ny === wy - 1 && nz === wz) continue;
+                        
+                        const neighborType = getBlockType(nx, ny, nz);
+                        
+                        if (isLiquid(neighborType)) {
+                            // Rule 3 failure: Liquid found nearby
+                            return false; 
+                        }
+                    }
+                }
+            }
+
+            // All rules passed
+            return true;
+        }
+
+
+        /**
+         * Sets the player's initial position using the strict safe spawn logic.
+         */
+        function setInitialPlayerPosition() {
+            const { wx, wy, wz } = findSafeSpawnLocation();
+
+            // Convert block Y index (wy) to world Y position (feet level)
+            const spawnFeetY = wy * BLOCK_SIZE + 0.01; 
+
+            // Apply the new position.
+            yawObject.position.set(wx * BLOCK_SIZE, spawnFeetY, wz * BLOCK_SIZE); 
+            
+            console.log(`Player spawned at safe location. World Coordinates X:${wx * BLOCK_SIZE}, Y:${spawnFeetY.toFixed(2)}, Z:${wz * BLOCK_SIZE}.`);
+        }
+
+
+        /**
+         * Calculates the *initial* ground height for flat plains and deep oceans.
          */
         function getNoiseGroundHeight(wx, wz) {
-            const noiseScale = 0.05;
-            const roughness = 0.02;
-
-            const noiseValue = simplex.noise2D(wx * noiseScale, wz * noiseScale);
-            const detailNoise = simplex.noise2D(wx * roughness, wz * roughness);
-
-            let height = Math.floor((noiseValue + 1) * 0.5 * (CHUNK_HEIGHT * 0.4)) + 1;
-            height += Math.floor((detailNoise + 1) * 0.5 * 5); 
             
-            return Math.max(height, SEA_LEVEL);
+            // Octave 1: Continental/Ocean Mask (Very large, defines major land masses)
+            const scale1 = 0.002; 
+            let continentalMask = simplex.noise2D(wx * scale1, wz * scale1);
+            
+            // --- ISLAND GENERATION FORCING ---
+            const distanceToCenter = Math.sqrt(wx * wx + wz * wz);
+            if (distanceToCenter < ISLAND_RADIUS) {
+                // Force a high continental probability near the center for a guaranteed island
+                continentalMask = 1.0; 
+            }
+            // ---------------------------------
+            
+            // Octave 2: Plains Rolling (Gentle, low-amplitude variation)
+            const scale2 = 0.03; 
+            const plainsNoise = (simplex.noise2D(wx * scale2, wz * scale2) + 1) * 0.5; // Normalized [0, 1]
+
+            let height;
+
+            if (continentalMask > 0.1) {
+                // --- LAND (ISLAND) REGIME ---
+                // Base land height is set high enough to be dry (BASE_LAND_Y = 20)
+                const plainsAmplitude = 4; // Max 4 blocks of variation on land
+                height = BASE_LAND_Y + plainsNoise * plainsAmplitude;
+
+            } else {
+                // --- OCEAN REGIME ---
+                // Ocean floor is well below sea level
+                const oceanFloorAmplitude = 10;
+                height = SEA_LEVEL - oceanFloorAmplitude - (plainsNoise * 5); 
+            }
+            
+            // Octave 3: Add tiny roughness for detail (1 block max)
+            const scale3 = 0.2; 
+            const amp3 = 1; 
+            height += (simplex.noise2D(wx * scale3, wz * scale3) + 1) * 0.5 * amp3;
+
+            // Ensure a minimum floor (never below Y=1)
+            return Math.floor(Math.max(1, height)); 
         }
 
         /**
          * Finds the Y index (height in block units) of the highest *solid* block
          * at a given world X/Z coordinate, reading from the live chunk data.
-         * @param {number} wx World X coordinate (in block units, usually rounded player X)
-         * @param {number} wz World Z coordinate (in block units, usually rounded player Z)
-         * @returns {number} The Y index of the highest solid block, or 0 if none found.
+         * Returns -1 if no solid block exists in the column.
          */
         function getHighestSolidBlockY(wx, wz) {
+            for (let y = CHUNK_HEIGHT - 1; y >= 0; y--) {
+                const type = getBlockType(wx, y, wz);
+                // Check if the block is one of the solid types
+                if (isSolid(type)) {
+                    return y; 
+                }
+            }
+            return -1; 
+        }
+
+        /**
+         * General helper to get the block type at any world coordinates (wx, wy, wz).
+         * This version *only* checks existing loaded chunks.
+         */
+        function getBlockType(wx, wy, wz) {
+            if (wy < 0 || wy >= CHUNK_HEIGHT) {
+                return 0; 
+            }
+
             const cx = Math.floor(wx / CHUNK_SIZE);
             const cz = Math.floor(wz / CHUNK_SIZE);
-
+            
             const chunkId = `${cx},${cz}`;
             const targetChunkGroup = chunks.get(chunkId);
 
             if (!targetChunkGroup) {
-                // If the chunk is not loaded, we assume the initial noise-based ground.
-                // This prevents the player from falling through the floor of an unloaded chunk area.
-                return getNoiseGroundHeight(wx, wz); 
+                // If chunk is not yet loaded (shouldn't happen for the center chunk during init), 
+                // use the deterministic height function to predict the terrain.
+                const height = getNoiseGroundHeight(wx, wz);
+                if (wy < height) {
+                     // Predict solid ground
+                     return (wy >= height - 1) ? 1 : 2; 
+                } else if (wy >= height && wy < SEA_LEVEL) {
+                    return 4; // Predict Water
+                }
+                return 0; // Air
             }
 
             const chunkData = targetChunkGroup.userData.chunkData;
@@ -269,28 +432,67 @@
             const lx = wx - targetChunkGroup.userData.cx * CHUNK_SIZE;
             const lz = wz - targetChunkGroup.userData.cz * CHUNK_SIZE;
 
-            // Search from top down
-            for (let y = CHUNK_HEIGHT - 1; y >= 0; y--) {
-                const blockIndex = lx + y * CHUNK_SIZE + lz * CHUNK_SIZE * CHUNK_HEIGHT;
-                const type = chunkData[blockIndex];
+            const index = lx + wy * CHUNK_SIZE + lz * CHUNK_SIZE * CHUNK_HEIGHT;
 
-                // Check if the block type is considered solid (1, 2, 3)
-                if (SOLID_BLOCKS.includes(type)) {
-                    // Return the Y coordinate (in block units, which is the array index)
-                    return y; 
-                }
+            if (index >= 0 && index < chunkData.length) {
+                return chunkData[index];
             }
-            
-            // If no solid block is found, the ground is effectively the bottom of the world
-            return -1; // -1 means ground is below y=0 (so 0 + 0.5*BLOCK_SIZE is the safe floor)
+
+            return 0;
         }
 
         /**
-         * Updates the UI to show the currently selected block.
+         * Renders the hotbar HTML structure and initializes its click handlers.
          */
-        function updateBlockSelectorUI() {
-            const blockName = blockMaterials[currentBlockType].name;
-            document.getElementById('selected-block-name').textContent = blockName;
+        function renderHotbar() {
+            const hotbar = document.getElementById('hotbar');
+            hotbar.innerHTML = ''; 
+            
+            BLOCK_TYPE_IDS.forEach((id, index) => {
+                const material = blockMaterials[id];
+                const slot = document.createElement('div');
+                
+                slot.className = `hotbar-slot w-14 h-14 md:w-16 md:h-16 flex items-center justify-center rounded-lg border-2 border-gray-700 transition-all duration-150 cursor-pointer hover:scale-105`;
+                slot.dataset.blockId = id;
+                slot.dataset.key = index + 1; 
+                slot.title = `${material.name} (${index + 1})`;
+
+                const blockPreview = document.createElement('div');
+                blockPreview.className = 'w-10 h-10 rounded-md shadow-inner';
+                // Handle case where material color might be just an ID (like Air)
+                const colorCode = material.color.toString(16).padStart(6, '0');
+                blockPreview.style.backgroundColor = `#${colorCode}`;
+                
+                const keyLabel = document.createElement('span');
+                keyLabel.className = 'absolute top-1 right-2 text-xs font-bold text-gray-300 pointer-events-none';
+                keyLabel.textContent = index + 1;
+
+                slot.appendChild(blockPreview);
+                slot.appendChild(keyLabel);
+                hotbar.appendChild(slot);
+                
+                slot.addEventListener('click', () => {
+                    currentBlockType = id;
+                    updateHotbarUI(id);
+                });
+            });
+
+            updateHotbarUI(currentBlockType);
+        }
+
+        /**
+         * Updates the visual highlight on the hotbar slots.
+         */
+        function updateHotbarUI(selectedBlockId) {
+            document.querySelectorAll('.hotbar-slot').forEach(slot => {
+                slot.classList.remove('bg-yellow-500/90', 'border-yellow-300', 'scale-110', 'shadow-yellow-500/50', 'bg-gray-800/50');
+                slot.classList.add('bg-gray-800/50', 'border-gray-700', 'scale-100');
+
+                if (parseInt(slot.dataset.blockId) === selectedBlockId) {
+                    slot.classList.add('bg-yellow-500/90', 'border-yellow-300', 'scale-110', 'shadow-2xl', 'shadow-yellow-500/50');
+                    slot.classList.remove('bg-gray-800/50', 'border-gray-700');
+                }
+            });
         }
         
         /**
@@ -302,32 +504,26 @@
 
         /**
          * Helper function to rebuild the geometry of a chunk and its axial neighbors
-         * if the modified block was on a chunk boundary.
          */
         function updateChunkAndNeighbors(centerChunkGroup, lx, lz) {
             const targetCX = centerChunkGroup.userData.cx;
             const targetCZ = centerChunkGroup.userData.cz;
             const chunkData = centerChunkGroup.userData.chunkData;
             
-            // 1. Update the center chunk
             updateChunkGeometry(centerChunkGroup, chunkData);
 
-            // 2. Check for neighbor updates (only if interaction was on a chunk boundary)
-            
-            // Axial neighbor offsets: [dx, dz]
             const neighborOffsets = [];
             
-            if (lx === 0) neighborOffsets.push([-1, 0]); // Left neighbor (-X)
-            if (lx === CHUNK_SIZE - 1) neighborOffsets.push([1, 0]); // Right neighbor (+X)
-            if (lz === 0) neighborOffsets.push([0, -1]); // Back neighbor (-Z)
-            if (lz === CHUNK_SIZE - 1) neighborOffsets.push([0, 1]); // Front neighbor (+Z)
+            if (lx === 0) neighborOffsets.push([-1, 0]); 
+            if (lx === CHUNK_SIZE - 1) neighborOffsets.push([1, 0]); 
+            if (lz === 0) neighborOffsets.push([0, -1]); 
+            if (lz === CHUNK_SIZE - 1) neighborOffsets.push([0, 1]); 
 
             neighborOffsets.forEach(([dx, dz]) => {
                 const neighborChunkId = `${targetCX + dx},${targetCZ + dz}`;
                 const neighborChunkGroup = chunks.get(neighborChunkId);
                 
                 if (neighborChunkGroup) {
-                    // We pass the neighbor's data to update its geometry
                     updateChunkGeometry(neighborChunkGroup, neighborChunkGroup.userData.chunkData);
                 }
             });
@@ -337,14 +533,11 @@
         function onPointerDown(event) {
             if (!player.canMove) return;
 
-            // Set raycaster origin to camera position and direction to center of screen
             raycaster.setFromCamera({ x: 0, y: 0 }, camera); 
             
-            // Intersect only the opaque meshes (grass, dirt, stone) for interaction
             const opaqueMeshes = [];
             worldGroup.children.forEach(chunkGroup => {
                 chunkGroup.children.forEach(mesh => {
-                    // Check if the material is not transparent (i.e., not water)
                     if (mesh.material && !mesh.material.transparent) {
                         opaqueMeshes.push(mesh);
                     }
@@ -356,93 +549,117 @@
             if (intersects.length > 0) {
                 const intersect = intersects[0];
                 
-                // 1. Determine Block World Coordinates (wx, wy, wz)
                 const point = intersect.point;
                 const normal = intersect.face.normal;
 
-                // Target center of the block being *acted upon* (broken or placed)
                 let targetPos;
-                if (event.button === 0) { // LMB: Break block (target center)
-                    // Push slightly INWARD from the surface to find the center of the broken block
+                if (event.button === 0) { // LMB: Break block
                     targetPos = point.clone().sub(normal.clone().multiplyScalar(0.01));
-                } else if (event.button === 2) { // RMB: Place block (placement center)
-                    // Push slightly OUTWARD from the surface to find the center of the placement block
+                } else if (event.button === 2) { // RMB: Place block
                     targetPos = point.clone().add(normal.clone().multiplyScalar(0.01));
                 } else {
                     return;
                 }
 
-                // Integer world coordinates (x, y, z) of the block center
                 const wx = Math.floor(targetPos.x / BLOCK_SIZE + 0.5);
                 const wy = Math.floor(targetPos.y / BLOCK_SIZE + 0.5);
                 const wz = Math.floor(targetPos.z / BLOCK_SIZE + 0.5);
 
-                // 2. Find the correct chunk data and indices
                 const cx = Math.floor(wx / CHUNK_SIZE);
                 const cz = Math.floor(wz / CHUNK_SIZE);
                 
-                // Find chunk by ID
                 const chunkId = `${cx},${cz}`;
                 const targetChunkGroup = chunks.get(chunkId);
 
                 if (!targetChunkGroup) {
-                    console.error("Chunk not found for interaction coordinates. Is it outside the WORLD_RADIUS?");
+                    console.error("Chunk not found for interaction coordinates.");
                     return;
                 }
 
                 const chunkData = targetChunkGroup.userData.chunkData;
                 
-                // Local coordinates within the chunk
                 const lx = wx - targetChunkGroup.userData.cx * CHUNK_SIZE;
                 const lz = wz - targetChunkGroup.userData.cz * CHUNK_SIZE;
                 const ly = wy;
 
-                // Check bounds before indexing
                 if (lx < 0 || lx >= CHUNK_SIZE || ly < 0 || ly >= CHUNK_HEIGHT || lz < 0 || lz >= CHUNK_SIZE) {
                     console.warn("Block interaction attempted outside valid local chunk bounds.");
                     return;
                 }
 
-                // Index into the 1D chunkData array
                 const blockIndex = lx + ly * CHUNK_SIZE + lz * CHUNK_SIZE * CHUNK_HEIGHT;
                 
                 // --- Interaction Logic ---
 
                 // --- Break Block (LMB) ---
                 if (event.button === 0) { 
-                    // Only break if the block is not air and not water
-                    if (chunkData[blockIndex] !== 0 && chunkData[blockIndex] !== 4) {
-                        chunkData[blockIndex] = 0; // Set to air
+                    if (chunkData[blockIndex] !== AIR_BLOCK && !isLiquid(chunkData[blockIndex])) {
+                        chunkData[blockIndex] = AIR_BLOCK; // Set to air
                         updateChunkAndNeighbors(targetChunkGroup, lx, lz);
                     }
                 } 
                 // --- Place Block (RMB) ---
                 else if (event.button === 2) { 
-                    // Check if placement coordinates are valid (within chunk height)
                     if (ly >= 0 && ly < CHUNK_HEIGHT) {
                         
-                        // Check if block being placed intersects with player position
                         const placeBBox = new THREE.Box3(
                             new THREE.Vector3(wx - 0.5 * BLOCK_SIZE, wy - 0.5 * BLOCK_SIZE, wz - 0.5 * BLOCK_SIZE),
                             new THREE.Vector3(wx + 0.5 * BLOCK_SIZE, wy + 0.5 * BLOCK_SIZE, wz + 0.5 * BLOCK_SIZE)
                         );
 
-                        // Player BBox is based on yawObject position
                         const playerBBox = new THREE.Box3(
                             new THREE.Vector3(yawObject.position.x - PLAYER_RADIUS, yawObject.position.y, yawObject.position.z - PLAYER_RADIUS),
                             new THREE.Vector3(yawObject.position.x + PLAYER_RADIUS, yawObject.position.y + PLAYER_HEIGHT, yawObject.position.z + PLAYER_RADIUS)
                         );
                         
                         // Check if space is air and doesn't intersect player
-                        if (!playerBBox.intersectsBox(placeBBox) && chunkData[blockIndex] === 0) {
+                        if (!playerBBox.intersectsBox(placeBBox) && chunkData[blockIndex] === AIR_BLOCK) {
                             chunkData[blockIndex] = currentBlockType; 
                             updateChunkAndNeighbors(targetChunkGroup, lx, lz);
-                        } else {
-                            // Cannot place block inside player or on an occupied space.
                         }
                     }
                 }
             }
+        }
+
+        // --- Collision Detection ---
+        
+        /**
+         * Checks if the player's bounding box at a given world position collides with any solid blocks.
+         */
+        function isPositionColliding(position) {
+            const playerBBox = new THREE.Box3(
+                new THREE.Vector3(position.x - PLAYER_RADIUS, position.y, position.z - PLAYER_RADIUS),
+                new THREE.Vector3(position.x + PLAYER_RADIUS, position.y + PLAYER_HEIGHT, position.z + PLAYER_RADIUS)
+            );
+
+            const minX = Math.floor((position.x - PLAYER_RADIUS) / BLOCK_SIZE);
+            const maxX = Math.floor((position.x + PLAYER_RADIUS) / BLOCK_SIZE);
+            const minY = Math.floor(position.y / BLOCK_SIZE);
+            const maxY = Math.floor((position.y + PLAYER_HEIGHT) / BLOCK_SIZE);
+            const minZ = Math.floor((position.z - PLAYER_RADIUS) / BLOCK_SIZE);
+            const maxZ = Math.floor((position.z + PLAYER_RADIUS) / BLOCK_SIZE);
+
+            for (let wx = minX; wx <= maxX; wx++) {
+                for (let wy = minY; wy <= maxY; wy++) {
+                    for (let wz = minZ; wz <= maxZ; wz++) {
+                        
+                        const blockType = getBlockType(wx, wy, wz);
+
+                        if (isSolid(blockType)) {
+                            const blockBBox = new THREE.Box3(
+                                new THREE.Vector3(wx * BLOCK_SIZE - 0.5 * BLOCK_SIZE, wy * BLOCK_SIZE - 0.5 * BLOCK_SIZE, wz * BLOCK_SIZE - 0.5 * BLOCK_SIZE),
+                                new THREE.Vector3(wx * BLOCK_SIZE + 0.5 * BLOCK_SIZE, wy * BLOCK_SIZE + 0.5 * BLOCK_SIZE, wz * BLOCK_SIZE + 0.5 * BLOCK_SIZE)
+                            );
+                            
+                            if (playerBBox.intersectsBox(blockBBox)) {
+                                return true; 
+                            }
+                        }
+                    }
+                }
+            }
+            return false; 
         }
 
         // --- Control Functions ---
@@ -490,27 +707,19 @@
         }
         
         /**
-         * Sets up keyboard event listeners for movement (WASD, Space) and block switching (Q/E).
+         * Sets up keyboard event listeners for movement and block switching.
          */
         function setupKeyboardControls() {
             document.addEventListener('keydown', (event) => {
-                const key = event.key.toLowerCase();
-                player.keys[key] = true;
+                const key = event.key; 
+                player.keys[key.toLowerCase()] = true;
 
                 if (!player.canMove) return;
 
-                // Block Switching (Q/E)
-                const currentIndex = BLOCK_TYPE_IDS.indexOf(currentBlockType);
-                let nextIndex = currentIndex;
-
-                if (key === 'q') {
-                    nextIndex = (currentIndex - 1 + BLOCK_TYPE_IDS.length) % BLOCK_TYPE_IDS.length;
-                    currentBlockType = BLOCK_TYPE_IDS[nextIndex];
-                    updateBlockSelectorUI();
-                } else if (key === 'e') {
-                    nextIndex = (currentIndex + 1) % BLOCK_TYPE_IDS.length;
-                    currentBlockType = BLOCK_TYPE_IDS[nextIndex];
-                    updateBlockSelectorUI();
+                const keyIndex = parseInt(key);
+                if (keyIndex >= 1 && keyIndex <= BLOCK_TYPE_IDS.length) {
+                    currentBlockType = BLOCK_TYPE_IDS[keyIndex - 1];
+                    updateHotbarUI(currentBlockType);
                 }
             });
 
@@ -520,7 +729,7 @@
         }
 
         /**
-         * Updates player movement and applies gravity, using the live voxel data for collision.
+         * Updates player movement, gravity, and applies collision logic.
          */
         function updatePlayerMovement() {
             if (!player.canMove) return;
@@ -544,62 +753,131 @@
             
             player.direction.normalize();
 
+            // Apply direction to horizontal velocity
             player.velocity.x = player.direction.x * moveSpeed;
             player.velocity.z = player.direction.z * moveSpeed;
             
+            // Apply gravity
             player.velocity.y += gravity;
 
+            // Handle jump
             if (player.keys[' '] && !player.isJumping) {
                 player.velocity.y = jumpPower;
                 player.isJumping = true;
             }
 
-            yawObject.position.add(player.velocity);
+            // --- AXIS-BY-AXIS COLLISION CHECK ---
+            
+            // 1. Check X-axis movement
+            const newPosX = yawObject.position.clone();
+            newPosX.x += player.velocity.x;
+            if (isPositionColliding(newPosX)) {
+                player.velocity.x = 0;
+            }
 
-            // --- REAL-TIME GROUND CHECK ---
-            
-            // 1. Get the player's current X/Z position in block units (rounded)
-            const playerBlockX = Math.round(yawObject.position.x / BLOCK_SIZE);
-            const playerBlockZ = Math.round(yawObject.position.z / BLOCK_SIZE);
+            // 2. Check Z-axis movement
+            const newPosZ = yawObject.position.clone();
+            newPosZ.z += player.velocity.z;
+            if (isPositionColliding(newPosZ)) {
+                player.velocity.z = 0;
+            }
 
-            // 2. Find the Y index (height) of the highest *solid* block at that X/Z.
-            const blockYIndex = getHighestSolidBlockY(playerBlockX, playerBlockZ);
+            // 3. Check Y-axis movement
+            const newPosY = yawObject.position.clone();
+            newPosY.y += player.velocity.y;
             
-            // 3. Calculate the actual Y coordinate of the block's top surface.
-            // If blockYIndex is -1 (nothing solid found), ground is 0.5 * BLOCK_SIZE (the world floor).
-            const groundY = (blockYIndex + 0.5) * BLOCK_SIZE; 
+            const wasMovingDown = player.velocity.y < 0; // Check if falling
+
+            if (isPositionColliding(newPosY)) {
+                if (wasMovingDown) {
+                    player.velocity.y = 0; 
+                    player.isJumping = false; // Reset jump state only if falling/hitting ground
+                } else if (player.velocity.y > 0) {
+                    player.velocity.y = 0; // Hit head on ceiling
+                }
+            }
+
+            // 4. Apply filtered movement
+            yawObject.position.x += player.velocity.x;
+            yawObject.position.z += player.velocity.z;
+            yawObject.position.y += player.velocity.y;
+
+            // --- GROUND SNAPPING (Only needed if player is not jumping/falling) ---
+            if (!player.isJumping && player.velocity.y <= 0) {
+                const playerBlockX = Math.round(yawObject.position.x / BLOCK_SIZE);
+                const playerBlockZ = Math.round(yawObject.position.z / BLOCK_SIZE);
+
+                const blockYIndex = getHighestSolidBlockY(playerBlockX, playerBlockZ);
+                
+                // Calculate the Y coordinate of the surface (1 block above the solid block)
+                const requiredGroundY = (blockYIndex + 1) * BLOCK_SIZE + 0.01; 
+                
+                // If player is below or near the required ground Y, snap them to it
+                if (yawObject.position.y <= requiredGroundY) {
+                    yawObject.position.y = requiredGroundY; 
+                    player.velocity.y = 0;
+                    player.isJumping = false;
+                }
+            }
+        }
+
+
+        // --- Tree Generation Function ---
+        
+        /**
+         * Places a tree structure at the given local chunk coordinates (x, y, z).
+         */
+        function placeTree(chunkData, x, y, z) {
+            // Tree parameters
+            const TRUNK_HEIGHT = THREE.MathUtils.randInt(4, 6); // 4-6 blocks tall
+            const LEAF_RADIUS = 2;
+
+            // 1. Place Trunk (Log Block 5)
+            for (let h = 0; h < TRUNK_HEIGHT; h++) {
+                const targetY = y + 1 + h; // Start trunk 1 block above surface (y is surface block)
+                if (targetY < CHUNK_HEIGHT) {
+                    const index = x + targetY * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
+                    chunkData[index] = 5; // Wood Log
+                }
+            }
+
+            // 2. Place Leaves (Leaf Block 6)
+            const leafCenterY = y + TRUNK_HEIGHT + 1; // Center of canopy is above the trunk
             
-            // 4. Check if player feet are below or at the ground level
-            const playerFeetY = yawObject.position.y;
-            
-            if (playerFeetY <= groundY) {
-                yawObject.position.y = groundY; 
-                player.velocity.y = 0;
-                player.isJumping = false;
+            for (let lx = -LEAF_RADIUS; lx <= LEAF_RADIUS; lx++) {
+                for (let lz = -LEAF_RADIUS; lz <= LEAF_RADIUS; lz++) {
+                    for (let ly = -LEAF_RADIUS; ly <= LEAF_RADIUS + 1; ly++) {
+                        
+                        // Simple spherical check to shape the canopy
+                        const distSq = lx*lx + ly*ly*0.5 + lz*lz;
+                        if (distSq > (LEAF_RADIUS + 0.5)*(LEAF_RADIUS + 0.5)) continue; 
+
+                        const targetY = leafCenterY + ly;
+                        const targetX = x + lx;
+                        const targetZ = z + lz;
+
+                        // Check if leaf position is within the current chunk and world height
+                        if (targetX >= 0 && targetX < CHUNK_SIZE && 
+                            targetZ >= 0 && targetZ < CHUNK_SIZE && 
+                            targetY < CHUNK_HEIGHT && targetY >= y + 1) {
+
+                            const index = targetX + targetY * CHUNK_SIZE + targetZ * CHUNK_SIZE * CHUNK_HEIGHT;
+                            
+                            // Check if the target position is currently air (0) or liquid (4)
+                            if (chunkData[index] === AIR_BLOCK || isLiquid(chunkData[index])) {
+                                chunkData[index] = 6; // Leaves
+                            }
+                        }
+                    }
+                }
             }
         }
 
 
         // --- World Generation Functions ---
-        
-        /**
-         * Generates the entire visible world by iterating over chunk coordinates.
-         */
-        function generateWorld() {
-            let count = 0;
-            for (let cx = -WORLD_RADIUS; cx <= WORLD_RADIUS; cx++) {
-                for (let cz = -WORLD_RADIUS; cz <= WORLD_RADIUS; cz++) {
-                    const chunkGroup = createChunk(cx, cz);
-                    worldGroup.add(chunkGroup);
-                    chunks.set(`${cx},${cz}`, chunkGroup);
-                    count++;
-                }
-            }
-            document.getElementById('chunks-count').textContent = count;
-        }
 
         /**
-         * Generates the 1D array of voxel data for a chunk.
+         * Generates the 1D array of voxel data for a chunk, including terrain and trees.
          */
         function generateChunkData(cx, cz) {
              const chunkData = new Array(CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE);
@@ -609,28 +887,43 @@
                      const wx = cx * CHUNK_SIZE + x;
                      const wz = cz * CHUNK_SIZE + z;
 
-                     // Use the noise function for initial terrain generation
                      const height = getNoiseGroundHeight(wx, wz);
+                     let surfaceType = 0;
 
                      for (let y = 0; y < CHUNK_HEIGHT; y++) {
                          const index = x + y * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
-                         let type = 0; // Air
+                         let type = AIR_BLOCK; // Air
 
                          if (y < height) {
                              // Below terrain surface
-                             if (y >= height - 1 && y > SEA_LEVEL) {
-                                 type = 1; // 1: Grass (surface on land)
-                             } else if (y >= height - 1 && y <= SEA_LEVEL) {
-                                 type = 2; // 2: Dirt (surface near or under shallow water)
+                             if (y === height - 1 && height > SEA_LEVEL) {
+                                 type = 1; // Grass (Surface on dry land)
+                                 surfaceType = 1;
+                             } else if (y === height - 1 && height <= SEA_LEVEL) {
+                                 type = 2; // Dirt (Surface under water/sand)
+                                 surfaceType = 2;
                              } else if (y < height - 1) {
-                                 type = (y > height - 6) ? 2 : 3; // 2: Dirt, 3: Stone
+                                 type = (y > height - 6) ? 2 : 3; // Dirt or Stone
                              }
-                         } else if (y >= height && y <= SEA_LEVEL) {
+                         } else if (y >= height && y < SEA_LEVEL) { 
                              // Water column above terrain and below sea level
-                             type = 4; // 4: Water
+                             type = 4; // Water
                          }
                          chunkData[index] = type;
                      }
+                     
+                     // --- Tree Placement Logic (After initial terrain is set) ---
+                     if (surfaceType === 1) { 
+                        // Check if it's a grass surface block (type 1) on land
+                        
+                        // Use a higher frequency noise to scatter trees (e.g., about 15% chance)
+                        const treeDensityNoise = simplex.noise2D(wx * 0.4, wz * 0.4);
+                        
+                        if (treeDensityNoise > 0.85) { 
+                            // height - 1 is the Y coordinate of the surface block (Grass)
+                            placeTree(chunkData, x, height - 1, z); 
+                        }
+                    }
                  }
              }
              return chunkData;
@@ -643,12 +936,10 @@
             const chunkData = generateChunkData(cx, cz);
 
             const chunkGroup = new THREE.Group();
-            // Store metadata on the group for easy access during interaction
             chunkGroup.userData.chunkData = chunkData;
             chunkGroup.userData.cx = cx;
             chunkGroup.userData.cz = cz;
             
-            // Generate initial meshes
             updateChunkGeometry(chunkGroup, chunkData);
 
             return chunkGroup;
@@ -679,80 +970,55 @@
                 const vertexStart = faceCount * 4;
                 const corners = []; 
                 
-                // UVs for a single face: (0, 1), (0, 0), (1, 0), (1, 1)
                 const uvs = [0, 1, 0, 0, 1, 0, 1, 1]; 
 
                 // --- 1. Vertex Positions (CCW Winding Order) ---
                 switch (faceIndex) {
                     case 0: // +X: (Normal 1, 0, 0)
                         corners.push(
-                            [vx + h, vy + h, vz + h],  // Front-Top-Right (0)
-                            [vx + h, vy - h, vz + h],  // Front-Bottom-Right (1)
-                            [vx + h, vy - h, vz - h],  // Back-Bottom-Right (2)
-                            [vx + h, vy + h, vz - h]   // Back-Top-Right (3)
+                            [vx + h, vy + h, vz + h], [vx + h, vy - h, vz + h], [vx + h, vy - h, vz - h], [vx + h, vy + h, vz - h]
                         );
                         break;
                     case 1: // -X: (Normal -1, 0, 0)
                         corners.push(
-                            [vx - h, vy + h, vz - h],  // Back-Top-Left (0)
-                            [vx - h, vy - h, vz - h],  // Back-Bottom-Left (1)
-                            [vx - h, vy - h, vz + h],  // Front-Bottom-Left (2)
-                            [vx - h, vy + h, vz + h]   // Front-Top-Left (3)
+                            [vx - h, vy + h, vz - h], [vx - h, vy - h, vz - h], [vx - h, vy - h, vz + h], [vx - h, vy + h, vz + h]
                         );
                         break;
                     case 2: // +Y: (Normal 0, 1, 0 - Top Face)
                         corners.push(
-                            [vx - h, vy + h, vz + h], // Front-Top-Left (0)
-                            [vx + h, vy + h, vz + h], // Front-Top-Right (3) 
-                            [vx + h, vy + h, vz - h], // Back-Top-Right (2)
-                            [vx - h, vy + h, vz - h]  // Back-Top-Left (1) 
+                            [vx - h, vy + h, vz + h], [vx + h, vy + h, vz + h], [vx + h, vy + h, vz - h], [vx - h, vy + h, vz - h]
                         );
                         break;
                     case 3: // -Y: (Normal 0, -1, 0 - Bottom Face)
                         corners.push(
-                            [vx - h, vy - h, vz - h], // Back-Bottom-Left (0)
-                            [vx + h, vy - h, vz - h], // Back-Bottom-Right (1)
-                            [vx + h, vy - h, vz + h], // Front-Bottom-Right (2)
-                            [vx - h, vy - h, vz + h]  // Front-Bottom-Left (3)
+                            [vx - h, vy - h, vz - h], [vx + h, vy - h, vz - h], [vx + h, vy - h, vz + h], [vx - h, vy - h, vz + h]
                         );
                         break;
                     case 4: // +Z: (Normal 0, 0, 1 - Front Face)
                         corners.push(
-                            [vx - h, vy + h, vz + h], // Top-Left (0)
-                            [vx - h, vy - h, vz + h], // Bottom-Left (1)
-                            [vx + h, vy - h, vz + h], // Bottom-Right (2)
-                            [vx + h, vy + h, vz + h]  // Top-Right (3)
+                            [vx - h, vy + h, vz + h], [vx - h, vy - h, vz + h], [vx + h, vy - h, vz + h], [vx + h, vy + h, vz + h]
                         );
                         break;
                     case 5: // -Z: (Normal 0, 0, -1 - Back Face)
                         corners.push(
-                            [vx + h, vy + h, vz - h], // Top-Right (0)
-                            [vx + h, vy - h, vz - h], // Bottom-Right (1)
-                            [vx - h, vy - h, vz - h], // Bottom-Left (2)
-                            [vx - h, vy + h, vz - h]  // Top-Left (3)
+                            [vx + h, vy + h, vz - h], [vx + h, vy - h, vz - h], [vx - h, vy - h, vz - h], [vx - h, vy + h, vz - h]
                         );
                         break;
                 }
                 
-                // --- 2. Simple Face Shading (Visual Enhancement) ---
+                // --- 2. Simple Face Shading ---
                 let shade = 1.0;
-                if (faceIndex === 2) { // Top face (+Y)
-                    shade = 1.0; 
-                } else if (faceIndex === 3) { // Bottom face (-Y)
-                    shade = 0.5; 
-                } else { // Side faces (+/- X, +/- Z)
-                    shade = 0.8; 
-                }
+                if (faceIndex === 2) { shade = 1.0; } 
+                else if (faceIndex === 3) { shade = 0.5; } 
+                else { shade = 0.8; } 
 
                 // --- 3. Push to Buffers ---
                 for (let v of corners) {
                     targetPositions.push(v[0], v[1], v[2]);
                     targetNormals.push(normal.x, normal.y, normal.z);
-                    // Apply shading to the base color
                     targetColors.push(baseColor.r * shade, baseColor.g * shade, baseColor.b * shade);
                 }
 
-                // Push UVs (4 pairs)
                 targetUVs.push(...uvs);
 
                 // Push indices (two triangles: 0,1,2 and 0,2,3 for CCW)
@@ -768,34 +1034,26 @@
             const opaqueIndices = [];
             const opaqueUVs = []; 
             
-            const waterPositions = [];
-            const waterNormals = [];
-            const waterColors = [];
-            const waterIndices = [];
-            const waterUVs = []; 
+            const transparentPositions = [];
+            const transparentNormals = [];
+            const transparentColors = [];
+            const transparentIndices = [];
+            const transparentUVs = []; 
 
             // Define Normals in the order they will be checked (0 to 5)
             const faceNormals = [
-                new THREE.Vector3(1, 0, 0),   // 0: +X
-                new THREE.Vector3(-1, 0, 0),  // 1: -X
-                new THREE.Vector3(0, 1, 0),   // 2: +Y (Top)
-                new THREE.Vector3(0, -1, 0),  // 3: -Y (Bottom)
-                new THREE.Vector3(0, 0, 1),   // 4: +Z (Front)
-                new THREE.Vector3(0, 0, -1)   // 5: -Z (Back)
+                new THREE.Vector3(1, 0, 0), new THREE.Vector3(-1, 0, 0),
+                new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, -1, 0),
+                new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, -1)
             ];
 
             // Offsets for checking neighbors (MUST match faceNormals order)
             const neighborOffsets = [
-                [1, 0, 0],   // 0: +X
-                [-1, 0, 0],  // 1: -X
-                [0, 1, 0],   // 2: +Y
-                [0, -1, 0],  // 3: -Y
-                [0, 0, 1],   // 4: +Z
-                [0, 0, -1]   // 5: -Z
+                [1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]
             ];
 
             let opaqueFaceCount = 0;
-            let waterFaceCount = 0;
+            let transparentFaceCount = 0;
             
             const tempColor = new THREE.Color();
             const cx = chunkGroup.userData.cx;
@@ -804,29 +1062,22 @@
             /** Helper to get voxel type at local coordinates, including neighbor chunks */
             const getVoxel = (x, y, z) => {
                 if (y < 0 || y >= CHUNK_HEIGHT) {
-                    return 0; // Below or above world limits is air
+                    return AIR_BLOCK; // Below or above world limits is air
                 }
                 
-                let targetX = x;
-                let targetZ = z;
-                let targetCX = cx;
-                let targetCZ = cz;
+                let targetX = x, targetZ = z, targetCX = cx, targetCZ = cz;
 
-                // Check boundary crossing
                 if (x < 0) { targetX += CHUNK_SIZE; targetCX -= 1; }
                 if (x >= CHUNK_SIZE) { targetX -= CHUNK_SIZE; targetCX += 1; }
                 if (z < 0) { targetZ += CHUNK_SIZE; targetCZ -= 1; }
                 if (z >= CHUNK_SIZE) { targetZ -= CHUNK_SIZE; targetCZ += 1; }
                 
-                // If it's still the current chunk
                 if (targetCX === cx && targetCZ === cz) {
                     const index = targetX + y * CHUNK_SIZE + targetZ * CHUNK_SIZE * CHUNK_HEIGHT;
                     return chunkData[index];
                 } 
                 
-                // Check neighbor chunk
-                const neighborId = `${targetCX},${targetCZ}`;
-                const neighborGroup = chunks.get(neighborId);
+                const neighborGroup = chunks.get(`${targetCX},${targetCZ}`);
                 
                 if (neighborGroup) {
                     const neighborData = neighborGroup.userData.chunkData;
@@ -834,7 +1085,7 @@
                     return neighborData[index];
                 }
 
-                return 0; // Treat outside loaded chunks as air
+                return AIR_BLOCK;
             };
 
             for (let x = 0; x < CHUNK_SIZE; x++) {
@@ -842,65 +1093,67 @@
                     for (let z = 0; z < CHUNK_SIZE; z++) {
                         const type = getVoxel(x, y, z);
 
-                        if (type === 0) continue; // Skip air
+                        if (type === AIR_BLOCK) continue; 
 
-                        const isCurrentBlockWater = type === 4;
+                        const materialProps = blockMaterials[type];
+                        const isCurrentBlockTransparent = materialProps.transparent || false;
 
                         for (let i = 0; i < 6; i++) {
                             const [dx, dy, dz] = neighborOffsets[i];
                             const neighborType = getVoxel(x + dx, y + dy, z + dz);
-                            const isNeighborWater = neighborType === 4;
+                            const isNeighborTransparent = blockMaterials[neighborType]?.transparent || neighborType === AIR_BLOCK;
 
-                            // Face Rendering Logic (Occlusion Culling):
-                            let isExposed = neighborType === 0;
+                            let isExposed = false;
 
-                            if (isCurrentBlockWater) {
-                                // Draw water surface/bottom if facing air (0) or a land block (1, 2, 3)
-                                if (neighborType !== 4) {
-                                    isExposed = true; 
+                            if (neighborType === AIR_BLOCK) {
+                                isExposed = true; // Always draw face if neighbor is air
+                            } else if (isCurrentBlockTransparent) {
+                                // Transparent blocks (Water/Leaves) always draw if neighbor is different type (or air)
+                                if (neighborType !== type) {
+                                    isExposed = true;
                                 }
-                                // Only draw top/bottom faces for water facing air or land
-                                if (i !== 2 && i !== 3 && neighborType === 4) continue; 
-
+                                // Special case: Leaves should render faces against other solid blocks (Dirt, Stone, Wood)
+                                if (type === 6 && isSolid(neighborType)) {
+                                    isExposed = true;
+                                }
                             } else { 
-                                // Opaque block: Draw if neighbor is air (0) or water (4)
-                                isExposed = neighborType === 0 || isNeighborWater;
+                                // Opaque block: Draw if neighbor is transparent (Air, Water, Leaves)
+                                if (isNeighborTransparent) {
+                                    isExposed = true;
+                                }
                             }
                             
                             if (isExposed) {
                                 
                                 // --- PER-FACE COLORING LOGIC (For Grass Block) ---
                                 let faceColor;
-                                // i=2 corresponds to the +Y face (Top face)
-                                if (type === 1) { // Grass Block
-                                    // Top face is Grass color, side/bottom faces are Dirt color
+                                if (type === 1) { 
                                     faceColor = (i === 2) ? blockMaterials[1].color : blockMaterials[2].color;
                                 } else {
-                                    faceColor = blockMaterials[type].color;
+                                    faceColor = materialProps.color;
                                 }
                                 tempColor.set(faceColor);
 
                                 // Determine buffer
-                                const isWaterBlock = type === 4;
-                                const targetPositions = isWaterBlock ? waterPositions : opaquePositions;
-                                const targetNormals = isWaterBlock ? waterNormals : opaqueNormals;
-                                const targetColors = isWaterBlock ? waterColors : opaqueColors;
-                                const targetIndices = isWaterBlock ? waterIndices : opaqueIndices;
-                                const targetUVs = isWaterBlock ? waterUVs : opaqueUVs; 
+                                const targetPositions = isCurrentBlockTransparent ? transparentPositions : opaquePositions;
+                                const targetNormals = isCurrentBlockTransparent ? transparentNormals : opaqueNormals;
+                                const targetColors = isCurrentBlockTransparent ? transparentColors : opaqueColors;
+                                const targetIndices = isCurrentBlockTransparent ? transparentIndices : opaqueIndices;
+                                const targetUVs = isCurrentBlockTransparent ? transparentUVs : opaqueUVs; 
                                 
                                 // Calculate block center in world space (relative to chunk origin)
                                 const vx = x * BLOCK_SIZE + (cx * CHUNK_SIZE * BLOCK_SIZE);
                                 const vy = y * BLOCK_SIZE;
                                 const vz = z * BLOCK_SIZE + (cz * CHUNK_SIZE * BLOCK_SIZE);
                                 
-                                // Push face geometry, passing the face index (i) for correct vertex lookup
+                                // Push face geometry
                                 pushFace(
                                     targetPositions, 
                                     targetNormals, 
                                     targetColors, 
                                     targetIndices,
                                     targetUVs, 
-                                    isWaterBlock ? waterFaceCount++ : opaqueFaceCount++,
+                                    isCurrentBlockTransparent ? transparentFaceCount++ : opaqueFaceCount++,
                                     vx,
                                     vy,
                                     vz,
@@ -917,7 +1170,7 @@
 
             // 3. Create Meshes
             
-            // --- OPAQUE MESH (Grass, Dirt, Stone) ---
+            // --- OPAQUE MESH (Grass, Dirt, Stone, Wood Log) ---
             if (opaquePositions.length > 0) {
                 const opaqueGeometry = new THREE.BufferGeometry();
                 opaqueGeometry.setAttribute('position', new THREE.Float32BufferAttribute(opaquePositions, 3));
@@ -927,40 +1180,53 @@
                 opaqueGeometry.setIndex(opaqueIndices);
                 
                 const opaqueMaterial = new THREE.MeshStandardMaterial({
-                    vertexColors: true,
-                    roughness: 0.9,
-                    metalness: 0.1,
-                    transparent: false,
-                    depthWrite: true, 
-                    depthTest: true,
+                    vertexColors: true, roughness: 0.9, metalness: 0.1, transparent: false, depthWrite: true, depthTest: true,
                 });
                 const opaqueMesh = new THREE.Mesh(opaqueGeometry, opaqueMaterial);
                 chunkGroup.add(opaqueMesh);
             }
 
-            // --- TRANSPARENT WATER MESH ---
-            if (waterPositions.length > 0) {
-                const waterGeometry = new THREE.BufferGeometry();
-                waterGeometry.setAttribute('position', new THREE.Float32BufferAttribute(waterPositions, 3));
-                waterGeometry.setAttribute('normal', new THREE.Float32BufferAttribute(waterNormals, 3));
-                waterGeometry.setAttribute('color', new THREE.Float32BufferAttribute(waterColors, 3));
-                waterGeometry.setAttribute('uv', new THREE.Float32BufferAttribute(waterUVs, 2)); 
-                waterGeometry.setIndex(waterIndices);
+            // --- TRANSPARENT MESH (Water, Leaves) ---
+            if (transparentPositions.length > 0) {
+                const waterProps = blockMaterials[4];
+                const transparentGeometry = new THREE.BufferGeometry();
+                transparentGeometry.setAttribute('position', new THREE.Float32BufferAttribute(transparentPositions, 3));
+                transparentGeometry.setAttribute('normal', new THREE.Float32BufferAttribute(transparentNormals, 3));
+                transparentGeometry.setAttribute('color', new THREE.Float32BufferAttribute(transparentColors, 3));
+                transparentGeometry.setAttribute('uv', new THREE.Float32BufferAttribute(transparentUVs, 2)); 
+                transparentGeometry.setIndex(transparentIndices);
                 
-                const waterMaterial = new THREE.MeshStandardMaterial({
+                const transparentMaterial = new THREE.MeshStandardMaterial({
                     vertexColors: true,
                     transparent: true,
-                    opacity: blockMaterials[4].opacity, 
+                    opacity: waterProps.opacity, 
                     side: THREE.DoubleSide, 
                     depthWrite: false, 
-                    roughness: blockMaterials[4].roughness,
-                    metalness: blockMaterials[4].metalness
+                    roughness: waterProps.roughness,
+                    metalness: waterProps.metalness
                 });
 
-                const waterMesh = new THREE.Mesh(waterGeometry, waterMaterial);
-                waterMesh.renderOrder = 1; 
-                chunkGroup.add(waterMesh);
+                const transparentMesh = new THREE.Mesh(transparentGeometry, transparentMaterial);
+                transparentMesh.renderOrder = 1; 
+                chunkGroup.add(transparentMesh);
             }
+        }
+
+
+        /**
+         * Generates the entire visible world by iterating over chunk coordinates.
+         */
+        function generateWorld() {
+            let count = 0;
+            for (let cx = -WORLD_RADIUS; cx <= WORLD_RADIUS; cx++) {
+                for (let cz = -WORLD_RADIUS; cz <= WORLD_RADIUS; cz++) {
+                    const chunkGroup = createChunk(cx, cz);
+                    worldGroup.add(chunkGroup);
+                    chunks.set(`${cx},${cz}`, chunkGroup);
+                    count++;
+                }
+            }
+            document.getElementById('chunks-count').textContent = count;
         }
 
 
