@@ -3,15 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MultiPixel - Survival Mode</title>
-    <!-- Load Tailwind CSS for modern styling -->
+    <title>MultiPixel</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Load Three.js for 3D rendering -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <!-- Load Simplex Noise for procedural generation -->
     <script src="https://cdn.jsdelivr.net/npm/simplex-noise@2.4.0/simplex-noise.min.js"></script>
     <style>
-        /* Custom CSS for immersive experience */
+        
         body {
             margin: 0;
             overflow: hidden;
@@ -59,17 +56,16 @@
             z-index: 99;
             pointer-events: none;
         }
-        
-        /* --- Inventory & Hotbar Styling --- */
+
         #inventory-screen {
             background-color: rgba(0, 0, 0, 0.75);
             backdrop-filter: blur(2px);
         }
         .inv-slot {
             background-color: #8b8b8b;
-            border-top: 2px solid #373737; /* Darker top/left simulates inset */
+            border-top: 2px solid #373737; 
             border-left: 2px solid #373737;
-            border-bottom: 2px solid #ffffff; /* Lighter bottom/right */
+            border-bottom: 2px solid #ffffff; 
             border-right: 2px solid #ffffff;
             position: relative;
             cursor: pointer;
@@ -78,7 +74,7 @@
             background-color: #a0a0a0;
         }
         .inv-slot.selected {
-            border: 3px solid #39ff14; /* Neon green selection */
+            border: 3px solid #39ff14;
             transform: scale(1.05);
             z-index: 10;
         }
@@ -93,7 +89,7 @@
             pointer-events: none;
         }
         
-        /* Hearts */
+  
         .heart {
             color: #ff3333;
             text-shadow: 2px 2px 0px #000;
@@ -105,31 +101,31 @@
 </head>
 <body>
 
-    <!-- Info Panel -->
+
     <div id="info-panel">
-        <p><strong>MultiPixel Survival</strong></p>
+        <p><strong>MultiPixel Survival Mode</strong></p>
         <p>FPS: <span id="fps-counter">60</span></p>
         <p>Chunks: <span id="chunks-count">0</span></p>
     </div>
 
-    <!-- HUD Layer -->
+   
     <div id="hud" class="absolute inset-0 pointer-events-none z-20 flex flex-col justify-end items-center pb-2">
+
         
-        <!-- Health Bar -->
         <div id="health-container" class="flex space-x-1 mb-2">
-            <!-- Hearts injected via JS -->
+      
         </div>
 
-        <!-- Hotbar -->
+      
         <div id="hotbar" class="flex space-x-1 p-1 bg-black/40 rounded-lg pointer-events-auto">
-            <!-- Slots injected via JS -->
+         
         </div>
         
-        <!-- Text Feedback -->
+        
         <div id="game-message" class="absolute bottom-24 text-white font-bold text-shadow-md opacity-0 transition-opacity duration-1000"></div>
     </div>
 
-    <!-- Instructions Overlay -->
+  
     <div id="instructions" class="font-mono">
         <p class="text-xl font-bold mb-2 text-yellow-400">Survival Mode</p>
         <p>Movement: <span class="text-neon-green">W A S D</span></p>
@@ -140,7 +136,7 @@
         <p class="mt-4 text-sm text-gray-400">Click to Start</p>
     </div>
 
-    <!-- Inventory Overlay (Hidden by default) -->
+   
     <div id="inventory-screen" class="hidden absolute inset-0 flex items-center justify-center z-[200]">
         <div class="bg-[#c6c6c6] p-4 rounded-lg shadow-2xl border-4 border-[#555555] w-[420px] flex flex-col gap-4 text-black font-sans pointer-events-auto">
             
@@ -154,12 +150,12 @@
 
             <div>
                 <h2 class="font-bold text-gray-700 mb-1">Inventory</h2>
-                <!-- Main Inventory Grid (3 rows x 9 columns) -->
+              
                 <div id="main-inventory-grid" class="grid grid-cols-9 gap-1"></div>
             </div>
 
             <div>
-                <!-- Hotbar Grid (Visual reference) -->
+              
                 <div id="inventory-hotbar-grid" class="grid grid-cols-9 gap-1 mt-2"></div>
             </div>
             
@@ -167,11 +163,11 @@
         </div>
     </div>
 
-    <!-- Crosshair -->
+  
     <div id="crosshair"></div>
 
     <script>
-        // --- CONFIGURATION ---
+     
         const CHUNK_SIZE = 16;
         const CHUNK_HEIGHT = 96; 
         const WORLD_RADIUS = 3; 
@@ -180,35 +176,35 @@
         const BASE_LAND_Y = 20; 
         const ISLAND_RADIUS = 30; 
         
-        // Physics
+      
         const PLAYER_HEIGHT = 1.8 * BLOCK_SIZE; 
         const PLAYER_RADIUS = 0.3; 
         const GRAVITY = -0.012;
         const JUMP_POWER = 0.17;
 
-        // Inventory
+       
         const INV_COLS = 9;
         const INV_ROWS = 3;
         const HOTBAR_SLOTS = 9;
         const TOTAL_INV_SIZE = (INV_ROWS * INV_COLS) + HOTBAR_SLOTS; // 27 + 9 = 36 slots
 
-        // Block Definitions
+      
         const blockMaterials = {
             0: { color: 0x000000, name: 'Air', id: 0 }, 
-            1: { color: 0x4CAF50, name: 'Grass', id: 1 }, // Green (Top)
-            2: { color: 0x654321, name: 'Dirt', id: 2 }, // Brown (Side/Bottom/Dirt)
+            1: { color: 0x4CAF50, name: 'Grass', id: 1 }, 
+            2: { color: 0x654321, name: 'Dirt', id: 2 }, 
             3: { color: 0x666666, name: 'Stone', id: 3 }, 
             4: { color: 0x1976D2, name: 'Water', transparent: true, opacity: 0.7, id: 4 },
             5: { color: 0x8B4513, name: 'Wood Log', id: 5 }, 
             6: { color: 0x228B22, name: 'Leaves', transparent: true, opacity: 0.8, id: 6 } 
         };
         
-        // --- GAME STATE ---
-        const SOLID_BLOCKS = [1, 2, 3, 5, 6]; // Leaves (6) are now solid!
+      
+        const SOLID_BLOCKS = [1, 2, 3, 5, 6]; 
         const LIQUID_BLOCKS = [4];
         const AIR_BLOCK = 0; 
 
-        // Player Data
+      
         const player = {
             velocity: new THREE.Vector3(),
             direction: new THREE.Vector3(),
@@ -217,30 +213,28 @@
             isJumping: false,
             canMove: false,
             keys: {},
-            health: 20, // 10 Hearts
+            health: 20,
             maxHealth: 20,
-            fallStartY: 0, // For fall damage
+            fallStartY: 0, 
             inAir: false
         };
 
-        // Inventory Data: Array of objects { id: blockId, count: number } or null
+      
         let inventory = new Array(TOTAL_INV_SIZE).fill(null);
         let selectedHotbarIndex = 0; // 0-8
         let isInventoryOpen = false;
 
-        // Give starting items (Survival Starter Kit)
-        inventory[0] = { id: 5, count: 16 }; // 16 Wood
-        inventory[1] = { id: 3, count: 32 }; // 32 Stone
+     
 
-        // --- THREE.JS GLOBALS ---
+      
         let scene, camera, renderer, simplex, raycaster;
         const chunks = new Map();
         const worldGroup = new THREE.Group();
         let yawObject, pitchObject; 
         
-        /** Helper: Is block solid? */
+     
         function isSolid(type) { return SOLID_BLOCKS.includes(type); }
-        /** Helper: Is block liquid? */
+       
         function isLiquid(type) { return LIQUID_BLOCKS.includes(type); }
 
         function init() {
@@ -260,13 +254,13 @@
             
             yawObject = new THREE.Object3D();
             pitchObject = new THREE.Object3D();
-            pitchObject.position.y = 1.6; // Eye height relative to feet
+            pitchObject.position.y = 1.6; //eye level (uhhh, needed when i ass skins i think)
             
             pitchObject.add(camera);
             yawObject.add(pitchObject);
             scene.add(yawObject);
 
-            // Lighting
+            // Lighting uhhhhh, add what its called, uhhhhh yk
             const ambientLight = new THREE.AmbientLight(0x606060, 1.2); 
             scene.add(ambientLight);
             const dirLight = new THREE.DirectionalLight(0xffffff, 1.5); 
@@ -274,18 +268,18 @@
             scene.add(dirLight);
             scene.add(worldGroup);
 
-            // Setup
+    
             generateWorld();
             setupPointerLockControls();
             setupKeyboardControls();
             setupBlockInteraction();
             setInitialPlayerPosition();
             
-            // UI Init
+          
             renderHearts();
             updateHotbarUI();
             
-            // Renderer
+           //render uhhhhhh
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(window.devicePixelRatio);
@@ -294,7 +288,7 @@
             window.addEventListener('resize', onWindowResize);
             document.addEventListener('contextmenu', e => e.preventDefault()); 
             
-            // Wheel listener for hotbar
+           
             document.addEventListener('wheel', (e) => {
                 if(isInventoryOpen) return;
                 if (e.deltaY > 0) {
@@ -308,10 +302,9 @@
             animate();
         }
 
-        // --- INVENTORY LOGIC ---
-
+     
         function addToInventory(blockId, amount = 1) {
-            // 1. Try to stack
+         
             for (let i = 0; i < TOTAL_INV_SIZE; i++) {
                 if (inventory[i] && inventory[i].id === blockId && inventory[i].count < 64) {
                     inventory[i].count += amount;
@@ -321,7 +314,7 @@
                     return true;
                 }
             }
-            // 2. Try to find empty slot (Hotbar first)
+          
             for (let i = 0; i < TOTAL_INV_SIZE; i++) {
                 if (inventory[i] === null) {
                     inventory[i] = { id: blockId, count: amount };
@@ -356,8 +349,7 @@
             setTimeout(() => { el.style.opacity = 0; }, 2000);
         }
 
-        // --- UI RENDERING ---
-
+     
         function renderHearts() {
             const container = document.getElementById('health-container');
             container.innerHTML = '';
@@ -374,7 +366,7 @@
             const hotbar = document.getElementById('hotbar');
             hotbar.innerHTML = '';
             
-            // Loop through first 9 slots (0-8)
+          
             for(let i=0; i<HOTBAR_SLOTS; i++) {
                 const slot = document.createElement('div');
                 slot.className = `inv-slot w-10 h-10 md:w-12 md:h-12 flex items-center justify-center transition-transform ${i === selectedHotbarIndex ? 'selected' : ''}`;
@@ -404,7 +396,7 @@
             mainGrid.innerHTML = '';
             hotbarGrid.innerHTML = '';
 
-            // Render all 36 slots
+           
             for(let i=0; i<TOTAL_INV_SIZE; i++) {
                 const slot = document.createElement('div');
                 slot.className = 'inv-slot w-10 h-10 flex items-center justify-center';
@@ -424,10 +416,9 @@
                     slot.appendChild(countSpan);
                 }
 
-                // Append to appropriate grid container
-                // Slots 0-8 are Hotbar, 9-35 are Main
+              
                 if (i < HOTBAR_SLOTS) {
-                    // Hotbar slot in inventory screen
+                   
                     hotbarGrid.appendChild(slot);
                 } else {
                     mainGrid.appendChild(slot);
@@ -446,15 +437,15 @@
                 document.body.requestPointerLock(); 
             } else {
                 isInventoryOpen = true;
-                renderInventoryScreen(); // Refresh UI
+                renderInventoryScreen(); 
                 invScreen.classList.remove('hidden');
                 hud.classList.add('opacity-0');
                 document.exitPointerLock(); 
-                player.keys = {}; // Clear keys to stop movement
+                player.keys = {}; 
             }
         }
         
-        // --- INTERACTION ---
+    
 
         function setupBlockInteraction() {
             window.addEventListener('pointerdown', onPointerDown, false);
@@ -465,7 +456,7 @@
 
             raycaster.setFromCamera({ x: 0, y: 0 }, camera); 
             
-            // Get all meshes
+          
             const meshes = [];
             worldGroup.children.forEach(g => g.children.forEach(m => meshes.push(m)));
             
@@ -473,19 +464,18 @@
 
             if (intersects.length > 0) {
                 const hit = intersects[0];
-                // Determine if we hit a transparent block or opaque block to use right distance logic? 
-                // For simplicity, just use the hit point
+               
                 
-                if (event.button === 0) { // Left Click: Break
+                if (event.button === 0) { 
                     const hitPos = hit.point.clone().sub(hit.face.normal.clone().multiplyScalar(0.01));
-                    modifyWorld(hitPos, 0); // 0 = Air (Break)
-                } else if (event.button === 2) { // Right Click: Place
+                    modifyWorld(hitPos, 0); 
+                } else if (event.button === 2) { 
                     const item = inventory[selectedHotbarIndex];
-                    if (!item) return; // Empty hand
+                    if (!item) return; 
 
                     const placePos = hit.point.clone().add(hit.face.normal.clone().multiplyScalar(0.01));
                     
-                    // Check if placement intersects player
+                   
                     const wx = Math.floor(placePos.x), wy = Math.floor(placePos.y), wz = Math.floor(placePos.z);
                     const playerBox = new THREE.Box3(
                         new THREE.Vector3(yawObject.position.x - PLAYER_RADIUS, yawObject.position.y, yawObject.position.z - PLAYER_RADIUS),
@@ -527,31 +517,31 @@
             const oldType = chunkData[index];
             
             if (newType === 0) {
-                // BREAKING
+                // BREAKING update this later so blocks have different breaking speeds
                 if (oldType === 0) return false;
-                if (oldType === 4) return false; // Can't break water with hand
+                if (oldType === 4) return false; 
                 
-                // Add to inventory (Survival)
+             
                 addToInventory(oldType, 1);
                 
                 chunkData[index] = 0;
             } else {
-                // PLACING
-                if (oldType !== 0 && oldType !== 4) return false; // Can only place in Air or Water
+               
+                if (oldType !== 0 && oldType !== 4) return false; 
                 chunkData[index] = newType;
             }
 
-            // Update Geometry of this chunk and neighbors if modification was near the edge
+           
             updateChunkAndNeighbors(group, lx, lz);
             return true;
         }
 
-        // --- PHYSICS & MOVEMENT ---
+    
 
         function updatePlayerMovement() {
             if (!player.canMove || isInventoryOpen) return;
 
-            // Input Vector
+         
             player.direction.set(0, 0, 0);
             const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(yawObject.quaternion);
             const right = new THREE.Vector3(1, 0, 0).applyQuaternion(yawObject.quaternion);
@@ -564,30 +554,28 @@
             if (player.keys['d']) player.direction.add(right);
             player.direction.normalize();
 
-            // Apply Velocity
+           
             player.velocity.x = player.direction.x * player.moveSpeed;
             player.velocity.z = player.direction.z * player.moveSpeed;
             player.velocity.y += GRAVITY;
 
-            // Jumping
+          
             if (player.keys[' '] && !player.isJumping) {
                 player.velocity.y = JUMP_POWER;
                 player.isJumping = true;
             }
 
-            // --- COLLISION ---
-            // X Axis
+           
             yawObject.position.x += player.velocity.x;
             if (isColliding()) yawObject.position.x -= player.velocity.x;
 
-            // Z Axis
+           
             yawObject.position.z += player.velocity.z;
             if (isColliding()) yawObject.position.z -= player.velocity.z;
 
-            // Y Axis
             yawObject.position.y += player.velocity.y;
             
-            // Fall Damage Logic
+         
             if (player.velocity.y < -0.1 && !player.inAir) {
                 player.inAir = true;
                 player.fallStartY = yawObject.position.y;
@@ -596,11 +584,11 @@
             if (isColliding()) {
                 yawObject.position.y -= player.velocity.y; // Step back
                 
-                // Landed
+              
                 if (player.velocity.y < 0) {
                     player.isJumping = false;
                     
-                    // Calc Damage
+                   
                     if (player.inAir) {
                         const fallDist = player.fallStartY - yawObject.position.y;
                         if (fallDist > 4) { // 4 blocks safe fall
@@ -610,16 +598,16 @@
                         player.inAir = false;
                     }
                     
-                    // Simple Snap to integer grid to prevent jitter
+                  
                     yawObject.position.y = Math.round(yawObject.position.y * 100) / 100;
                 } else {
-                    // Head bonk
+                   
                     player.velocity.y = 0;
                 }
                 player.velocity.y = 0;
             }
             
-            // Void Kill
+           
             if (yawObject.position.y < -10) {
                 takeDamage(999);
                 setInitialPlayerPosition();
@@ -639,19 +627,19 @@
                     player.health = player.maxHealth;
                     renderHearts();
                     setInitialPlayerPosition();
-                    inventory = new Array(TOTAL_INV_SIZE).fill(null); // Lose items on death
+                    inventory = new Array(TOTAL_INV_SIZE).fill(null);
                     updateHotbarUI();
                 }, 1000);
             }
         }
 
         function isColliding() {
-            // Player AABB
+          
             const px = yawObject.position.x;
             const py = yawObject.position.y;
             const pz = yawObject.position.z;
             const r = PLAYER_RADIUS;
-            const h = 1.8; // Player height
+            const h = 1.8; 
 
             const minX = Math.floor(px - r);
             const maxX = Math.floor(px + r);
@@ -671,13 +659,12 @@
             return false;
         }
 
-        // --- WORLD GENERATION UTILS --- (Kept similar to ensure Island logic)
         
         function getNoiseGroundHeight(wx, wz) {
             const scale1 = 0.002; 
             let continentalMask = simplex.noise2D(wx * scale1, wz * scale1);
             const d = Math.sqrt(wx*wx + wz*wz);
-            if (d < ISLAND_RADIUS) continentalMask = 1.0; // Force Island center
+            if (d < ISLAND_RADIUS) continentalMask = 1.0; 
             
             const scale2 = 0.03; 
             const noise = (simplex.noise2D(wx * scale2, wz * scale2) + 1) * 0.5; 
@@ -688,7 +675,7 @@
             } else {
                 h = SEA_LEVEL - 10 - (noise * 5);
             }
-            // Detail
+           
             h += (simplex.noise2D(wx * 0.1, wz * 0.1) + 1) * 0.5;
             return Math.floor(h);
         }
@@ -704,20 +691,20 @@
                 const lz = wz - group.userData.cz * CHUNK_SIZE;
                 return group.userData.chunkData[lx + wy * CHUNK_SIZE + lz * CHUNK_SIZE * CHUNK_HEIGHT];
             }
-            // Fallback for ungenerated (for physics prediction)
+            
             const h = getNoiseGroundHeight(wx, wz);
             if (wy < h) return 1; 
             if (wy < SEA_LEVEL) return 4;
             return 0;
         }
 
-        // ... [Standard Setup Functions: pointerLock, keyboard, etc.] ...
+       
         function setupPointerLockControls() {
             const el = document.body;
             document.addEventListener('pointerlockchange', () => {
                 if (document.pointerLockElement === el) {
                     player.canMove = true;
-                    if(isInventoryOpen) toggleInventory(); // Force close if locked
+                    if(isInventoryOpen) toggleInventory(); 
                     document.getElementById('instructions').style.opacity = 0;
                     document.getElementById('crosshair').style.opacity = 1;
                 } else {
@@ -761,7 +748,7 @@
             document.addEventListener('keyup', e => player.keys[e.key.toLowerCase()] = false);
         }
 
-        // --- WORLD GENERATION CORE ---
+      
         
         function generateChunkData(cx, cz) {
              const data = new Array(CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE);
@@ -783,18 +770,18 @@
                          }
                          data[x + y*CHUNK_SIZE + z*CHUNK_SIZE*CHUNK_HEIGHT] = t;
                      }
-                     // Trees
+                  
                      if (surface === 1) {
-                         // Simple noise check for trees
-                         if (Math.abs((wx * 1327 + wz * 9283) % 100) < 3) { // 3% chance deterministic
-                             // Place Tree
+                        
+                         if (Math.abs((wx * 1327 + wz * 9283) % 100) < 3) { 
+                            
                              const th = 5;
                              for(let i=1; i<=th; i++) {
-                                 // Trunk
+                                 
                                  const idx = x + (h-1+i)*CHUNK_SIZE + z*CHUNK_SIZE*CHUNK_HEIGHT;
                                  if ((h-1+i) < CHUNK_HEIGHT) data[idx] = 5;
                              }
-                             // Leaves
+                            
                              for(let lx=-2; lx<=2; lx++){
                                  for(let lz=-2; lz<=2; lz++){
                                      for(let ly=th-2; ly<=th+1; ly++){
@@ -814,7 +801,6 @@
              return data;
         }
 
-        // Standard Mesh Gen (Collapsed for brevity as it follows standard Voxel logic)
         function createChunk(cx, cz) {
             const data = generateChunkData(cx, cz);
             const group = new THREE.Group();
@@ -825,19 +811,14 @@
             return group;
         }
 
-        /**
-         * Regenerates the geometry for a chunk and its necessary neighbors.
-         * This is required when a block is modified near a chunk boundary.
-         */
         function updateChunkAndNeighbors(centerGroup, lx, lz) {
             updateChunkGeometry(centerGroup, centerGroup.userData.chunkData);
             
-            // Only update neighbors if the block modified was on the edge
+           
             if (lx === 0 || lx === CHUNK_SIZE - 1 || lz === 0 || lz === CHUNK_SIZE - 1) {
                 const cx = centerGroup.userData.cx;
                 const cz = centerGroup.userData.cz;
 
-                // Neighbor offsets: West, East, North, South
                 const neighborOffsets = [
                     [-1, 0], [1, 0], [0, -1], [0, 1]
                 ];
@@ -853,7 +834,7 @@
         }
         
         function updateChunkGeometry(group, data) {
-            // Remove existing meshes
+         
             while(group.children.length) group.remove(group.children[0]);
             
             const pos = [], norm = [], col = [], uv = [];
@@ -871,9 +852,8 @@
             ];
 
             const get = (x,y,z) => {
-                // Simplified local check for culling faces *within* the current chunk's data
                 if(x<0||x>=16||z<0||z>=16||y<0||y>=96) {
-                    // Check neighboring chunk data for boundary culling
+                 
                     const wx = x + cx*16;
                     const wz = z + cz*16;
                     return getBlockType(wx, y, wz); 
@@ -894,7 +874,7 @@
                             const nid = get(x+f.dir[0], y+f.dir[1], z+f.dir[2]);
                             const neighborMat = blockMaterials[nid];
                             
-                            // Render face if neighbor is air OR neighbor is different transparent block
+
                             let draw = false;
                             if(nid === 0) draw = true;
                             else if(isTrans && nid !== id) draw = true;
@@ -908,12 +888,12 @@
                                 const wx = x + cx*16;
                                 const wz = z + cz*16;
                                 
-                                // --- GRASS BLOCK COLORING FIX ---
+                            
                                 let faceColor = mat.color;
-                                if (id === 1) { // Grass block special coloring (ID 1)
-                                    if (f.dir[1] === 1) { // Top face (Y+) -> Green
+                                if (id === 1) { 
+                                    if (f.dir[1] === 1) { 
                                         faceColor = blockMaterials[1].color; 
-                                    } else { // Side/Bottom faces -> Dirt Brown (using ID 2 color)
+                                    } else { 
                                         faceColor = blockMaterials[2].color; 
                                     }
                                 }
@@ -951,7 +931,7 @@
                     transparent: trans,
                     opacity: trans ? 0.7 : 1.0,
                     side: trans ? THREE.DoubleSide : THREE.FrontSide,
-                    depthWrite: !trans // Important for sorting
+                    depthWrite: !trans 
                 });
                 group.add(new THREE.Mesh(geom, mat));
             }
@@ -960,9 +940,8 @@
             makeMesh(posT, normT, colT, true);
         }
 
-        // --- SPAWN LOGIC ---
         function setInitialPlayerPosition() {
-            // Find island center (0,0) highest block
+          
             let y = 95;
             while(y > 0 && !isSolid(getBlockType(0, y, 0))) {
                 y--;
