@@ -224,12 +224,31 @@
         const HOTBAR_SLOTS = 9;
         const TOTAL_INV_SIZE = (INV_ROWS * INV_COLS) + HOTBAR_SLOTS; // 27 + 9 = 36 slots
 
+
+        // --- GITHUB PAGES CONFIGURATION (IMPORTANT FOR ASSET PATHS) ---
+        // If hosting on GitHub Pages as a "Project Page" (URL includes the repo name: e.g., <username>.github.io/MultiPixel/), 
+        // CHANGE this to your repository name with a leading slash, e.g., '/MultiPixel'
+        // Otherwise, keep it as '' for local testing or User Pages.
+        const REPO_BASE_PREFIX = '/MultiPixel'; // <-- UPDATED FOR MultiPixel PROJECT
+        
+        // Function to safely construct asset paths for GitHub Pages/Local
+        const getAssetPath = (subPath) => {
+            const ASSET_BASE_DIR = 'game/singleplayer/assets';
+            if (REPO_BASE_PREFIX) {
+                // Returns '/repo-name/game/singleplayer/assets/textures/...' (Root-relative)
+                return `${REPO_BASE_PREFIX}/${ASSET_BASE_DIR}/${subPath}`;
+            }
+            // Returns 'game/singleplayer/assets/textures/...' (Local-relative)
+            return `${ASSET_BASE_DIR}/${subPath}`;
+        };
+
+
         // ASSET MAPPING: Using specified filepaths directly, as requested
         const ASSET_FILEPATHS = {
-            DIRT: 'game/singleplayer/assets/textures/dirt_block.png',
-            STONE: 'game/singleplayer/assets/textures/stone_block.png',
-            LEAVES: 'game/singleplayer/assets/textures/leaf_oak.png', // Updated to leaf_oak.png
-            HEART: 'game/singleplayer/assets/ui/heart_full.png', // ui path
+            DIRT: getAssetPath('textures/dirt_block.png'),
+            STONE: getAssetPath('textures/stone_block.png'),
+            LEAVES: getAssetPath('textures/leaf_oak.png'), // Updated to leaf_oak.png
+            HEART: getAssetPath('ui/heart_full.png'), // ui path
         };
 
 
@@ -308,7 +327,7 @@
                 
                 const promise = new Promise((resolve, reject) => {
                     loader.load(
-                        path, // <-- DIRECTLY using the specified relative path
+                        path, // <-- DIRECTLY using the calculated path
                         (texture) => {
                             texture.magFilter = THREE.NearestFilter; // Sharp pixel look
                             texture.minFilter = THREE.NearestFilter;
