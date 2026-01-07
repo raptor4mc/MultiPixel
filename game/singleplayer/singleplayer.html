@@ -206,7 +206,7 @@
         // --- 1. CONFIGURATION ---
         const CHUNK_SIZE = 16;
         const CHUNK_HEIGHT = 96; 
-        const WORLD_RADIUS = 3; 
+        const WORLD_RADIUS = 13; // 27x27 chunks wide
         const BLOCK_SIZE = 1;
         const SEA_LEVEL = 18; 
         const BASE_LAND_Y = 20; 
@@ -226,10 +226,7 @@
 
 
         // --- GITHUB PAGES CONFIGURATION (IMPORTANT FOR ASSET PATHS) ---
-        // If hosting on GitHub Pages as a "Project Page" (URL includes the repo name: e.g., <username>.github.io/MultiPixel/), 
-        // CHANGE this to your repository name with a leading slash, e.g., '/MultiPixel'
-        // Otherwise, keep it as '' for local testing or User Pages.
-        const REPO_BASE_PREFIX = '/MultiPixel'; // <-- UPDATED FOR MultiPixel PROJECT
+        const REPO_BASE_PREFIX = '/MultiPixel'; 
         
         // Function to safely construct asset paths for GitHub Pages/Local
         const getAssetPath = (subPath) => {
@@ -247,8 +244,9 @@
         const ASSET_FILEPATHS = {
             DIRT: getAssetPath('textures/dirt_block.png'),
             STONE: getAssetPath('textures/stone_block.png'),
-            LEAVES: getAssetPath('textures/leaf_oak.png'), // Updated to leaf_oak.png
-            HEART: getAssetPath('ui/heart_full.png'), // ui path
+            LEAVES: getAssetPath('textures/leaf_oak.png'), 
+            SAND: getAssetPath('textures/sand_block.png'), 
+            HEART: getAssetPath('ui/heart_full.png'), 
         };
 
 
@@ -260,11 +258,12 @@
             3: { name: 'Stone', id: 3, textured: true, textureKey: 'STONE' }, 
             4: { name: 'Water', id: 4, color: 0x1976D2, transparent: true, opacity: 0.7, textured: false },
             5: { name: 'Wood Log', id: 5, color: 0x8B4513, textured: false }, 
-            6: { name: 'Leaves', id: 6, textured: true, textureKey: 'LEAVES', transparent: true, opacity: 0.8 } 
+            6: { name: 'Leaves', id: 6, textured: true, textureKey: 'LEAVES', transparent: true, opacity: 0.8 },
+            7: { name: 'Sand', id: 7, textured: true, textureKey: 'SAND' } 
         };
         
       
-        const SOLID_BLOCKS = [1, 2, 3, 5, 6]; 
+        const SOLID_BLOCKS = [1, 2, 3, 5, 6, 7]; 
         const LIQUID_BLOCKS = [4];
         const AIR_BLOCK = 0; 
         
@@ -307,6 +306,9 @@
         const worldGroup = new THREE.Group();
         let yawObject, pitchObject; 
         
+        // Calculate the world boundary coordinates
+        const WORLD_MAX_COORD = (WORLD_RADIUS + 0.5) * CHUNK_SIZE;
+        const WORLD_MIN_COORD = -(WORLD_RADIUS + 0.5) * CHUNK_SIZE;
         
         // --- 3. CORE UTILITIES ---
 
@@ -364,6 +366,10 @@
             materials.DIRT_FALLBACK = new THREE.MeshStandardMaterial({ color: 0x594334, roughness: 0.9 });
             materials.STONE_FALLBACK = new THREE.MeshStandardMaterial({ color: 0x7F8C8D, roughness: 0.9 });
             materials.LEAVES_FALLBACK = new THREE.MeshStandardMaterial({ color: 0x27AE60, transparent: true, opacity: 0.8, side: THREE.DoubleSide });
+            materials.SAND_FALLBACK = new THREE.MeshStandardMaterial({ color: 0xf5deb3, roughness: 0.9 }); 
+            
+            // Material for blocks using vertex colors
+            materials.COLORED_OPAQUE = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 });
 
 
             await Promise.all(texturePromises);
@@ -457,6 +463,7 @@
             addToInventory(2, 64); // Dirt
             addToInventory(3, 12); // Stone
             addToInventory(6, 1); // Leaves
+            addToInventory(7, 32); // Sand
             
             craftingInput[0] = { id: 5, count: 1 };
             craftingInput[3] = { id: 6, count: 2 };
@@ -554,7 +561,7 @@
                         // --- USING DIRECT PATH FOR HOTBAR ICON ---
                         imgPath = ASSET_FILEPATHS[mat.textureKey];
                     } else {
-                        const colorHex = mat.color.toString(16).padStart(6, '0');
+                        const colorHex = mat.color ? mat.color.toString(16).padStart(6, '0') : '7F8C8D';
                         colorStyle = `background-color: #${colorHex};`;
                     }
                     
@@ -685,9 +692,10 @@
                     let colorStyle = '';
 
                     if (mat.textured) {
-                        imgPath = ASSET_FILEPATHS[mat.textureKey]; // Direct path
-                    } else if (mat.color) {
-                        const colorHex = mat.color.toString(16).padStart(6, '0');
+                        // --- USING DIRECT PATH FOR HOTBAR ICON ---
+                        imgPath = ASSET_FILEPATHS[mat.textureKey];
+                    } else {
+                        const colorHex = mat.color ? mat.color.toString(16).padStart(6, '0') : '7F8C8D';
                         colorStyle = `background-color: #${colorHex};`;
                     }
                     
@@ -761,8 +769,8 @@
 
                 if (mat.textured) {
                     imgPath = ASSET_FILEPATHS[mat.textureKey]; // Direct path
-                } else if (mat.color) {
-                    const colorHex = mat.color.toString(16).padStart(6, '0');
+                } else {
+                    const colorHex = mat.color ? mat.color.toString(16).padStart(6, '0') : '7F8C8D';
                     colorStyle = `background-color: #${colorHex};`;
                 }
                 
@@ -933,7 +941,11 @@
         function updatePlayerMovement() {
             if (!player.canMove || isInventoryOpen) return;
 
-         
+            // --- World Border Check ---
+            const prevX = yawObject.position.x;
+            const prevZ = yawObject.position.z;
+
+            // Apply world movement
             player.direction.set(0, 0, 0);
             const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(yawObject.quaternion);
             const right = new THREE.Vector3(1, 0, 0).applyQuaternion(yawObject.quaternion);
@@ -967,6 +979,32 @@
 
             yawObject.position.y += player.velocity.y;
             
+            
+            // --- World Border Enforcement ---
+            let changedX = false;
+            let changedZ = false;
+
+            if (yawObject.position.x + PLAYER_RADIUS > WORLD_MAX_COORD) {
+                yawObject.position.x = WORLD_MAX_COORD - PLAYER_RADIUS;
+                changedX = true;
+            } else if (yawObject.position.x - PLAYER_RADIUS < WORLD_MIN_COORD) {
+                yawObject.position.x = WORLD_MIN_COORD + PLAYER_RADIUS;
+                changedX = true;
+            }
+            if (yawObject.position.z + PLAYER_RADIUS > WORLD_MAX_COORD) {
+                yawObject.position.z = WORLD_MAX_COORD - PLAYER_RADIUS;
+                changedZ = true;
+            } else if (yawObject.position.z - PLAYER_RADIUS < WORLD_MIN_COORD) {
+                yawObject.position.z = WORLD_MIN_COORD + PLAYER_RADIUS;
+                changedZ = true;
+            }
+            
+            if (changedX || changedZ) {
+                showGameMessage("You hit the world boundary!");
+                player.velocity.x = 0;
+                player.velocity.z = 0;
+            }
+            // --- End World Border Enforcement ---
          
             if (player.velocity.y < -0.1 && !player.inAir) {
                 player.inAir = true;
@@ -1051,28 +1089,78 @@
             return false;
         }
 
-        
-        function getNoiseGroundHeight(wx, wz) {
-            const scale1 = 0.002; 
-            let continentalMask = simplex.noise2D(wx * scale1, wz * scale1);
+        // --- NEW: Biome Classification (Forest, Plains, Ocean, Desert) ---
+        function getBiome(wx, wz) {
+            // Use a large scale for general climate zones
+            const biomeNoise = simplex.noise2D(wx * 0.0005, wz * 0.0005); 
+            
+            // Second noise layer for detail/splitting within temperate zones
+            const detailNoise = simplex.noise2D(wx * 0.005, wz * 0.005);
+            
+            // Check if coordinates are near the starting center (Island for spawn)
             const d = Math.sqrt(wx*wx + wz*wz);
-            if (d < ISLAND_RADIUS) continentalMask = 1.0; 
+
+            if (d < ISLAND_RADIUS) {
+                // If near spawn, guarantee a Forest for easy wood
+                return 'Forest'; 
+            }
+            
+            if (biomeNoise > 0.35) {
+                return 'Desert';
+            } else if (biomeNoise > -0.1) {
+                // Temperate Zone
+                if (detailNoise > 0) {
+                    return 'Forest';
+                } else {
+                    return 'Plains';
+                }
+            } else {
+                return 'Ocean';
+            }
+        }
+
+        function getNoiseGroundHeight(wx, wz) {
+            const biome = getBiome(wx, wz);
+            
+            // Continental Mask for overall land mass (smoother transition)
+            const scale1 = 0.002; 
+            let continentalMask = (simplex.noise2D(wx * scale1, wz * scale1) + 1) * 0.5;
             
             const scale2 = 0.03; 
-            const noise = (simplex.noise2D(wx * scale2, wz * scale2) + 1) * 0.5; 
+            let terrainNoise = (simplex.noise2D(wx * scale2, wz * scale2) + 1) * 0.5; 
+            
+            // High-frequency detail noise
+            const detailNoise = (simplex.noise2D(wx * 0.1, wz * 0.1) + 1) * 0.5;
             
             let h;
-            if (continentalMask > 0.1) {
-                h = BASE_LAND_Y + noise * 4;
-            } else {
-                h = SEA_LEVEL - 10 - (noise * 5);
+
+            if (biome === 'Plains') {
+                // Flatter, slightly rolling land
+                h = BASE_LAND_Y + continentalMask * 8 + terrainNoise * 2;
+            } else if (biome === 'Forest') {
+                // Hillier terrain for forests
+                h = BASE_LAND_Y + continentalMask * 12 + terrainNoise * 7;
+            } else if (biome === 'Desert') {
+                // Taller, sandy terrain
+                h = BASE_LAND_Y + 3 + continentalMask * 10 + terrainNoise * 5;
+            } else { // Ocean Biome
+                h = SEA_LEVEL - 10 - (terrainNoise * 5);
             }
-           
-            h += (simplex.noise2D(wx * 0.1, wz * 0.1) + 1) * 0.5;
+            
+            h += detailNoise * 0.5; // Add detail
+            
+            // Ensure land blocks are not too low relative to sea level
+            if (h < SEA_LEVEL - 5 && biome !== 'Ocean') h = SEA_LEVEL - 5; 
+
             return Math.floor(h);
         }
 
         function getBlockType(wx, wy, wz) {
+            // Check world boundary before accessing chunk data
+            if (wx < WORLD_MIN_COORD || wx >= WORLD_MAX_COORD || wz < WORLD_MIN_COORD || wz >= WORLD_MAX_COORD) {
+                return 0; // Void outside the generated area
+            }
+
             if (wy < 0 || wy >= CHUNK_HEIGHT) return 0;
             const cx = Math.floor(wx / CHUNK_SIZE);
             const cz = Math.floor(wz / CHUNK_SIZE);
@@ -1084,8 +1172,9 @@
                 return group.userData.chunkData[lx + wy * CHUNK_SIZE + lz * CHUNK_SIZE * CHUNK_HEIGHT];
             }
             
+            // For blocks outside loaded chunks but inside the boundary, use noise
             const h = getNoiseGroundHeight(wx, wz);
-            if (wy < h) return 1; 
+            if (wy < h) return 1; // Default to grass for quick fallback
             if (wy < SEA_LEVEL) return 4;
             return 0;
         }
@@ -1144,36 +1233,89 @@
         
         function generateChunkData(cx, cz) {
              const data = new Array(CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE);
+             
              for (let x = 0; x < CHUNK_SIZE; x++) {
                  for (let z = 0; z < CHUNK_SIZE; z++) {
                      const wx = cx * CHUNK_SIZE + x;
                      const wz = cz * CHUNK_SIZE + z;
+                     
+                     // Biome for this column
+                     const biome = getBiome(wx, wz);
+                     
+                     // Check if block is near the world boundary before applying changes
+                     const isNearBoundary = wx < WORLD_MIN_COORD + 4 || wx >= WORLD_MAX_COORD - 4 || 
+                                            wz < WORLD_MIN_COORD + 4 || wz >= WORLD_MAX_COORD - 4;
+                     
                      const h = getNoiseGroundHeight(wx, wz);
-                     let surface = 0;
+                     let surfaceBlockType = 0; // Used for tree placement logic
+
                      for (let y = 0; y < CHUNK_HEIGHT; y++) {
-                         let t = 0;
+                         let t = 0; // Block type
+                         
                          if (y < h) {
-                             if (y === h - 1 && h > SEA_LEVEL) { t = 1; surface = 1; }
-                             else if (y === h - 1) t = 2;
-                             else if (y < h - 5) t = 3;
-                             else t = 2;
+                            
+                             const distFromSurface = h - 1 - y;
+
+                             if (biome === 'Desert') {
+                                 // Desert Biome: Sand surface, Stone/Sandstone below
+                                 if (distFromSurface === 0) {
+                                     t = 7; // Sand
+                                     surfaceBlockType = 7;
+                                 } else if (distFromSurface < 5) {
+                                     t = 7; // Sand layers
+                                 } else {
+                                     t = 3; // Stone (representing Sandstone/Deep rock)
+                                 }
+                             } else { // Plains/Forest/Ocean Biome logic
+                                 
+                                 const isBeachZone = h >= SEA_LEVEL - 1 && h <= SEA_LEVEL + 2;
+
+                                 if (distFromSurface === 0) {
+                                     if (isBeachZone) {
+                                         t = 7; // Sand for beaches
+                                         surfaceBlockType = 7;
+                                     } else {
+                                         t = 1; // Grass for Plains and Forest
+                                         surfaceBlockType = 1;
+                                     }
+                                 } else if (distFromSurface < 4) {
+                                     if (isBeachZone) {
+                                         t = 7; // Sand below beach
+                                     } else {
+                                         t = 2; // Dirt below grass
+                                     }
+                                 } else {
+                                     t = 3; // Stone deep down
+                                 }
+                             }
                          } else if (y < SEA_LEVEL) {
-                             t = 4;
+                             t = 4; // Water
                          }
+                         
+                         // If near boundary and below sea level, wall it up
+                         if (isNearBoundary && y < SEA_LEVEL && (t === 4 || t === 0)) {
+                             // Make water/air into stone wall at the edge
+                             t = 3; 
+                         } 
+
                          data[x + y*CHUNK_SIZE + z*CHUNK_SIZE*CHUNK_HEIGHT] = t;
                      }
                   
-                     if (surface === 1) {
+                     // --- Tree Generation (Only on Forest Biome Surface) ---
+                     if (surfaceBlockType === 1 && biome === 'Forest') { 
                         
-                         if (Math.abs((wx * 1327 + wz * 9283) % 100) < 3) { 
+                         // Low chance to spawn a tree
+                         if (Math.abs((wx * 1327 + wz * 9283) % 100) < 6) { // Increased chance for Forest
                             
-                             const th = 5;
+                             const th = 5 + Math.floor(Math.random() * 2); // Tree height 5-6
+                             // Trunk
                              for(let i=1; i<=th; i++) {
                                  
                                  const idx = x + (h-1+i)*CHUNK_SIZE + z*CHUNK_SIZE*CHUNK_HEIGHT;
-                                 if ((h-1+i) < CHUNK_HEIGHT) data[idx] = 5;
+                                 if ((h-1+i) < CHUNK_HEIGHT) data[idx] = 5; // Wood Log
                              }
                             
+                             // Leaves
                              for(let lx=-2; lx<=2; lx++){
                                  for(let lz=-2; lz<=2; lz++){
                                      for(let ly=th-2; ly<=th+1; ly++){
@@ -1181,7 +1323,7 @@
                                          const tx = x+lx; const tz = z+lz; const ty = h-1+ly;
                                          if(tx>=0 && tx<CHUNK_SIZE && tz>=0 && tz<CHUNK_SIZE && ty<CHUNK_HEIGHT) {
                                              const lidx = tx + ty*CHUNK_SIZE + tz*CHUNK_SIZE*CHUNK_HEIGHT;
-                                             if(data[lidx]===0) data[lidx] = 6;
+                                             if(data[lidx]===0) data[lidx] = 6; // Leaves
                                          }
                                      }
                                  }
@@ -1231,14 +1373,15 @@
             
             if (mat.textured) {
                 const key = mat.textureKey;
-                // Use the loaded material if it exists, otherwise use a colored fallback
-                if (materials[key]) return key; 
+                // Use the loaded material key if it exists, otherwise use a colored fallback key
+                if (materials[key] && materials[key].map) return key; 
                 return `${key}_FALLBACK`;
             }
             if (id === 4) return 'WATER'; 
             if (id === 5) return 'WOOD';  
             
-            return null; 
+            // For non-textured blocks that might have been assigned a vertex color
+            return 'COLORED_OPAQUE';
         }
 
         function updateChunkGeometry(group, data) {
@@ -1255,7 +1398,7 @@
                 { dir: [1,0,0], corners: [[1,1,1],[1,0,1],[1,0,0],[1,1,0]], uv: [0,1, 0,0, 1,0, 1,1] }, // Right
                 { dir: [-1,0,0], corners: [[0,1,0],[0,0,0],[0,0,1],[0,1,1]], uv: [0,1, 0,0, 1,0, 1,1] }, // Left
                 { dir: [0,1,0], corners: [[0,1,1],[1,1,1],[1,1,0],[0,1,0]], uv: [0,1, 0,0, 1,0, 1,1] }, // Top
-                { dir: [0,-1,0], corners: [[0,0,0],[1,0,0],[1,0,1],[0,0,1]], uv: [0,1, 0,0, 1,0, 1,1] }, // Bottom
+                { dir: [0,-1,0], corners: [[0,0,0],[1,0,0],[1,0,1],[0,0,1]], uv: [0,1, 0,0, 1,0, 1,1] } ,// Bottom
                 { dir: [0,0,1], corners: [[0,1,1],[0,0,1],[1,0,1],[1,1,1]], uv: [0,1, 0,0, 1,0, 1,1] }, // Back
                 { dir: [0,0,-1], corners: [[1,1,0],[1,0,0],[0,0,0],[0,1,0]], uv: [0,1, 0,0, 1,0, 1,1] } // Front
             ];
@@ -1309,13 +1452,12 @@
                                     gd.uv.push(...f.uv);
                                 } else {
                                     // Vertex color for non-textured blocks (like wood/water) or blocks whose texture failed to load
-                                    const color = materials[materialKey]?.color?.getHex() || blockMaterials[id].color || 0xcccccc;
-                                    gd.col.push(
-                                        (color >> 16 & 255) / 255, (color >> 8 & 255) / 255, (color & 255) / 255,
-                                        (color >> 16 & 255) / 255, (color >> 8 & 255) / 255, (color & 255) / 255,
-                                        (color >> 16 & 255) / 255, (color >> 8 & 255) / 255, (color & 255) / 255,
-                                        (color >> 16 & 255) / 255, (color >> 8 & 255) / 255, (color & 255) / 255
-                                    );
+                                    const color = blockMaterials[id].color || 0xd1c17e; // Fallback color
+                                    
+                                    // Use THREE.Color object to get RGB components if the color is a number
+                                    const c = new THREE.Color(color);
+                                    
+                                    gd.col.push(c.r, c.g, c.b, c.r, c.g, c.b, c.r, c.g, c.b, c.r, c.g, c.b);
                                 }
                             }
                         }
@@ -1334,16 +1476,19 @@
                 
                 let currentMaterial = materials[key];
                 
-                // Set UVs if material is textured
+                // Set UVs if material is textured (i.e., it has a map)
                 if (currentMaterial && currentMaterial.map) {
                     geom.setAttribute('uv', new THREE.Float32BufferAttribute(gd.uv, 2));
                 } 
                 
-                // Set vertex colors if texture failed or it's a color-only material
+                // Set vertex colors if data was accumulated (means texture failed or block is color-only)
                 if (gd.col.length > 0) {
                     geom.setAttribute('color', new THREE.Float32BufferAttribute(gd.col, 3));
-                    // If we have vertex colors, we MUST use a material that supports them
-                    currentMaterial = materials.COLORED_OPAQUE || new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 });
+                    
+                    // If we have vertex colors AND it's not the transparent WATER material, use COLORED_OPAQUE.
+                    if (key !== 'WATER') { 
+                       currentMaterial = materials.COLORED_OPAQUE;
+                    } 
                 }
                 
                 // Indices
