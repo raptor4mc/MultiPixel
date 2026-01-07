@@ -1,1 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Tic-Tac-Toe AI</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for Dark/Neon theme */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827; /* Deep Dark Background (bg-gray-900) */
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding-top: 2rem;
+            color: #d1d5db; /* Light gray text */
+            overflow: hidden; /* Hide scrollbar during intro */
+        }
+        .cell {
+            width: 100px;
+            height: 100px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 4rem;
+            font-weight: bold;
+            cursor: pointer;
+            user-select: none;
+            transition: background-color 0.15s ease-in-out, transform 0.1s;
+        }
+        .cell:not(.disabled):hover {
+            background-color: #374151; /* Darker hover effect (bg-gray-700) */
+            transform: scale(1.05);
+        }
+        /* Player X (User) - Neon Magenta */
+        .cell-x { 
+            color: #ec4899; /* Pink-500 */
+            text-shadow: 0 0 5px #ec4899, 0 0 10px #ec4899; 
+        } 
+        /* Player O (AI) - Neon Cyan */
+        .cell-o { 
+            color: #06b6d4; /* Cyan-500 */
+            text-shadow: 0 0 5px #06b6d4, 0 0 10px #06b6d4;
+        }
+        /* Player I (Insert) - Neon Yellow/Amber */
+        .cell-i { 
+            color: #fbbf24; /* Amber-400 */
+            text-shadow: 0 0 5px #fbbf24, 0 0 10px #fbbf24;
+        }
+        
+        /* Winning cell highlight */
+        .winning-cell {
+            background-color: #10b981 !important; /* Emerald Green */
+            color: #ffffff !important;
+            transform: scale(1.1) !important;
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.8);
+        }
 
+        /* --- Intro Animation Styles --- */
+        #intro-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #111827;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            transition: opacity 1s ease-out;
+            pointer-events: auto;
+        }
+
+        .intro-text-line {
+            font-size: clamp(2rem, 8vw, 4rem);
+            font-weight: 900;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: #d1d5db; /* Default light gray for non-neon chars */
+            margin-bottom: 0.5rem;
+            white-space: pre; 
+            font-family: monospace; /* Essential for character alignment */
+            display: flex;
+            justify-content: center;
+            position: relative;
+        }
+
+        .intro-char {
+            display: inline-block;
+            transition: color 0.1s;
+        }
+        
+        /* Hidden O/I characters start invisible */
+        .hidden-char {
+            opacity: 0;
+            transition: opacity 0.3s ease-in;
+        }
+
+        /* Container for the third 'O' and the strike line */
+        #o-strike-container {
+            height: 4rem; /* Match font height */
+            width: 100%;
+            max-width: 600px; /* Constrain width */
+            position: relative;
+        }
+
+        #third-o {
+            font-size: clamp(2rem, 8vw, 4rem);
+            font-weight: 900;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            font-family: monospace;
+            opacity: 0;
+            position: absolute;
+            left: 50%;
+            /* Current offset for alignment */
+            transform: translateX(calc(-50% + 3.35em)); 
+        }
+        
+        #o-strike-line {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            height: 8px;
+            /* Updated to use bright green for the strike line */
+            background-color: #10b981; /* Emerald Green */
+            box-shadow: 0 0 8px #34d399, 0 0 16px #34d399; /* Bright Green glow */
+            width: 0;
+            opacity: 0;
+            transition: width 0.7s ease-in-out, opacity 0.5s;
+        }
+        
+        .strike-width {
+            /* Width to cover the three O's (3 chars * 1.2em total width) */
+            width: 3.6em; 
+        }
+
+
+        /* Responsive grid size */
+        @media (max-width: 600px) {
+            .cell {
+                width: 80px;
+                height: 80px;
+                font-size: 3rem;
+            }
+            .game-container {
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+<body class="p-4">
+
+    <!-- INTRO OVERLAY -->
+    <div id="intro-overlay">
+        <div class="flex flex-col items-center justify-center">
+            
+            <!-- Line 1: RELIMINTOR -->
+            <div id="intro-text-1" class="intro-text-line">
+                <span class="intro-char cell-x">R</span><span class="intro-char cell-x">E</span><span class="intro-char cell-x">L</span><span id="char-1-3" class="intro-char hidden-char cell-i">I</span><span class="intro-char cell-x">M</span><span class="intro-char cell-x">I</span><span class="intro-char cell-x">N</span><span class="intro-char cell-x">T</span><span id="char-1-8" class="intro-char hidden-char cell-o">O</span><span class="intro-char cell-x">R</span>
+            </div>
+            
+            <!-- Line 2: TIC-TAC-TOE -->
+            <div id="intro-text-2" class="intro-text-line">
+                <span class="intro-char cell-x">T</span><span id="char-2-1" class="intro-char hidden-char cell-i">I</span><span class="intro-char cell-x">C</span><span class="intro-char cell-x">-</span><span class="intro-char cell-x">T</span><span class="intro-char cell-x">A</span><span class="intro-char cell-x">C</span><span class="intro-char cell-x">-</span><span class="intro-char cell-x">T</span><span id="char-2-9" class="intro-char hidden-char cell-o">O</span><span class="intro-char cell-x">E</span>
+            </div>
+
+            <!-- Container for the third O and the strike line -->
+            <div id="o-strike-container">
+                <span id="third-o" class="cell-o">O</span>
+                <div id="o-strike-line"></div>
+            </div>
+
+        </div>
+    </div>
+    
+    <!-- MAIN GAME CONTAINER (Initially Hidden) -->
+    <div id="game-container" class="hidden game-container w-full max-w-sm p-6 bg-gray-800 shadow-2xl rounded-xl border border-gray-700">
+        <h1 class="text-3xl font-extrabold text-center text-white mb-6">
+            <span class="cell-x">X</span> vs <span class="cell-o">AI</span>
+        </h1>
+
+        <!-- Game Status Display -->
+        <div id="status-message" class="text-lg font-semibold text-center mb-4 p-2 rounded-lg bg-gray-900 border border-cyan-500/50">
+            Your turn, Player <span class="cell-x">X</span>!
+        </div>
+
+        <!-- Tic-Tac-Toe Board Grid -->
+        <div id="game-board" class="grid grid-cols-3 gap-2 bg-gray-900 p-2 rounded-lg shadow-inner border border-gray-700">
+            <!-- Cells will be generated by JavaScript -->
+        </div>
+
+        <!-- Reset Button -->
+        <button id="reset-button" 
+                class="w-full mt-6 py-3 bg-cyan-600 text-white font-bold rounded-lg shadow-lg shadow-cyan-500/50 hover:bg-cyan-500 transition duration-150 transform hover:scale-[1.02]">
+            Restart Game
+        </button>
+    </div>
+
+    <script>
+        // --- Game Setup ---
+        const boardElement = document.getElementById('game-board');
+        const statusElement = document.getElementById('status-message');
+        const resetButton = document.getElementById('reset-button');
+        const gameContainer = document.getElementById('game-container');
+
+        // Game state variables
+        let board = ["", "", "", "", "", "", "", "", ""]; // 9 empty strings
+        const PLAYER_X = "X";
+        const PLAYER_O_AI = "O";
+        let gameActive = true;
+        let isPlayerTurn = true; // X always starts
+
+        // Winning combinations (indices of the board array)
+        const winningConditions = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
+            [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
+            [0, 4, 8], [2, 4, 6]            // Diagonals
+        ];
+
+        // --- Intro Animation Logic ---
+        
+        async function startIntroAnimation() {
+            const introScreen = document.getElementById('intro-overlay');
+            
+            // Hidden Characters
+            const char1_3 = document.getElementById('char-1-3'); // I in RELIMINTOR (index 3)
+            const char1_8 = document.getElementById('char-1-8'); // O in RELIMINTOR (index 8)
+            const char2_1 = document.getElementById('char-2-1'); // I in TIC-TAC-TOE (index 1)
+            const char2_9 = document.getElementById('char-2-9'); // O in TIC-TAC-TOE (index 9)
+            const thirdO = document.getElementById('third-o');
+            const strikeLine = document.getElementById('o-strike-line');
+
+            // Wait for initial render
+            await new Promise(resolve => setTimeout(resolve, 500)); 
+
+            // 1. O spawns in RELIMINTOR
+            char1_8.classList.remove('hidden-char');
+            await new Promise(resolve => setTimeout(resolve, 300));
+
+            // 2. I spawns in RELIMINTOR
+            char1_3.classList.remove('hidden-char');
+            await new Promise(resolve => setTimeout(resolve, 300));
+            
+            // 3. O spawns in TIC-TAC-TOE
+            char2_9.classList.remove('hidden-char');
+            await new Promise(resolve => setTimeout(resolve, 300));
+            
+            // 4. I spawns in TIC-TAC-TOE
+            char2_1.classList.remove('hidden-char');
+            await new Promise(resolve => setTimeout(resolve, 300));
+
+            // 5. One more O spawns under the O in TIC-TAC-TOE
+            thirdO.classList.remove('hidden-char');
+            thirdO.style.opacity = 1;
+            await new Promise(resolve => setTimeout(resolve, 400));
+            
+            // 6. A sharp line should go through all three O's
+            strikeLine.classList.add('strike-width');
+            strikeLine.style.opacity = 1;
+
+            // 7. Wait for strike animation, then fade out the intro
+            await new Promise(resolve => setTimeout(resolve, 1500));
+
+            introScreen.classList.add('opacity-0');
+            
+            // Wait for fade out
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            introScreen.style.display = 'none';
+
+            // 8. Start the main game
+            gameContainer.classList.remove('hidden');
+            initializeBoard(); 
+        }
+
+        // --- Game Core Functions (Existing Logic) ---
+
+        /** Renders the initial board and attaches event listeners. */
+        function initializeBoard() {
+            boardElement.innerHTML = ''; // Clear existing board
+            board.forEach((cell, index) => {
+                const cellElement = document.createElement('div');
+                cellElement.classList.add('cell', 'bg-gray-700', 'rounded-lg', 'border', 'border-gray-600', 'shadow-md');
+                cellElement.dataset.index = index;
+                cellElement.addEventListener('click', handleCellClick);
+                boardElement.appendChild(cellElement);
+            });
+            updateStatusMessage();
+        }
+
+        /** Updates the message area to show the current status. */
+        function updateStatusMessage(message) {
+            statusElement.classList.remove('bg-yellow-300', 'text-black', 'bg-gray-900', 'border-cyan-500/50', 'border-red-500/50', 'border-green-500/50');
+
+            if (message) {
+                // Game over message
+                statusElement.innerHTML = `<span class="font-extrabold">${message}</span>`;
+                if (message.includes("WON")) {
+                    statusElement.classList.add('bg-green-700', 'text-white', 'border-green-500/50');
+                } else {
+                    statusElement.classList.add('bg-yellow-600', 'text-white', 'border-yellow-400/50');
+                }
+            } else {
+                // In-game status
+                statusElement.classList.add('bg-gray-900');
+                if (isPlayerTurn) {
+                    statusElement.innerHTML = `Your turn, Player <span class="cell-x">X</span>!`;
+                    statusElement.classList.add('border-cyan-500/50');
+                } else {
+                    statusElement.innerHTML = `AI <span class="cell-o">O</span> is thinking...`;
+                    statusElement.classList.add('border-red-500/50');
+                }
+            }
+        }
+
+        /** Places a mark on the board (used by both player and AI) */
+        function placeMark(index, player) {
+            board[index] = player;
+            const cell = boardElement.querySelector(`[data-index="${index}"]`);
+            if (cell) {
+                cell.textContent = player;
+                cell.classList.add(`cell-${player.toLowerCase()}`, 'disabled');
+                cell.removeEventListener('click', handleCellClick);
+            }
+        }
+
+        /** Handles a click on a cell. */
+        function handleCellClick(event) {
+            if (!gameActive || !isPlayerTurn) {
+                return;
+            }
+
+            const clickedCellIndex = parseInt(event.target.dataset.index);
+
+            // Check if spot is empty
+            if (board[clickedCellIndex] === "") {
+                // 1. Player X move
+                placeMark(clickedCellIndex, PLAYER_X);
+                
+                // 2. Check results after Player X move
+                if (checkGameResult()) return;
+                
+                // 3. Switch to AI's turn
+                isPlayerTurn = false;
+                updateStatusMessage();
+
+                // 4. Wait a moment then let AI move
+                setTimeout(aiMove, 700);
+            }
+        }
+
+        /** Implements the AI's move (Player O). */
+        function aiMove() {
+            if (!gameActive) return;
+
+            const move = getBestMove(PLAYER_O_AI);
+            if (move !== -1) {
+                // 1. AI places mark
+                placeMark(move, PLAYER_O_AI);
+                
+                // 2. Check results after AI move
+                if (checkGameResult()) return;
+
+                // 3. Switch back to Player's turn
+                isPlayerTurn = true;
+                updateStatusMessage();
+            }
+        }
+        
+        /** Simple AI strategy: Win > Block > Center > Corner > Side */
+        function getBestMove(player) {
+            const opponent = player === PLAYER_X ? PLAYER_O_AI : PLAYER_X;
+            const emptySpots = board.map((val, idx) => val === "" ? idx : -1).filter(idx => idx !== -1);
+
+            if (emptySpots.length === 0) return -1; // Should not happen if checkGameResult is run correctly
+
+            // Helper function to check for immediate win/block
+            const findMove = (p) => {
+                for (let i = 0; i < emptySpots.length; i++) {
+                    const move = emptySpots[i];
+                    board[move] = p; // Try the move
+                    
+                    if (checkWin(p)) {
+                        board[move] = ""; // Undo the move
+                        return move; // Found a winning/blocking move
+                    }
+                    board[move] = ""; // Undo the move
+                }
+                return -1;
+            };
+
+            // 1. Check for immediate win for AI (O)
+            let move = findMove(player);
+            if (move !== -1) return move;
+
+            // 2. Check for immediate win for Player (X) and block it
+            move = findMove(opponent);
+            if (move !== -1) return move;
+
+            // 3. Take the Center (index 4)
+            if (board[4] === "") return 4;
+
+            // 4. Take a Corner (0, 2, 6, 8)
+            const corners = [0, 2, 6, 8].filter(idx => board[idx] === "");
+            if (corners.length > 0) return corners[Math.floor(Math.random() * corners.length)];
+
+            // 5. Take any remaining Side spot (1, 3, 5, 7)
+            const sides = [1, 3, 5, 7].filter(idx => board[idx] === "");
+            if (sides.length > 0) return sides[Math.floor(Math.random() * sides.length)];
+
+            // Fallback (should be covered by emptySpots check)
+            return emptySpots[0];
+        }
+
+        /** Checks if a specific player has won. Used internally by AI. */
+        function checkWin(player) {
+            for (let i = 0; i < winningConditions.length; i++) {
+                const [a, b, c] = winningConditions[i];
+                if (board[a] === player && board[b] === player && board[c] === player) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+
+        /** Checks if there is a win or a tie and updates game state. */
+        function checkGameResult() {
+            let roundWon = false;
+            let winningCombo = null;
+
+            // Check for Win by the player who just moved
+            const lastPlayer = isPlayerTurn ? PLAYER_X : PLAYER_O_AI;
+
+            for (let i = 0; i < winningConditions.length; i++) {
+                const condition = winningConditions[i];
+                const [a, b, c] = condition;
+                
+                if (board[a] === lastPlayer && board[a] === board[b] && board[b] === board[c]) {
+                    roundWon = true;
+                    winningCombo = condition;
+                    break;
+                }
+            }
+
+            if (roundWon) {
+                gameActive = false;
+                const winnerText = lastPlayer === PLAYER_X ? 
+                    `You WON! Player X is victorious! 🎉` : 
+                    `AI O has WON this round. 🤖`;
+                updateStatusMessage(winnerText);
+                highlightWinningCells(winningCombo);
+                return true;
+            }
+
+            // Check for Tie (if no empty cells remain)
+            let roundDraw = !board.includes("");
+            if (roundDraw) {
+                gameActive = false;
+                updateStatusMessage("It's a TIE! 🤝");
+                return true;
+            }
+            
+            return false;
+        }
+        
+        /** Highlights the cells that form the winning line. */
+        function highlightWinningCells(combo) {
+            combo.forEach(index => {
+                const cell = boardElement.querySelector(`[data-index="${index}"]`);
+                if (cell) {
+                    setTimeout(() => {
+                        cell.classList.add('winning-cell');
+                    }, 50); 
+                }
+            });
+        }
+
+        /** Resets the game state and UI. */
+        function resetGame() {
+            board = ["", "", "", "", "", "", "", "", ""];
+            gameActive = true;
+            isPlayerTurn = true; // X always starts
+            initializeBoard(); // Re-render the board
+        }
+
+        // --- Event Listeners and Initialization ---
+        resetButton.addEventListener('click', resetGame);
+        
+        // Start the intro animation when the page loads
+        document.addEventListener('DOMContentLoaded', startIntroAnimation);
+        // Note: initializeBoard is now called at the end of startIntroAnimation()
+
+    </script>
+</body>
