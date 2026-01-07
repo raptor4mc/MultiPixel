@@ -124,6 +124,7 @@
     <div id="info-panel">
         <p><strong>MultiPixel Survival Mode</strong></p>
         <p>FPS: <span id="fps-counter">60</span></p>
+        <p>Time: <span id="time-of-day">Loading...</span></p>
         <p>Chunks: <span id="chunks-count">0</span></p>
     </div>
 
@@ -217,6 +218,12 @@
         const PLAYER_RADIUS = 0.3; 
         const GRAVITY = -0.012;
         const JUMP_POWER = 0.17;
+        
+        // --- DAY/NIGHT CYCLE CONFIG ---
+        const DAY_CYCLE_DURATION = 60 * 1000; // 60 seconds for a full cycle (1 minute real time)
+        let gameTime = Math.PI / 2; // Start at Math.PI / 2 (High Noon)
+        let lastTime = 0; // For delta time calculation
+        let ambientLight, dirLight; // Made global for modification in animate loop
 
        
         const INV_COLS = 9;
@@ -390,7 +397,8 @@
             await loadAssets(); // Load all textures and materials first!
 
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x87ceeb); 
+            scene.background = new THREE.Color(0x87ceeb); // FIX: Initialize background color
+            // Sky/Fog color set by updateSkyAndSun()
             scene.fog = new THREE.Fog(0x87ceeb, 20, 120); 
 
             if (typeof SimplexNoise !== 'undefined') {
@@ -411,10 +419,10 @@
             yawObject.add(pitchObject);
             scene.add(yawObject);
 
-            // Lighting
-            const ambientLight = new THREE.AmbientLight(0x606060, 1.2); 
+            // Lighting (Made global: ambientLight, dirLight)
+            ambientLight = new THREE.AmbientLight(0x606060, 1.2); 
             scene.add(ambientLight);
-            const dirLight = new THREE.DirectionalLight(0xffffff, 1.5); 
+            dirLight = new THREE.DirectionalLight(0xffffff, 1.5); 
             dirLight.position.set(50, 100, 50);
             scene.add(dirLight);
             scene.add(worldGroup);
@@ -469,8 +477,56 @@
             craftingInput[3] = { id: 6, count: 2 };
             craftingOutput = { id: 3, count: 4 };
 
+            // Set initial sky state
+            updateSkyAndSun(); 
+            
+            animate(0);
+        }
+        
+        // --- Day/Night Cycle Logic ---
+        function updateSkyAndSun() {
+            // Use cosine for smooth transition, clamped to ensure minimum light at night
+            const sunFactor = Math.cos(gameTime); 
+            const sunIntensity = Math.max(0.2, sunFactor); 
+            const ambientIntensity = Math.max(0.4, sunFactor * 0.5 + 0.7); 
 
-            animate();
+            // Sky Color Interpolation (Day: 87ceeb, Night: 1a1a2e)
+            const dayColor = new THREE.Color(0x87ceeb); // Light Blue
+            const twilightColor = new THREE.Color(0x9a7d90); // Purple/Gray for dawn/dusk
+            const nightColor = new THREE.Color(0x1a1a2e); // Deep Blue/Black
+
+            let skyColor;
+            if (sunFactor > 0.1) {
+                // Day to Twilight transition
+                const t = Math.min(1, Math.max(0, (sunFactor - 0.1) / 0.9));
+                skyColor = dayColor.clone().lerp(twilightColor, 1 - t);
+            } else {
+                // Twilight to Night transition
+                const t = Math.min(1, Math.max(0, (-sunFactor + 0.1) / 0.8));
+                skyColor = twilightColor.clone().lerp(nightColor, t);
+            }
+            
+            scene.background.copy(skyColor); // This line is now safe because scene.background is initialized
+            scene.fog.color.copy(skyColor);
+
+            // Directional Light (Sun)
+            dirLight.intensity = sunIntensity * 1.5;
+            // Position the sun based on the angle (y and z determine angle)
+            dirLight.position.x = Math.sin(gameTime) * 100;
+            dirLight.position.y = Math.cos(gameTime) * 100;
+            dirLight.position.z = Math.sin(gameTime) * 50;
+
+            // Ambient Light (Overall brightness)
+            ambientLight.intensity = ambientIntensity * 0.8;
+            
+            // Update HUD text
+            let timeOfDay;
+            if (sunFactor > 0.8) timeOfDay = "Day";
+            else if (sunFactor > 0.3) timeOfDay = "Morning/Evening";
+            else if (sunFactor > -0.2) timeOfDay = "Twilight";
+            else timeOfDay = "Night";
+
+            document.getElementById('time-of-day').textContent = timeOfDay;
         }
 
      
@@ -1520,8 +1576,21 @@
             document.getElementById('chunks-count').textContent = count;
         }
 
-        function animate() {
+        function animate(time) {
             requestAnimationFrame(animate);
+            
+            if (lastTime) {
+                const delta = time - lastTime;
+                
+                // Update game time based on real time delta
+                // GameTime cycles from 0 to 2*PI radians. Rate = (2*PI) / DAY_CYCLE_DURATION (in ms)
+                const timeRate = (2 * Math.PI) / DAY_CYCLE_DURATION;
+                gameTime = (gameTime + delta * timeRate) % (2 * Math.PI);
+                
+                updateSkyAndSun();
+            }
+            lastTime = time;
+
             if(!isInventoryOpen) updatePlayerMovement();
             renderer.render(scene, camera);
         }
