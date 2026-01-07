@@ -3,10 +3,7 @@ body {
     overflow: hidden;
     font-family: 'Inter', sans-serif;
     background-color: #1a1a2e;
-}
-
-canvas {
-    display: block;
+    user-select: none;
 }
 
 #info-panel {
@@ -33,6 +30,7 @@ canvas {
     text-align: center;
     line-height: 1.6;
     z-index: 100;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
     cursor: pointer;
     transition: opacity 0.3s ease-in-out;
 }
@@ -41,34 +39,74 @@ canvas {
     position: absolute;
     top: 50%;
     left: 50%;
-    width: 10px;
-    height: 10px;
-    margin-top: -5px;
-    margin-left: -5px;
-    border-radius: 50%;
-    background: white;
-    opacity: 0;
+    width: 14px;
+    height: 14px;
+    margin-top: -7px;
+    margin-left: -7px;
+    background-image: url('data:image/svg+xml;utf8,<svg width="14" height="14" viewBox="0 0 14 14" xmlns="http://www.w3.org/2000/svg"><path d="M7 0V14M0 7H14" stroke="white" stroke-width="2" stroke-linecap="round" style="filter: drop-shadow(0px 0px 1px black);"/></svg>');
     z-index: 99;
     pointer-events: none;
 }
 
-#block-selector {
+#held-item-cursor {
     position: absolute;
-    bottom: 1rem;
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 0.75rem 1.5rem;
-    background-color: rgba(0, 0, 0, 0.7);
-    color: white;
-    border-radius: 12px;
-    z-index: 10;
-    font-size: 1rem;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
+    pointer-events: none;
+    width: 40px;
+    height: 40px;
+    z-index: 201;
+    transition: opacity 0.1s;
 }
 
-.text-neon-green {
-    color: #39ff14;
+#inventory-screen {
+    background-color: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(2px);
 }
+
+.inv-slot {
+    background-color: #8b8b8b;
+    border-top: 2px solid #373737; 
+    border-left: 2px solid #373737;
+    border-bottom: 2px solid #ffffff; 
+    border-right: 2px solid #ffffff;
+    position: relative;
+    cursor: pointer;
+    display: flex; 
+    justify-content: center;
+    align-items: center;
+}
+
+.inv-slot:hover {
+    background-color: #a0a0a0;
+}
+
+.inv-slot.selected {
+    border: 3px solid #39ff14;
+    transform: scale(1.05);
+    z-index: 10;
+}
+
+.item-count {
+    position: absolute;
+    bottom: 0;
+    right: 2px;
+    font-size: 10px;
+    font-weight: bold;
+    color: white;
+    text-shadow: 1px 1px 0 #000;
+    pointer-events: none;
+}
+
+.texture-icon {
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+}
+
+.heart-icon {
+    width: 32px;
+    height: 32px;
+    image-rendering: pixelated;
+    filter: drop-shadow(2px 2px 0px #000);
+}
+
+.text-neon-green { color: #39ff14; }
