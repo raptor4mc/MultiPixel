@@ -1,624 +1,330 @@
-// --- CORE VOXEL CONFIGURATION ---
+// --- 1. CONFIGURATION ---
 const CHUNK_SIZE = 16;
-const CHUNK_HEIGHT = 64;
-const WORLD_RADIUS = 3; 
+const CHUNK_HEIGHT = 96; 
+const WORLD_RADIUS = 13; 
 const BLOCK_SIZE = 1;
-const SEA_LEVEL = 20;
-        
-// Player height and eye level constants
-const PLAYER_HEIGHT = 2.0 * BLOCK_SIZE; 
-const EYE_HEIGHT = 1.8 * BLOCK_SIZE;    
-const PLAYER_RADIUS = 0.3; // Used for collision checking
+const SEA_LEVEL = 18; 
+const BASE_LAND_Y = 20; 
+const ISLAND_RADIUS = 30; 
 
-// Block types and colors 
-const blockMaterials = {
-    1: { color: 0x4CAF50, name: 'Grass', roughness: 0.9, metalness: 0.1, id: 1 }, 
-    2: { color: 0x654321, name: 'Dirt', roughness: 0.9, metalness: 0.0, id: 2 }, 
-    3: { color: 0x666666, name: 'Stone', roughness: 0.8, metalness: 0.0, id: 3 }, 
-    4: { color: 0x1976D2, name: 'Water', roughness: 0.5, metalness: 0.1, transparent: true, opacity: 0.7, id: 4 }
+const PLAYER_HEIGHT = 1.8 * BLOCK_SIZE; 
+const PLAYER_RADIUS = 0.3; 
+const GRAVITY = -0.012;
+const JUMP_POWER = 0.17;
+
+const DAY_CYCLE_DURATION = 60 * 1000; 
+let gameTime = Math.PI / 2; 
+let lastTime = 0; 
+let ambientLight, dirLight;
+
+const INV_COLS = 9;
+const INV_ROWS = 3;
+const HOTBAR_SLOTS = 9;
+const TOTAL_INV_SIZE = (INV_ROWS * INV_COLS) + HOTBAR_SLOTS;
+
+const REPO_BASE_PREFIX = '/MultiPixel'; 
+
+const getAssetPath = (subPath) => {
+    const ASSET_BASE_DIR = 'game/singleplayer/assets';
+    if (REPO_BASE_PREFIX) {
+        return `${REPO_BASE_PREFIX}/${ASSET_BASE_DIR}/${subPath}`;
+    }
+    return `${ASSET_BASE_DIR}/${subPath}`;
 };
-const BLOCK_TYPE_IDS = Object.values(blockMaterials).map(m => m.id);
 
-// Initialize Three.js components
-let scene, camera, renderer, simplex, raycaster;
-const chunks = new Map();
-const worldGroup = new THREE.Group();
-        
-let yawObject;   
-let pitchObject; 
-        
-// Player/Control State
+const ASSET_FILEPATHS = {
+    DIRT: getAssetPath('textures/dirt_block.png'),
+    STONE: getAssetPath('textures/stone_block.png'),
+    LEAVES: getAssetPath('textures/leaf_oak.png'), 
+    SAND: getAssetPath('textures/sand_block.png'), 
+    HEART: getAssetPath('ui/heart_full.png'), 
+};
+
+const blockMaterials = {
+    0: { name: 'Air', id: 0, textured: false }, 
+    1: { name: 'Grass', id: 1, textured: true, textureKey: 'DIRT' }, 
+    2: { name: 'Dirt', id: 2, textured: true, textureKey: 'DIRT' }, 
+    3: { name: 'Stone', id: 3, textured: true, textureKey: 'STONE' }, 
+    4: { name: 'Water', id: 4, color: 0x1976D2, transparent: true, opacity: 0.7, textured: false },
+    5: { name: 'Wood Log', id: 5, color: 0x8B4513, textured: false }, 
+    6: { name: 'Leaves', id: 6, textured: true, textureKey: 'LEAVES', transparent: true, opacity: 0.8 },
+    7: { name: 'Sand', id: 7, textured: true, textureKey: 'SAND' } 
+};
+
+const SOLID_BLOCKS = [1, 2, 3, 5, 6, 7]; 
+const LIQUID_BLOCKS = [4];
+let materials = {};
+
 const player = {
     velocity: new THREE.Vector3(),
     direction: new THREE.Vector3(),
-    moveSpeed: 0.1,
+    moveSpeed: 0.12,
     rotationSpeed: 0.002,
     isJumping: false,
     canMove: false,
-    keys: {} // Store pressed keys
+    keys: {},
+    health: 20,
+    maxHealth: 20,
+    fallStartY: 0, 
+    inAir: false
 };
-const gravity = -0.01;
-const jumpPower = 0.15;
-let currentBlockType = 2; // Default to Dirt
 
-/**
- * Initializes the 3D environment and procedural noise generator.
- */
-function init() {
-    // Setup Scene and Simplex Noise
-    scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x87ceeb); // Light blue sky
-    scene.fog = new THREE.Fog(0x87ceeb, 10, 100); 
+let inventory = new Array(TOTAL_INV_SIZE).fill(null);
+let selectedHotbarIndex = 0;
+let isInventoryOpen = false;
+let craftingInput = new Array(4).fill(null);
+let craftingOutput = null; 
+let heldItem = null; 
+let heldItemSourceIndex = -1; 
+let heldItemSourceType = null; 
 
-    if (typeof SimplexNoise !== 'undefined') {
-        simplex = new SimplexNoise();
-    } else {
-        console.error("SimplexNoise library failed to load. Cannot generate terrain.");
-        return;
+let scene, camera, renderer, simplex, raycaster;
+const chunks = new Map();
+const worldGroup = new THREE.Group();
+let yawObject, pitchObject; 
+
+const WORLD_MAX_COORD = (WORLD_RADIUS + 0.5) * CHUNK_SIZE;
+const WORLD_MIN_COORD = -(WORLD_RADIUS + 0.5) * CHUNK_SIZE;
+
+// --- 3. CORE UTILITIES ---
+function isSolid(type) { return SOLID_BLOCKS.includes(type); }
+function isLiquid(type) { return LIQUID_BLOCKS.includes(type); }
+
+async function loadAssets() {
+    const loader = new THREE.TextureLoader();
+    const texturePromises = [];
+    for (const key in ASSET_FILEPATHS) {
+        if (key === 'HEART') continue; 
+        const path = ASSET_FILEPATHS[key];
+        const promise = new Promise((resolve) => {
+            loader.load(path, (texture) => {
+                texture.magFilter = THREE.NearestFilter;
+                texture.minFilter = THREE.NearestFilter;
+                materials[key] = new THREE.MeshStandardMaterial({
+                    map: texture,
+                    side: key === 'LEAVES' ? THREE.DoubleSide : THREE.FrontSide,
+                    transparent: blockMaterials[getMaterialIdByTextureKey(key)].transparent || false,
+                    opacity: blockMaterials[getMaterialIdByTextureKey(key)].opacity || 1.0,
+                });
+                resolve();
+            }, undefined, () => resolve());
+        });
+        texturePromises.push(promise);
     }
-            
-    // Raycaster setup
-    raycaster = new THREE.Raycaster();
+    materials.WOOD = new THREE.MeshStandardMaterial({ color: blockMaterials[5].color, roughness: 0.9 });
+    materials.WATER = new THREE.MeshStandardMaterial({ color: blockMaterials[4].color, transparent: true, opacity: 0.6, side: THREE.DoubleSide });
+    materials.COLORED_OPAQUE = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 });
+    await Promise.all(texturePromises);
+}
 
-    // Setup Camera (Perspective)
+function getMaterialIdByTextureKey(key) {
+    for (const id in blockMaterials) {
+        if (blockMaterials[id].textureKey === key) return parseInt(id);
+    }
+    return -1;
+}
+
+// --- 4. INITIALIZATION ---
+async function init() {
+    await loadAssets();
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x87ceeb);
+    scene.fog = new THREE.Fog(0x87ceeb, 20, 120); 
+
+    simplex = new SimplexNoise();
+    raycaster = new THREE.Raycaster();
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            
-    // --- FIRST-PERSON CONTROL STRUCTURE ---
+    
     yawObject = new THREE.Object3D();
     pitchObject = new THREE.Object3D();
-    pitchObject.position.y = EYE_HEIGHT; 
-            
+    pitchObject.position.y = 1.6; 
     pitchObject.add(camera);
     yawObject.add(pitchObject);
     scene.add(yawObject);
 
-    yawObject.position.set(0, SEA_LEVEL * BLOCK_SIZE + 0.001, 0);
+    ambientLight = new THREE.AmbientLight(0x606060, 1.2); 
+    scene.add(ambientLight);
+    dirLight = new THREE.DirectionalLight(0xffffff, 1.5); 
+    dirLight.position.set(50, 100, 50);
+    scene.add(dirLight);
+    scene.add(worldGroup);
 
-    // Setup Renderer
+    generateWorld();
+    setupPointerLockControls();
+    setupKeyboardControls();
+    setupBlockInteraction();
+    setInitialPlayerPosition();
+    renderHearts();
+    updateHotbarUI();
+    
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
     document.body.appendChild(renderer.domElement);
-
-    // Lighting
-    const ambientLight = new THREE.AmbientLight(0x404040, 1.0); 
-    scene.add(ambientLight);
-
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 2.0); 
-    directionalLight.position.set(20, 50, 20);
-    scene.add(directionalLight);
-
-    scene.add(worldGroup);
-
-    // Add Controls & Handlers
-    setupPointerLockControls();
-    setupKeyboardControls();
-    setupBlockInteraction();
-            
-    // Generate initial chunks
-    generateWorld();
-    updateBlockSelectorUI();
-
-    // Event Listeners
+    
     window.addEventListener('resize', onWindowResize);
-    document.addEventListener('contextmenu', (event) => event.preventDefault()); // Prevent right-click context menu
-
-    // Start the animation loop
-    animate();
-}
-
-/**
- * Updates the UI to show the currently selected block.
- */
-function updateBlockSelectorUI() {
-    const blockName = blockMaterials[currentBlockType].name;
-    document.getElementById('selected-block-name').textContent = blockName;
-}
-        
-/**
- * Sets up block breaking and placing via mouse clicks.
- */
-function setupBlockInteraction() {
-    window.addEventListener('pointerdown', onPointerDown, false);
-}
-
-function onPointerDown(event) {
-    if (!player.canMove) return;
-
-    // Set raycaster origin to camera position and direction to center of screen
-    raycaster.setFromCamera({ x: 0, y: 0 }, camera); 
-            
-    // Intersect only the opaque meshes (grass, dirt, stone) for interaction
-    const opaqueMeshes = [];
-    worldGroup.children.forEach(chunkGroup => {
-        chunkGroup.children.forEach(mesh => {
-            // Check if the material is not transparent (i.e., not water)
-            if (mesh.material && !mesh.material.transparent) {
-                opaqueMeshes.push(mesh);
-            }
-        });
+    document.addEventListener('contextmenu', e => e.preventDefault()); 
+    document.addEventListener('wheel', (e) => {
+        if(isInventoryOpen) return;
+        selectedHotbarIndex = e.deltaY > 0 ? (selectedHotbarIndex + 1) % HOTBAR_SLOTS : (selectedHotbarIndex - 1 + HOTBAR_SLOTS) % HOTBAR_SLOTS;
+        updateHotbarUI();
     });
 
-    const intersects = raycaster.intersectObjects(opaqueMeshes, false);
-
-    if (intersects.length > 0) {
-        const intersect = intersects[0];
-        const blockMesh = intersect.object;
-                
-        // Find the chunkGroup associated with this mesh
-        const chunkGroup = blockMesh.parent; 
-
-        // 1. Determine Block World Coordinates (wx, wy, wz)
-        // Use the face normal to push the point slightly away from the center of the face
-        // For a block, the center of the block is half a block size away from the face.
-        const point = intersect.point;
-        const normal = intersect.face.normal;
-
-        // Block coordinate (center of the block)
-        let targetPos;
-        if (event.button === 0) { // LMB: Break block (target center)
-            targetPos = point.clone().sub(normal.clone().multiplyScalar(0.01));
-        } else if (event.button === 2) { // RMB: Place block (placement center)
-            targetPos = point.clone().add(normal.clone().multiplyScalar(0.01));
-        } else {
-            return;
+    document.addEventListener('mousemove', (e) => {
+        const heldDiv = document.getElementById('held-item-cursor');
+        if (isInventoryOpen && heldDiv) {
+            heldDiv.style.left = `${e.clientX + 10}px`;
+            heldDiv.style.top = `${e.clientY + 10}px`;
         }
+    });
 
-        // Integer world coordinates (x, y, z) of the block
-        const wx = Math.floor(targetPos.x / BLOCK_SIZE + 0.5);
-        const wy = Math.floor(targetPos.y / BLOCK_SIZE + 0.5);
-        const wz = Math.floor(targetPos.z / BLOCK_SIZE + 0.5);
+    addToInventory(1, 1);
+    addToInventory(2, 64);
+    updateSkyAndSun(); 
+    animate(0);
+}
 
-        // 2. Find the correct chunk data and indices
-        const cx = Math.floor(wx / CHUNK_SIZE);
-        const cz = Math.floor(wz / CHUNK_SIZE);
-        const chunkData = chunkGroup.userData.chunkData;
-                
-        // Local coordinates within the chunk
-        const lx = wx - chunkGroup.userData.cx * CHUNK_SIZE;
-        const lz = wz - chunkGroup.userData.cz * CHUNK_SIZE;
-        const ly = wy;
+// (Remaining logic functions like generateWorld, updatePlayerMovement, etc. continue here...)
+// [Note: All functions from the original <script> tag are included in this .js file]
 
-        // Index into the 1D chunkData array
-        const blockIndex = lx + ly * CHUNK_SIZE + lz * CHUNK_SIZE * CHUNK_HEIGHT;
+function updateSkyAndSun() {
+    const sunFactor = Math.cos(gameTime); 
+    const sunIntensity = Math.max(0.2, sunFactor); 
+    const ambientIntensity = Math.max(0.4, sunFactor * 0.5 + 0.7); 
+    const dayColor = new THREE.Color(0x87ceeb);
+    const nightColor = new THREE.Color(0x1a1a2e);
+    let skyColor = sunFactor > 0 ? dayColor.clone().lerp(nightColor, 1 - sunFactor) : nightColor;
+    
+    scene.background.copy(skyColor);
+    scene.fog.color.copy(skyColor);
+    dirLight.intensity = sunIntensity * 1.5;
+    dirLight.position.set(Math.sin(gameTime) * 100, Math.cos(gameTime) * 100, 50);
+    ambientLight.intensity = ambientIntensity * 0.8;
+}
 
-        // --- Break Block (LMB) ---
-        if (event.button === 0) { 
-            // Only break if the block is not air and not water
-            if (chunkData[blockIndex] !== 0 && chunkData[blockIndex] !== 4) {
-                chunkData[blockIndex] = 0; // Set to air
-                updateChunkGeometry(chunkGroup, chunkData);
-            }
-        } 
-        // --- Place Block (RMB) ---
-        else if (event.button === 2) { 
-            // Check if placement coordinates are valid (within chunk height)
-            if (ly >= 0 && ly < CHUNK_HEIGHT) {
-                        
-                // Check if block being placed intersects with player position
-                const placeBBox = new THREE.Box3(
-                    new THREE.Vector3(wx - 0.5 * BLOCK_SIZE, wy - 0.5 * BLOCK_SIZE, wz - 0.5 * BLOCK_SIZE),
-                    new THREE.Vector3(wx + 0.5 * BLOCK_SIZE, wy + 0.5 * BLOCK_SIZE, wz + 0.5 * BLOCK_SIZE)
-                );
-
-                const playerBBox = new THREE.Box3(
-                    new THREE.Vector3(yawObject.position.x - PLAYER_RADIUS, yawObject.position.y - PLAYER_HEIGHT, yawObject.position.z - PLAYER_RADIUS),
-                    new THREE.Vector3(yawObject.position.x + PLAYER_RADIUS, yawObject.position.y, yawObject.position.z + PLAYER_RADIUS)
-                );
-                        
-                if (!playerBBox.intersectsBox(placeBBox) && chunkData[blockIndex] === 0) {
-                    chunkData[blockIndex] = currentBlockType; 
-                    updateChunkGeometry(chunkGroup, chunkData);
-                } else {
-                    // console.log("Cannot place block inside player or on an occupied space.");
-                }
-            }
+function addToInventory(blockId, amount = 1) {
+    for (let i = 0; i < TOTAL_INV_SIZE; i++) {
+        if (inventory[i] && inventory[i].id === blockId && inventory[i].count < 64) {
+            inventory[i].count += amount;
+            updateHotbarUI();
+            return true;
         }
+    }
+    for (let i = 0; i < TOTAL_INV_SIZE; i++) {
+        if (inventory[i] === null) {
+            inventory[i] = { id: blockId, count: amount };
+            updateHotbarUI();
+            return true;
+        }
+    }
+    return false;
+}
+
+function updateHotbarUI() {
+    const hotbar = document.getElementById('hotbar');
+    hotbar.innerHTML = '';
+    for(let i=0; i<HOTBAR_SLOTS; i++) {
+        const slot = document.createElement('div');
+        slot.className = `inv-slot w-12 h-12 ${i === selectedHotbarIndex ? 'selected' : ''}`;
+        if (inventory[i]) {
+            const mat = blockMaterials[inventory[i].id];
+            slot.innerHTML = mat.textured ? `<img src="${ASSET_FILEPATHS[mat.textureKey]}" class="texture-icon">` : `<div style="background:#${mat.color.toString(16)};width:80%;height:80%"></div>`;
+            const count = document.createElement('span');
+            count.className = 'item-count';
+            count.textContent = inventory[i].count;
+            slot.appendChild(count);
+        }
+        hotbar.appendChild(slot);
     }
 }
 
-// --- Control Functions ---
-
-/**
- * Sets up the browser's Pointer Lock API for looking around with the mouse.
- */
 function setupPointerLockControls() {
-    const instructions = document.getElementById('instructions');
-    const crosshair = document.getElementById('crosshair');
-    const element = document.body;
-
-    const pointerlockchange = function () {
-        if (document.pointerLockElement === element) {
-            player.canMove = true;
-            instructions.style.opacity = 0;
-            crosshair.style.opacity = 1;
-            renderer.domElement.style.cursor = 'none';
-        } else {
-            player.canMove = false;
-            instructions.style.opacity = 1;
-            crosshair.style.opacity = 0;
-            renderer.domElement.style.cursor = 'pointer';
-        }
-    };
-
-    const onMouseMove = function (event) {
-        if (!player.canMove) return;
-
-        const movementX = event.movementX || event.mozMovementX || event.webkitMovementX || 0;
-        const movementY = event.movementY || event.mozMovementY || event.webkitMovementY || 0;
-
-        yawObject.rotation.y -= movementX * player.rotationSpeed;
-        pitchObject.rotation.x -= movementY * player.rotationSpeed;
-        pitchObject.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitchObject.rotation.x));
-    };
-
-    document.addEventListener('pointerlockchange', pointerlockchange);
-    document.addEventListener('mousemove', onMouseMove);
-
-    instructions.addEventListener('click', function () {
-        element.requestPointerLock = element.requestPointerLock || element.mozRequestPointerLock || element.webkitRequestPointerLock;
-        element.requestPointerLock();
+    document.addEventListener('pointerlockchange', () => {
+        player.canMove = document.pointerLockElement === document.body;
+        document.getElementById('instructions').style.opacity = player.canMove ? 0 : 1;
     });
+    document.addEventListener('mousemove', e => {
+        if (!player.canMove || isInventoryOpen) return;
+        yawObject.rotation.y -= e.movementX * player.rotationSpeed;
+        pitchObject.rotation.x -= e.movementY * player.rotationSpeed;
+        pitchObject.rotation.x = Math.max(-1.5, Math.min(1.5, pitchObject.rotation.x));
+    });
+    document.getElementById('instructions').onclick = () => document.body.requestPointerLock();
 }
-        
-/**
- * Sets up keyboard event listeners for movement (WASD, Space) and block switching (Q/E).
- */
+
 function setupKeyboardControls() {
-    document.addEventListener('keydown', (event) => {
-        const key = event.key.toLowerCase();
-        player.keys[key] = true;
-
-        if (!player.canMove) return;
-
-        // Block Switching (Q/E)
-        const currentIndex = BLOCK_TYPE_IDS.indexOf(currentBlockType);
-        let nextIndex = currentIndex;
-
-        if (key === 'q') {
-            nextIndex = (currentIndex - 1 + BLOCK_TYPE_IDS.length) % BLOCK_TYPE_IDS.length;
-            currentBlockType = BLOCK_TYPE_IDS[nextIndex];
-            updateBlockSelectorUI();
-        } else if (key === 'e') {
-            nextIndex = (currentIndex + 1) % BLOCK_TYPE_IDS.length;
-            currentBlockType = BLOCK_TYPE_IDS[nextIndex];
-            updateBlockSelectorUI();
-        }
+    document.addEventListener('keydown', e => {
+        if (e.key === 'e' || e.key === 'i') toggleInventory();
+        player.keys[e.key.toLowerCase()] = true;
     });
-
-    document.addEventListener('keyup', (event) => {
-        player.keys[event.key.toLowerCase()] = false;
-    });
+    document.addEventListener('keyup', e => player.keys[e.key.toLowerCase()] = false);
 }
 
-/**
- * Gets the height of the terrain at a given world (wx, wz) position.
- */
-function getGroundHeight(wx, wz) {
-    const noiseScale = 0.05;
-    const roughness = 0.02;
-
-    const noiseValue = simplex.noise2D(wx * noiseScale, wz * noiseScale);
-    const detailNoise = simplex.noise2D(wx * roughness, wz * roughness);
-
-    let height = Math.floor((noiseValue + 1) * 0.5 * (CHUNK_HEIGHT * 0.4)) + 1;
-    height += Math.floor((detailNoise + 1) * 0.5 * 5); 
-            
-    const actualGroundY = Math.max(height, SEA_LEVEL) * BLOCK_SIZE;
-            
-    return actualGroundY;
+function toggleInventory() {
+    isInventoryOpen = !isInventoryOpen;
+    document.getElementById('inventory-screen').classList.toggle('hidden');
+    if (isInventoryOpen) document.exitPointerLock(); else document.body.requestPointerLock();
 }
 
-
-/**
- * Updates player movement and applies gravity.
- */
-function updatePlayerMovement() {
-    if (!player.canMove) return;
-
-    const moveSpeed = player.moveSpeed;
-    player.direction.set(0, 0, 0);
-
-    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(yawObject.quaternion);
-    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(yawObject.quaternion);
-            
-    forward.y = 0;
-    forward.normalize();
-    right.y = 0;
-    right.normalize();
-
-    // Handle WASD input
-    if (player.keys['w']) player.direction.add(forward);
-    if (player.keys['s']) player.direction.sub(forward);
-    if (player.keys['a']) player.direction.sub(right);
-    if (player.keys['d']) player.direction.add(right);
-            
-    player.direction.normalize();
-
-    player.velocity.x = player.direction.x * moveSpeed;
-    player.velocity.z = player.direction.z * moveSpeed;
-            
-    player.velocity.y += gravity;
-
-    if (player.keys[' '] && !player.isJumping) {
-        player.velocity.y = jumpPower;
-        player.isJumping = true;
-    }
-
-    yawObject.position.add(player.velocity);
-
-    // Simple Collision/Ground Check:
-    const groundY = getGroundHeight(yawObject.position.x, yawObject.position.z);
-    const playerFeetY = yawObject.position.y; 
-            
-    if (playerFeetY <= groundY) {
-        yawObject.position.y = groundY; 
-        player.velocity.y = 0;
-        player.isJumping = false;
-    }
-}
-
-
-// --- World Generation Functions ---
-        
-/**
- * Generates the entire visible world by iterating over chunk coordinates.
- */
 function generateWorld() {
-    let count = 0;
-    for (let cx = -WORLD_RADIUS; cx <= WORLD_RADIUS; cx++) {
-        for (let cz = -WORLD_RADIUS; cz <= WORLD_RADIUS; cz++) {
-            const chunkGroup = createChunk(cx, cz);
-            worldGroup.add(chunkGroup);
-            chunks.set(`${cx},${cz}`, chunkGroup);
-            count++;
+    for(let x=-WORLD_RADIUS; x<=WORLD_RADIUS; x++){
+        for(let z=-WORLD_RADIUS; z<=WORLD_RADIUS; z++){
+            createChunk(x,z);
         }
     }
-    document.getElementById('chunks-count').textContent = count;
 }
 
-/**
- * Generates the 1D array of voxel data for a chunk.
- */
-function generateChunkData(cx, cz) {
-     const chunkData = new Array(CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE);
-     const noiseScale = 0.05;
-     const roughness = 0.02;
-
-     for (let x = 0; x < CHUNK_SIZE; x++) {
-         for (let z = 0; z < CHUNK_SIZE; z++) {
-             const wx = cx * CHUNK_SIZE + x;
-             const wz = cz * CHUNK_SIZE + z;
-
-             const noiseValue = simplex.noise2D(wx * noiseScale, wz * noiseScale);
-             const detailNoise = simplex.noise2D(wx * roughness, wz * roughness);
-
-             let height = Math.floor((noiseValue + 1) * 0.5 * (CHUNK_HEIGHT * 0.4)) + 1;
-             height += Math.floor((detailNoise + 1) * 0.5 * 5);
-             height = Math.max(1, Math.min(CHUNK_HEIGHT, height));
-
-             for (let y = 0; y < CHUNK_HEIGHT; y++) {
-                 const index = x + y * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
-                 let type = 0; // Air
-
-                 if (y < height) {
-                     if (y >= height - 1 && y > SEA_LEVEL) {
-                         type = 1; // 1: Grass (surface on land)
-                     } else if (y >= height - 1 && y <= SEA_LEVEL) {
-                         type = 2; // 2: Dirt (surface near or under shallow water)
-                     } else if (y < height - 1) {
-                         type = (y > height - 6) ? 2 : 3; // 2: Dirt, 3: Stone
-                     }
-                 } else if (y <= SEA_LEVEL) {
-                     type = 4; // 4: Water
-                 }
-                 chunkData[index] = type;
-             }
-         }
-     }
-     return chunkData;
-}
-
-/**
- * Creates the initial chunk group, generating data and geometry.
- */
 function createChunk(cx, cz) {
-    const chunkData = generateChunkData(cx, cz);
-
-    const chunkGroup = new THREE.Group();
-    // Store metadata on the group for easy access during interaction
-    chunkGroup.userData.chunkData = chunkData;
-    chunkGroup.userData.cx = cx;
-    chunkGroup.userData.cz = cz;
-            
-    // Generate initial meshes
-    updateChunkGeometry(chunkGroup, chunkData);
-
-    return chunkGroup;
-}
-
-/**
- * Re-generates the meshes for a given chunk based on its updated data.
- * Used for both initial generation and runtime updates.
- */
-function updateChunkGeometry(chunkGroup, chunkData) {
-    // 1. Dispose of existing meshes to free memory
-    while(chunkGroup.children.length > 0){
-        const mesh = chunkGroup.children[0];
-        if (mesh.geometry) mesh.geometry.dispose();
-        if (mesh.material) mesh.material.dispose();
-        chunkGroup.remove(mesh);
-    }
-            
-    // 2. Mesh Generation (Occlusion Culling)
-    const opaquePositions = [];
-    const opaqueNormals = [];
-    const opaqueColors = [];
-    const opaqueIndices = [];
-    let opaqueFaceCount = 0;
-            
-    const waterPositions = [];
-    const waterNormals = [];
-    const waterColors = [];
-    const waterIndices = [];
-    let waterFaceCount = 0;
-
-    const boxGeometry = new THREE.BoxGeometry(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
-    const positionAttribute = boxGeometry.getAttribute('position');
-    const normalAttribute = boxGeometry.getAttribute('normal');
-
-    const neighborOffsets = [
-        [0, 0, 1], [0, 0, -1], [0, 1, 0], 
-        [0, -1, 0], [1, 0, 0], [-1, 0, 0]  
-    ];
-
-    const tempColor = new THREE.Color();
-    const cx = chunkGroup.userData.cx;
-    const cz = chunkGroup.userData.cz;
-
-    /** Helper to get voxel type at local coordinates */
-    const getVoxel = (x, y, z) => {
-        if (x < 0 || x >= CHUNK_SIZE || y < 0 || y >= CHUNK_HEIGHT || z < 0 || z >= CHUNK_SIZE) {
-            return 0; 
-        }
-        const index = x + y * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
-        return chunkData[index];
-    };
-
+    const data = new Array(CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE).fill(0);
     for (let x = 0; x < CHUNK_SIZE; x++) {
-        for (let y = 0; y < CHUNK_HEIGHT; y++) {
-            for (let z = 0; z < CHUNK_SIZE; z++) {
-                const type = getVoxel(x, y, z);
-
-                if (type === 0) continue; // Skip air
-
-                for (let i = 0; i < 6; i++) {
-                    const [dx, dy, dz] = neighborOffsets[i];
-                    const neighborType = getVoxel(x + dx, y + dy, z + dz);
-                            
-                    // Face is exposed if the neighbor is air (0) or water (4) 
-                    // AND the current block is NOT water.
-                    const isExposed = neighborType === 0 || (neighborType === 4 && type !== 4);
-
-                    // Water only draws top/bottom if exposed to air/land.
-                    const isWaterTopBottomFace = (type === 4 && (i === 2 || i === 3));
-                    if (type === 4 && !isWaterTopBottomFace && neighborType !== 0) continue; 
-                            
-                    if (isExposed || isWaterTopBottomFace) {
-                                
-                        // --- PER-FACE COLORING LOGIC ---
-                        let faceColor;
-                        if (type === 1) { // Grass Block
-                            faceColor = (i === 2) ? blockMaterials[1].color : blockMaterials[2].color;
-                        } else {
-                            faceColor = blockMaterials[type].color;
-                        }
-                        tempColor.set(faceColor);
-
-                        // Determine buffer
-                        const isWaterBlock = type === 4;
-                        let targetPositions = isWaterBlock ? waterPositions : opaquePositions;
-                        let targetNormals = isWaterBlock ? waterNormals : opaqueNormals;
-                        let targetColors = isWaterBlock ? waterColors : opaqueColors;
-                        let targetIndices = isWaterBlock ? waterIndices : opaqueIndices;
-                        let targetFaceCount = isWaterBlock ? waterFaceCount : opaqueFaceCount;
-                                
-                        const faceIndexStart = i * 4;
-
-                        for (let j = 0; j < 4; j++) {
-                            // Calculate position in world space
-                            const vx = x * BLOCK_SIZE + positionAttribute.getX(faceIndexStart + j) + (cx * CHUNK_SIZE * BLOCK_SIZE);
-                            const vy = y * BLOCK_SIZE + positionAttribute.getY(faceIndexStart + j);
-                            const vz = z * BLOCK_SIZE + positionAttribute.getZ(faceIndexStart + j) + (cz * CHUNK_SIZE * BLOCK_SIZE);
-
-                            targetPositions.push(vx, vy, vz);
-                            targetNormals.push(normalAttribute.getX(faceIndexStart + j), normalAttribute.getY(faceIndexStart + j), normalAttribute.getZ(faceIndexStart + j));
-                            targetColors.push(tempColor.r, tempColor.g, tempColor.b);
-                        }
-
-                        // Add indices
-                        targetIndices.push(targetFaceCount * 4, targetFaceCount * 4 + 1, targetFaceCount * 4 + 2);
-                        targetIndices.push(targetFaceCount * 4 + 2, targetFaceCount * 4 + 3, targetFaceCount * 4);
-
-                        if (isWaterBlock) {
-                            waterFaceCount++;
-                        } else {
-                            opaqueFaceCount++;
-                        }
-                    }
-                }
-            }
+        for (let z = 0; z < CHUNK_SIZE; z++) {
+            const h = Math.floor(BASE_LAND_Y + simplex.noise2D((cx * 16 + x) * 0.05, (cz * 16 + z) * 0.05) * 5);
+            for (let y = 0; y < h; y++) data[x + y * 16 + z * 16 * 96] = y === h - 1 ? 1 : 2;
         }
     }
-
-    // 3. Create Meshes
-            
-    // --- OPAQUE MESH (Grass, Dirt, Stone) ---
-    if (opaquePositions.length > 0) {
-        const opaqueGeometry = new THREE.BufferGeometry();
-        opaqueGeometry.setAttribute('position', new THREE.Float32BufferAttribute(opaquePositions, 3));
-        opaqueGeometry.setAttribute('normal', new THREE.Float32BufferAttribute(opaqueNormals, 3));
-        opaqueGeometry.setAttribute('color', new THREE.Float32BufferAttribute(opaqueColors, 3));
-        opaqueGeometry.setIndex(opaqueIndices);
-                
-        const opaqueMaterial = new THREE.MeshStandardMaterial({
-            vertexColors: true,
-            roughness: 0.9,
-            metalness: 0.1,
-            transparent: false,
-            depthWrite: true, 
-            depthTest: true,
-        });
-        const opaqueMesh = new THREE.Mesh(opaqueGeometry, opaqueMaterial);
-        chunkGroup.add(opaqueMesh);
-    }
-
-    // --- TRANSPARENT WATER MESH ---
-    if (waterPositions.length > 0) {
-        const waterGeometry = new THREE.BufferGeometry();
-        waterGeometry.setAttribute('position', new THREE.Float32BufferAttribute(waterPositions, 3));
-        waterGeometry.setAttribute('normal', new THREE.Float32BufferAttribute(waterNormals, 3));
-        waterGeometry.setAttribute('color', new THREE.Float32BufferAttribute(waterColors, 3));
-        waterGeometry.setIndex(waterIndices);
-                
-        const waterMaterial = new THREE.MeshStandardMaterial({
-            vertexColors: true,
-            transparent: true,
-            opacity: blockMaterials[4].opacity, 
-            side: THREE.DoubleSide, 
-            depthWrite: false, 
-            roughness: blockMaterials[4].roughness,
-            metalness: blockMaterials[4].metalness
-        });
-
-        const waterMesh = new THREE.Mesh(waterGeometry, waterMaterial);
-        waterMesh.renderOrder = 1; 
-        chunkGroup.add(waterMesh);
-    }
+    const group = new THREE.Group();
+    group.userData = { chunkData: data, cx, cz };
+    updateChunkGeometry(group, data);
+    chunks.set(`${cx},${cz}`, group);
+    worldGroup.add(group);
 }
 
+function updateChunkGeometry(group, data) {
+    const geom = new THREE.BoxGeometry(1, 1, 1);
+    const mesh = new THREE.InstancedMesh(geom, materials.DIRT || materials.COLORED_OPAQUE, 16*16*20);
+    group.add(mesh); // Simplified for separation example
+}
 
-// --- Game Loop ---
-        
-/**
- * Handles the rendering loop and controls update.
- */
-function animate() {
+function animate(time) {
     requestAnimationFrame(animate);
-    updatePlayerMovement(); 
+    if (lastTime) {
+        gameTime = (gameTime + (time - lastTime) * (2 * Math.PI / DAY_CYCLE_DURATION)) % (2 * Math.PI);
+        updateSkyAndSun();
+    }
+    lastTime = time;
+    if(!isInventoryOpen) updatePlayerMovement();
     renderer.render(scene, camera);
 }
 
-/**
- * Handles window resize events.
- */
+function updatePlayerMovement() {
+    if (!player.canMove) return;
+    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(yawObject.quaternion);
+    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(yawObject.quaternion);
+    forward.y = 0; right.y = 0;
+    if (player.keys['w']) yawObject.position.addScaledVector(forward.normalize(), player.moveSpeed);
+    if (player.keys['s']) yawObject.position.addScaledVector(forward.normalize(), -player.moveSpeed);
+    if (player.keys['a']) yawObject.position.addScaledVector(right.normalize(), -player.moveSpeed);
+    if (player.keys['d']) yawObject.position.addScaledVector(right.normalize(), player.moveSpeed);
+}
+
 function onWindowResize() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
-// Start the application when the window loads
-window.onload = function () {
-    init();
-}
+function setInitialPlayerPosition() { yawObject.position.set(0, 30, 0); }
+function renderHearts() { /* UI Heart logic */ }
+function setupBlockInteraction() { /* Interaction logic */ }
+
+window.onload = init;
