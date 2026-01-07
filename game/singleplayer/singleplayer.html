@@ -993,6 +993,29 @@
         }
 
     
+        // --- NEW RIVER MASK UTILITY ---
+        function getRiverMask(wx, wz) {
+            // Use a large scale noise to define the winding path
+            const scale = 0.001; 
+            const pathNoise = simplex.noise2D(wx * scale + 1000, wz * scale + 1000); 
+
+            // Use a second noise layer to slightly modulate the river path
+            const scaleBend = 0.002;
+            const bend = simplex.noise2D(wx * scaleBend + 500, wz * scaleBend + 500) * 0.5;
+
+            // Apply the bend to the path coordinates (creates a wavy river instead of straight bands)
+            const finalPath = simplex.noise2D(wx * scale + bend, wz * scale);
+
+            // Thickness defines how wide the river is. Lower value = wider river band around 0.
+            const thickness = 0.08; 
+            
+            // Attenuation is 1.0 at the center line (finalPath=0) and 0.0 outside the thickness.
+            const attenuation = 1.0 - Math.min(1.0, Math.abs(finalPath) / thickness);
+            
+            return attenuation;
+        }
+        // --- END RIVER MASK UTILITY ---
+
 
         function updatePlayerMovement() {
             if (!player.canMove || isInventoryOpen) return;
@@ -1204,6 +1227,15 @@
             }
             
             h += detailNoise * 0.5; // Add detail
+
+            // --- RIVER HEIGHT ADJUSTMENT ---
+            const riverInfluence = getRiverMask(wx, wz);
+            if (riverInfluence > 0.1) {
+                // Maximum river depth reduction is 15 blocks, pulling land down towards SEA_LEVEL - 5
+                const riverDepth = riverInfluence * 15; 
+                h = Math.max(h - riverDepth, SEA_LEVEL - 5); 
+            }
+            // --- END RIVER HEIGHT ADJUSTMENT ---
             
             // Ensure land blocks are not too low relative to sea level
             if (h < SEA_LEVEL - 5 && biome !== 'Ocean') h = SEA_LEVEL - 5; 
@@ -1303,6 +1335,10 @@
                                             wz < WORLD_MIN_COORD + 4 || wz >= WORLD_MAX_COORD - 4;
                      
                      const h = getNoiseGroundHeight(wx, wz);
+                     const riverInfluence = getRiverMask(wx, wz);
+                     const RIVER_WIDTH_THRESHOLD = 0.1;
+                     const isRiver = riverInfluence > RIVER_WIDTH_THRESHOLD;
+                     
                      let surfaceBlockType = 0; // Used for tree placement logic
 
                      for (let y = 0; y < CHUNK_HEIGHT; y++) {
@@ -1344,8 +1380,27 @@
                                      t = 3; // Stone deep down
                                  }
                              }
+                             
+                            // --- RIVER BED OVERRIDE ---
+                            if (isRiver && y < SEA_LEVEL - 1) { 
+                                // If it's part of the river path and below the water line, make it stone/dirt bed
+                                // Use sand/dirt near the surface of the riverbed
+                                if (y > SEA_LEVEL - 3) t = (biome === 'Desert' ? 7 : 2); // Sand/Dirt bed near top
+                                else t = 3; // Stone bed deep down
+                            }
+                            
                          } else if (y < SEA_LEVEL) {
-                             t = 4; // Water
+                             t = 0; // Start as air above the land height
+                             
+                             // --- WATER FILLING ---
+                             if (isRiver) {
+                                 t = 4; // River water
+                             } 
+                             // If it's the ocean biome, fill the area above ground and below sea level with water
+                             else if (biome === 'Ocean') {
+                                 t = 4;
+                             }
+                             // Otherwise (on dry land, above h, below sea level, not river) it remains air (t=0)
                          }
                          
                          // If near boundary and below sea level, wall it up
@@ -1358,7 +1413,7 @@
                      }
                   
                      // --- Tree Generation (Only on Forest Biome Surface) ---
-                     if (surfaceBlockType === 1 && biome === 'Forest') { 
+                     if (surfaceBlockType === 1 && biome === 'Forest' && !isRiver) { 
                         
                          // Low chance to spawn a tree
                          if (Math.abs((wx * 1327 + wz * 9283) % 100) < 6) { // Increased chance for Forest
