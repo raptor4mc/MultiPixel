@@ -30,3 +30,7 @@ export function isSolid(id) {
 export function isLiquid(id) {
   return !!blockDefs[id]?.liquid;
 }
+
+export function getBlockKey(id) {
+  return blockDefs[id]?.texture ?? null;
+}
