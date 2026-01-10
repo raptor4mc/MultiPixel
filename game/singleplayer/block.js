@@ -21,3 +21,12 @@ export const blockDefs = {
   7: { name: "Sand", solid: true, textured: true, texture: "SAND" },
   8: { name: "Oak Planks", solid: true, textured: true, texture: "OAK_PLANK" }
 };
+
+// blocks.js
+export function isSolid(id) {
+  return !!blockDefs[id]?.solid;
+}
+
+export function isLiquid(id) {
+  return !!blockDefs[id]?.liquid;
+}
