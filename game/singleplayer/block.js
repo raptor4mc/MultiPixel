@@ -11,26 +11,74 @@ export const BLOCKS = {
 };
 
 export const blockDefs = {
-  0: { name: "Air", solid: false },
-  1: { name: "Grass", solid: true, textured: true, texture: "DIRT" },
-  2: { name: "Dirt", solid: true, textured: true, texture: "DIRT" },
-  3: { name: "Stone", solid: true, textured: true, texture: "STONE" },
-  4: { name: "Water", solid: false, liquid: true, transparent: true, opacity: 0.7 },
-  5: { name: "Wood Log", solid: true },
-  6: { name: "Leaves", solid: true, textured: true, texture: "LEAVES", transparent: true, opacity: 0.8 },
-  7: { name: "Sand", solid: true, textured: true, texture: "SAND" },
-  8: { name: "Oak Planks", solid: true, textured: true, texture: "OAK_PLANK" }
+  [BLOCKS.AIR]: { name: "Air", solid: false },
+
+  [BLOCKS.GRASS]: {
+    name: "Grass",
+    solid: true,
+    textured: true,
+    texture: "DIRT"
+  },
+
+  [BLOCKS.DIRT]: {
+    name: "Dirt",
+    solid: true,
+    textured: true,
+    texture: "DIRT"
+  },
+
+  [BLOCKS.STONE]: {
+    name: "Stone",
+    solid: true,
+    textured: true,
+    texture: "STONE"
+  },
+
+  [BLOCKS.WATER]: {
+    name: "Water",
+    solid: false,
+    liquid: true,
+    transparent: true,
+    opacity: 0.7
+  },
+
+  [BLOCKS.LOG]: {
+    name: "Wood Log",
+    solid: true
+  },
+
+  [BLOCKS.LEAVES]: {
+    name: "Leaves",
+    solid: true,
+    textured: true,
+    texture: "LEAVES",
+    transparent: true,
+    opacity: 0.8
+  },
+
+  [BLOCKS.SAND]: {
+    name: "Sand",
+    solid: true,
+    textured: true,
+    texture: "SAND"
+  },
+
+  [BLOCKS.PLANKS]: {
+    name: "Oak Planks",
+    solid: true,
+    textured: true,
+    texture: "OAK_PLANK"
+  }
 };
 
-// blocks.js
-export function isSolid(id) {
-  return !!blockDefs[id]?.solid;
-}
+// ---- helpers ----
 
-export function isLiquid(id) {
-  return !!blockDefs[id]?.liquid;
-}
+export const isAir = id => id === BLOCKS.AIR;
+export const isSolid = id => !!blockDefs[id]?.solid;
+export const isLiquid = id => !!blockDefs[id]?.liquid;
+export const isTransparent = id => !!blockDefs[id]?.transparent;
+export const getBlockTexture = id =>
+  blockDefs[id]?.textured ? blockDefs[id].texture : null;
 
-export function getBlockKey(id) {
-  return blockDefs[id]?.texture ?? null;
-}
+export const getBlockName = id =>
+  blockDefs[id]?.name ?? "Unknown";
