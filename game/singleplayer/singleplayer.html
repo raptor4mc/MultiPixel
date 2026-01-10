@@ -1617,9 +1617,10 @@
                 if (materials[key] && materials[key].map) return key; 
                 return `${key}_FALLBACK`;
             }
-            if (id === 4) return 'WATER'; 
-            if (id === 5) return 'WOOD';  
-            
+            import { getBlockKey } from "./blocks.js";
+
+              return getBlockKey(id);
+
             // For non-textured blocks that might have been assigned a vertex color
             return 'COLORED_OPAQUE';
         }
