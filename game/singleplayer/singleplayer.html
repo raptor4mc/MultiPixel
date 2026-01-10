@@ -201,15 +201,13 @@
   
     <div id="crosshair"></div>
     <div id="held-item-cursor" style="opacity: 0;"></div>
-<script>
-      // --- 1. CONFIGURATION ---
-        import {
-         blockDefs,
-         getBlockTexture,
-         isTransparent,
-         isLiquid
-        }from "./blocks.js";
-    <script>
+<script type="module">
+  import { blockDefs, getBlockTexture, isTransparent, isLiquid } from "./blocks.js";
+
+  // --- Your JS logic goes here ---
+  // configuration, loadAssets(), player setup, chunk setup, etc.
+
+
         
         // --- 1. CONFIGURATION ---
         import {
