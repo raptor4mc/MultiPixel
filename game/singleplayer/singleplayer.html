@@ -206,6 +206,13 @@
     <script>
         
         // --- 1. CONFIGURATION ---
+        import {
+         blockDefs,
+         getBlockTexture,
+         isTransparent,
+         isLiquid
+         } from "./blocks.js";
+
         const CHUNK_SIZE = 16;
         const CHUNK_HEIGHT = 96; 
         const WORLD_RADIUS = 13; // 27x27 chunks wide
@@ -336,42 +343,39 @@
                 if (key === 'HEART') continue; 
 
                 const path = ASSET_FILEPATHS[key];
-                
-                const promise = new Promise((resolve, reject) => {
-                    loader.load(
-                        path, // <-- DIRECTLY using the calculated path
-                        (texture) => {
-                            texture.magFilter = THREE.NearestFilter; // Sharp pixel look
-                            texture.minFilter = THREE.NearestFilter;
-                            materials[key] = new THREE.MeshStandardMaterial({
-                                map: texture,
-                                side: key === 'LEAVES' ? THREE.DoubleSide : THREE.FrontSide,
-                                transparent: blockMaterials[getMaterialIdByTextureKey(key)].transparent || false,
-                                opacity: blockMaterials[getMaterialIdByTextureKey(key)].opacity || 1.0,
-                            });
-                            resolve();
-                        },
-                        undefined,
-                        (err) => {
-                            // This error is expected since the files don't exist in the runtime environment
-                            console.error(`Error loading texture from specified path: ${path}. Block will use solid color fallback.`, err);
-                            // Still resolve so the game can continue
-                            resolve(); 
-                        }
-                    );
-                });
+              const promise = new Promise((resolve, reject) => {
+    loader.load(
+        path,
+        (texture) => {
+            texture.magFilter = THREE.NearestFilter; // Pixelated look
+            texture.minFilter = THREE.NearestFilter;
+
+            // Find which block uses this texture
+            const blockId = Object.keys(blockDefs).find(id => getBlockTexture(Number(id)) === key);
+            const def = blockDefs[blockId];
+
+            materials[key] = new THREE.MeshStandardMaterial({
+                map: texture,
+                side: def?.transparent ? THREE.DoubleSide : THREE.FrontSide,
+                transparent: def?.transparent ?? false,
+                opacity: def?.opacity ?? 1.0,
+                roughness: 0.9
+            });
+
+            resolve();
+        },
+        undefined,
+        (err) => {
+            console.error(`Error loading texture from path: ${path}. Using fallback.`, err);
+            resolve(); 
+        }
+    );
+});
+
                 texturePromises.push(promise);
             }
             
-            // 2. Create fallback materials for non-textured/missing blocks (Wood, Water, and fallbacks)
-            materials.WOOD = new THREE.MeshStandardMaterial({ color: blockMaterials[5].color, roughness: 0.9 });
-            materials.WATER = new THREE.MeshStandardMaterial({ 
-                color: blockMaterials[4].color, 
-                transparent: true, 
-                opacity: blockMaterials[4].opacity,
-                side: THREE.DoubleSide,
-                roughness: 0.1
-            });
+           
             // Fallback material for textured blocks if loading failed
             materials.DIRT_FALLBACK = new THREE.MeshStandardMaterial({ color: 0x594334, roughness: 0.9 });
             materials.STONE_FALLBACK = new THREE.MeshStandardMaterial({ color: 0x7F8C8D, roughness: 0.9 });
@@ -386,12 +390,7 @@
             console.log("Assets loading attempted with specified relative paths.");
         }
         
-        function getMaterialIdByTextureKey(key) {
-            for (const id in blockMaterials) {
-                if (blockMaterials[id].textureKey === key) return parseInt(id);
-            }
-            return -1;
-        }
+        
 
         // --- 4. INITIALIZATION ---
 
