@@ -214,6 +214,12 @@
         const BASE_LAND_Y = 20; 
         const ISLAND_RADIUS = 30; 
         
+        // --- CAVE CONSTANTS ---
+        const CAVE_SCALE = 0.05;
+        const CAVE_THRESHOLD = 0.7; // Raw noise > 0.7 to become a cave
+        const CAVE_MIN_Y = 5;
+        const CAVE_MAX_Y_OFFSET = 4; // Keep caves at least this many blocks below the surface height (h)
+        
       
         const PLAYER_HEIGHT = 1.8 * BLOCK_SIZE; 
         const PLAYER_RADIUS = 0.3; 
@@ -1323,8 +1329,8 @@
             }
         }
 
-        function getNoiseGroundHeight(wx, wz) {
-            const biome = getBiome(wx, wz);
+        // Refactored function: Height calculation is dependent on the provided biome (Biomes > Terrain)
+        function getNoiseGroundHeight(wx, wz, biome) {
             
             // Continental Mask for overall land mass (smoother transition)
             const scale1 = 0.002; 
@@ -1385,8 +1391,9 @@
                 return group.userData.chunkData[lx + wy * CHUNK_SIZE + lz * CHUNK_SIZE * CHUNK_HEIGHT];
             }
             
-            // For blocks outside loaded chunks but inside the boundary, use noise
-            const h = getNoiseGroundHeight(wx, wz);
+            // For blocks outside loaded chunks but inside the boundary, use noise (Fallback)
+            const biome = getBiome(wx, wz); // Calculate biome for fallback
+            const h = getNoiseGroundHeight(wx, wz, biome); 
             if (wy < h) return 1; // Default to grass for quick fallback
             if (wy < SEA_LEVEL) return 4;
             return 0;
@@ -1452,14 +1459,16 @@
                      const wx = cx * CHUNK_SIZE + x;
                      const wz = cz * CHUNK_SIZE + z;
                      
-                     // Biome for this column
-                     const biome = getBiome(wx, wz);
+                     // Biomes > Terrain: Calculate biome once, then use it for all column data
+                     const biome = getBiome(wx, wz); 
                      
+                     // Height based on biome
+                     const h = getNoiseGroundHeight(wx, wz, biome);
+
                      // Check if block is near the world boundary before applying changes
                      const isNearBoundary = wx < WORLD_MIN_COORD + 4 || wx >= WORLD_MAX_COORD - 4 || 
                                             wz < WORLD_MIN_COORD + 4 || wz >= WORLD_MAX_COORD - 4;
                      
-                     const h = getNoiseGroundHeight(wx, wz);
                      const riverInfluence = getRiverMask(wx, wz);
                      const RIVER_WIDTH_THRESHOLD = 0.1;
                      const isRiver = riverInfluence > RIVER_WIDTH_THRESHOLD;
@@ -1527,6 +1536,24 @@
                              }
                              // Otherwise (on dry land, above h, below sea level, not river) it remains air (t=0)
                          }
+                         
+                        // --- Cave Generation Pass ---
+                        // Apply caving logic ONLY if the block is a solid underground type (Stone, Dirt, Sand)
+                        // and is within the valid depth range.
+                        if (y > CAVE_MIN_Y && y < h - CAVE_MAX_Y_OFFSET) {
+                            
+                            if (t === 3 || t === 2 || t === 7) { 
+                                const caveNoise = simplex.noise3D(
+                                    wx * CAVE_SCALE, 
+                                    y * CAVE_SCALE * 2, // Stretch vertically to make tunnels horizontally wider
+                                    wz * CAVE_SCALE
+                                );
+                                
+                                if (caveNoise > CAVE_THRESHOLD) {
+                                    t = 0; // Convert solid block to air
+                                }
+                            }
+                        }
                          
                          // If near boundary and below sea level, wall it up
                          if (isNearBoundary && y < SEA_LEVEL && (t === 4 || t === 0)) {
@@ -1739,6 +1766,13 @@
         function setInitialPlayerPosition() {
           
             let y = CHUNK_HEIGHT - 1;
+            // Need to calculate biome and height once for the spawn point (0, 0)
+            const biome = getBiome(0, 0);
+            const initialH = getNoiseGroundHeight(0, 0, biome);
+
+            // Start searching from the maximum expected initial height + 5, down to the actual calculated height
+            y = Math.min(CHUNK_HEIGHT - 1, initialH + 5); 
+
             while(y > 0 && !isSolid(getBlockType(0, y, 0))) {
                 y--;
             }
