@@ -7,7 +7,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/simplex-noise@2.4.0/simplex-noise.min.js"></script>
-    <script src="block.js"></script>
     <style>
         
         body {
@@ -202,7 +201,14 @@
   
     <div id="crosshair"></div>
     <div id="held-item-cursor" style="opacity: 0;"></div>
-
+<script>
+      // --- 1. CONFIGURATION ---
+        import {
+         blockDefs,
+         getBlockTexture,
+         isTransparent,
+         isLiquid
+        }from "./blocks.js";
     <script>
         
         // --- 1. CONFIGURATION ---
