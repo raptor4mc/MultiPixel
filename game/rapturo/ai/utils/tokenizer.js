@@ -1,23 +1,29 @@
 export class Tokenizer {
     constructor(vocab) {
         this.vocab = vocab;
-        // Create a reverse lookup (ID -> Word/Char)
-        this.decoder = Object.keys(vocab).reduce((acc, key) => {
-            acc[vocab[key]] = key;
-            return acc;
-        }, {});
+        // Invert vocab for decoding (ID -> Word)
+        this.idToWord = {};
+        for (let word in vocab) {
+            this.idToWord[vocab[word]] = word;
+        }
     }
 
     encode(text) {
-        // Simple character or whitespace splitting - adjust based on your training
-        // This is a basic example. 
-        const tokens = text.split('').map(char => {
-            return this.vocab[char] || this.vocab['<UNK>'] || 0;
+        // 1. Lowercase and split by punctuation/spaces
+        // This regex splits but keeps the delimiters (like periods or spaces)
+        const tokens = text.toLowerCase().split(/([ .,!?;]+)/).filter(x => x);
+        
+        // 2. Map to IDs
+        return tokens.map(token => {
+            // If word exists return ID, else return <UNK> ID (usually 1)
+            return this.vocab[token] || this.vocab['<UNK>'] || 1;
         });
-        return tokens;
     }
 
     decode(ids) {
-        return ids.map(id => this.decoder[id] || '').join('');
+        return ids.map(id => {
+            // Map ID to word, or empty string if not found
+            return this.idToWord[id] || '';
+        }).join('');
     }
 }
