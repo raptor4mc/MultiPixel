@@ -1,6 +1,8 @@
 import { Tokenizer } from './utils/tokenizer.js';
 import { Sampler } from './utils/sampler.js';
-
+import { NN_CONFIG } from './nn/config.js';
+import { Stats } from './debug/stats.js';
+import { sleep } from './utils/helpers.js';
 // Configuration
 const CONFIG = {
     modelPath: './model/model.json',
