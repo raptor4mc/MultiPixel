@@ -1,15 +1,14 @@
-// nn/config.js
-
-export const NN_CONFIG = {
-    // These must match the model you trained in Python
-    architecture: "Transformer", // or "LSTM"
-    vocabSize: 10000,
-    embeddingDim: 256,
-    numLayers: 4,
-    numHeads: 4,     // For Transformer
-    seqLength: 64,   // Max context window
-    
-    // System settings
-    useGpu: true,    // TF.js specific
-    backend: 'webgl' // 'webgl' (GPU) or 'cpu' or 'wasm'
-};
+{
+    "model_name": "Rapturo-v1",
+    "version": "1.0.0",
+    "parameters": {
+        "max_new_tokens": 50,
+        "temperature": 0.7,
+        "top_k": 40,
+        "repetition_penalty": 1.1
+    },
+    "ui": {
+        "bot_name": "Rapturo",
+        "theme": "dark"
+    }
+}
