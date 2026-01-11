@@ -1,118 +1,150 @@
 import { Tokenizer } from './utils/tokenizer.js';
 import { Sampler } from './utils/sampler.js';
 
-class RapturoAI {
+// Configuration
+const CONFIG = {
+    modelPath: './model/model.json',
+    vocabPath: './vocab.json',
+    maxLength: 64,  // Max tokens to generate per reply
+    temp: 0.8
+};
+
+class RapturoChat {
     constructor() {
         this.model = null;
         this.tokenizer = null;
-        this.config = null;
         this.isGenerating = false;
         
-        // UI Elements
-        this.statusEl = document.getElementById('status');
-        this.inputEl = document.getElementById('input-text');
-        this.outputEl = document.getElementById('output-text');
-        this.btnEl = document.getElementById('generate-btn');
-        this.tempEl = document.getElementById('temp-slider');
+        // DOM Elements
+        this.historyDiv = document.getElementById('chat-history');
+        this.inputEl = document.getElementById('user-input');
+        this.sendBtn = document.getElementById('send-btn');
+        this.statusEl = document.getElementById('status-indicator');
+
+        // Bind events
+        this.sendBtn.addEventListener('click', () => this.handleUserSend());
+        this.inputEl.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') this.handleUserSend();
+        });
 
         this.init();
     }
 
     async init() {
         try {
-            // 1. Load Config & Vocab
-            const [configRes, vocabRes] = await Promise.all([
-                fetch('./config.json'),
-                fetch('./vocab.json')
-            ]);
-            
-            this.config = await configRes.json();
-            const vocab = await vocabRes.json();
+            // 1. Load Vocab & Tokenizer
+            const vocabReq = await fetch(CONFIG.vocabPath);
+            const vocab = await vocabReq.json();
             this.tokenizer = new Tokenizer(vocab);
 
-            // 2. Load Model (TensorFlow.js)
-            // Note: This expects model.json to be relative to index.html
-            this.model = await tf.loadLayersModel('./model/model.json');
-
-            // 3. Warmup (Optional: runs a dummy prediction to compile shaders)
+            // 2. Load TF.js Model
+            this.model = await tf.loadLayersModel(CONFIG.modelPath);
+            
+            // 3. Warmup (Run dummy data through model to compile shaders)
             tf.tidy(() => {
-                const dummy = tf.zeros([1, 1]); // Adjust shape based on model input
-                this.model.predict(dummy);
+                const dummy = tf.zeros([1, 10]); // Assumes model takes length 10 seq
+                try { this.model.predict(dummy); } catch(e) {} 
             });
 
-            this.statusEl.innerText = "System Ready";
-            this.statusEl.classList.add('ready');
-            this.btnEl.disabled = false;
-            this.btnEl.addEventListener('click', () => this.generate());
+            // UI Ready
+            this.statusEl.innerText = "Online";
+            this.statusEl.classList.add('online');
+            this.statusEl.classList.remove('offline');
+            this.inputEl.disabled = false;
+            this.sendBtn.disabled = false;
 
-        } catch (error) {
-            console.error(error);
-            this.statusEl.innerText = "Error Loading System";
+        } catch (err) {
+            console.error(err);
+            this.statusEl.innerText = "Error";
         }
     }
 
-    async generate() {
-        if (this.isGenerating) return;
+    async handleUserSend() {
+        const text = this.inputEl.value.trim();
+        if (!text || this.isGenerating) return;
+
+        // 1. Add User Message to UI
+        this.appendMessage(text, 'user');
+        this.inputEl.value = '';
+        this.inputEl.disabled = true;
+
+        // 2. Start Generation
         this.isGenerating = true;
-        this.btnEl.disabled = true;
-        this.outputEl.innerText = ""; // Clear previous
-
-        const prompt = this.inputEl.value;
-        const temperature = parseFloat(this.tempEl.value);
-
-        // Convert Prompt to IDs
-        let currentIds = this.tokenizer.encode(prompt);
+        await this.generateResponse(text);
         
-        // Loop for generation
-        for (let i = 0; i < this.config.max_length; i++) {
-            
-            // Get next token ID
-            const nextId = await this.predictNextToken(currentIds, temperature);
-            
-            // Decode and Update UI
-            const nextChar = this.tokenizer.decode([nextId]);
-            this.outputEl.innerText += nextChar;
-            
-            // Append to context for next prediction
-            currentIds.push(nextId);
+        // 3. Reset
+        this.isGenerating = false;
+        this.inputEl.disabled = false;
+        this.inputEl.focus();
+    }
 
-            // Allow UI to update (prevent freeze)
+    async generateResponse(inputPrompt) {
+        // Create an empty AI message bubble that we will fill token by token
+        const aiMsgDiv = this.appendMessage('', 'ai');
+        
+        // FORMATTING: "GPT" models usually need a strict format
+        // Example: "User: hello\nAI:"
+        const contextString = `User: ${inputPrompt}\nAI:`;
+        
+        // Encode context to Token IDs
+        let currentSequence = this.tokenizer.encode(contextString);
+
+        for (let i = 0; i < CONFIG.maxLength; i++) {
+            // Predict next token ID
+            const nextTokenId = await this.predictNext(currentSequence);
+            
+            // Decode ID to word/char
+            const nextWord = this.tokenizer.decode([nextTokenId]);
+
+            // Stop if we hit end-of-sequence token (assuming 2 is <EOS>)
+            // You must check your vocab.json for the actual EOS ID
+            if (nextTokenId === 2 || nextWord.includes('<EOS>')) break;
+
+            // Update UI (streaming effect)
+            aiMsgDiv.innerText += nextWord;
+            this.historyDiv.scrollTop = this.historyDiv.scrollHeight;
+
+            // Add new token to sequence for next prediction loop
+            currentSequence.push(nextTokenId);
+            
+            // Optimization: If sequence gets too long for model, trim the beginning
+            // (Assumes model max context is 128)
+            if (currentSequence.length > 128) {
+                currentSequence = currentSequence.slice(-128);
+            }
+
+            // Small pause to let UI render
             await new Promise(r => setTimeout(r, 0));
         }
-
-        this.isGenerating = false;
-        this.btnEl.disabled = false;
     }
 
-    async predictNextToken(inputIds, temperature) {
-        // Convert array to Tensor [1, sequence_length]
-        const inputTensor = tf.tensor2d([inputIds], [1, inputIds.length]);
+    async predictNext(seq) {
+        return tf.tidy(() => {
+            // Convert array to Tensor
+            const input = tf.tensor2d([seq], [1, seq.length]);
+            
+            // Get Logits
+            const output = this.model.predict(input);
+            
+            // Get the last element of the sequence (the prediction for 'next')
+            // If output is [batch, seq, vocab], slice the last step
+            const len = seq.length;
+            const logits = output.slice([0, len - 1, 0], [1, 1, -1]).squeeze();
+            
+            // Sample
+            const probs = tf.softmax(logits.div(tf.scalar(CONFIG.temp)));
+            return tf.multinomial(probs, 1).dataSync()[0];
+        });
+    }
 
-        let logits;
-        
-        // Run model
-        const prediction = this.model.predict(inputTensor);
-        
-        // Handle different model output shapes:
-        // Usually output is [batch, seq_len, vocab_size]. We want the last token.
-        if (prediction.shape.length === 3) {
-            const seqLen = prediction.shape[1];
-            logits = prediction.slice([0, seqLen - 1, 0], [1, 1, -1]).squeeze();
-        } else {
-            logits = prediction.squeeze();
-        }
-
-        // Sample
-        const nextId = await Sampler.sample(logits, temperature);
-
-        // Clean up tensors to prevent memory leaks
-        inputTensor.dispose();
-        prediction.dispose();
-        logits.dispose();
-
-        return nextId;
+    appendMessage(text, sender) {
+        const div = document.createElement('div');
+        div.classList.add('message', sender);
+        div.innerText = text;
+        this.historyDiv.appendChild(div);
+        this.historyDiv.scrollTop = this.historyDiv.scrollHeight;
+        return div;
     }
 }
 
-// Start the app
-new RapturoAI();
+new RapturoChat();
