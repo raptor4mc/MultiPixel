@@ -1,60 +1,97 @@
 body {
-    background-color: #121212;
-    color: #00ffcc;
-    font-family: 'Courier New', monospace;
+    background-color: #1a1a1a;
+    color: #fff;
+    font-family: sans-serif;
+    margin: 0;
     display: flex;
     justify-content: center;
+    height: 100vh;
+}
+
+.chat-container {
+    width: 100%;
+    max-width: 500px;
+    background: #2d2d2d;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    box-shadow: 0 0 20px rgba(0,0,0,0.5);
+}
+
+header {
+    padding: 15px;
+    background: #202020;
+    border-bottom: 1px solid #333;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.status { font-size: 0.8em; color: #ff4444; }
+.status.online { color: #00cc66; }
+
+.chat-history {
+    flex: 1;
+    overflow-y: auto;
     padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
-.container {
-    width: 100%;
-    max-width: 600px;
+.message {
+    max-width: 80%;
+    padding: 10px 15px;
+    border-radius: 15px;
+    line-height: 1.4;
+    word-wrap: break-word;
 }
 
-.io-container {
-    border: 1px solid #333;
-    padding: 10px;
-    background: #1e1e1e;
+.message.user {
+    align-self: flex-end;
+    background: #0084ff;
+    color: white;
+    border-bottom-right-radius: 2px;
 }
 
-textarea {
-    width: 100%;
-    height: 60px;
-    background: #000;
-    color: #fff;
+.message.ai {
+    align-self: flex-start;
+    background: #404040;
+    color: #ddd;
+    border-bottom-left-radius: 2px;
+}
+
+.message.system {
+    align-self: center;
+    background: transparent;
+    color: #666;
+    font-size: 0.8em;
+}
+
+.input-area {
+    padding: 20px;
+    background: #202020;
+    display: flex;
+    gap: 10px;
+}
+
+input {
+    flex: 1;
+    padding: 12px;
+    border-radius: 25px;
     border: none;
-    resize: none;
-    padding: 10px;
-    box-sizing: border-box;
-}
-
-.output-box {
-    min-height: 150px;
-    margin-top: 10px;
-    white-space: pre-wrap;
-    color: #e0e0e0;
-}
-
-.status {
-    margin-bottom: 10px;
-    color: #ffaa00;
-}
-
-.status.ready {
-    color: #00ff00;
+    background: #404040;
+    color: white;
+    outline: none;
 }
 
 button {
-    margin-top: 10px;
     padding: 10px 20px;
-    background: #00ffcc;
+    border-radius: 25px;
     border: none;
+    background: #0084ff;
+    color: white;
     cursor: pointer;
     font-weight: bold;
 }
-
-button:disabled {
-    background: #555;
-    cursor: not-allowed;
-}
+button:disabled { background: #555; }
