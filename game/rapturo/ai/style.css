@@ -1,1 +1,60 @@
+body {
+    background-color: #121212;
+    color: #00ffcc;
+    font-family: 'Courier New', monospace;
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+}
 
+.container {
+    width: 100%;
+    max-width: 600px;
+}
+
+.io-container {
+    border: 1px solid #333;
+    padding: 10px;
+    background: #1e1e1e;
+}
+
+textarea {
+    width: 100%;
+    height: 60px;
+    background: #000;
+    color: #fff;
+    border: none;
+    resize: none;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+.output-box {
+    min-height: 150px;
+    margin-top: 10px;
+    white-space: pre-wrap;
+    color: #e0e0e0;
+}
+
+.status {
+    margin-bottom: 10px;
+    color: #ffaa00;
+}
+
+.status.ready {
+    color: #00ff00;
+}
+
+button {
+    margin-top: 10px;
+    padding: 10px 20px;
+    background: #00ffcc;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+button:disabled {
+    background: #555;
+    cursor: not-allowed;
+}
