@@ -2,36 +2,248 @@
 <html>
 <head>
     <meta charset="UTF-8" />
-    <title>MultiPixel boot</title>
+    <title>MultiPixel Terms of Service</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="favicon.ico" type="image/x-icon" />
 
     <style>
+        /* General Body and Layout */
         body {
             margin: 0;
             background-color: #0a0a0a;
             color: #ccc;
             font-family: 'Segoe UI', sans-serif;
             display: flex;
+            flex-direction: column;
             align-items: center;
-            justify-content: center;
-            height: 100vh;
+            justify-content: flex-end; /* Align content to the bottom */
+            min-height: 100vh;
+            padding: 0 20px 20px 20px; /* Padding for responsive edges, bottom padding reserved for fixed footer */
+        }
+        
+        /* Main Container for the entire ToS component */
+        .app-wrapper {
+            width: 100%;
+            max-width: 800px;
+            display: flex;
+            flex-direction: column;
         }
 
-        button {
-            padding: 18px 36px;
-            font-size: 24px;
-            cursor: pointer;
+        /* Collapsible ToS Content Area */
+        .tos-content-area {
             background: #111;
-            color: #ccc;
-            border: 2px solid #444;
-            border-radius: 10px;
-            transition: transform 0.15s ease, box-shadow 0.2s ease;
-            box-shadow: 0 0 10px #222;
+            border: 2px solid #222;
+            border-bottom: none; /* Merges visually with the footer when expanded */
+            border-radius: 12px 12px 0 0;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            padding: 0 20px; /* Padding applied when expanded */
+            
+            /* Collapse/Expand Transition Logic */
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out, padding 0.5s ease-in-out;
         }
 
-        button:hover {
-            transform: scale(1.15);
-            box-shadow: 0 0 18px #666;
+        .tos-content-area.expanded {
+            max-height: 70vh; /* Large enough value to cover all content smoothly */
+            padding: 20px; /* Add padding when expanded */
+            overflow-y: auto;
+        }
+
+        /* Header Styling (inside the collapsible area) */
+        .tos-content-area h1 {
+            color: #5d9cec;
+            font-size: 2.5rem;
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #333;
+        }
+
+        /* Scrollable Text Area */
+        .terms-text-scroll {
+            max-height: 400px; /* Limit internal scroll height */
+            overflow-y: auto;
+            padding-right: 15px; /* Space for scrollbar */
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .terms-text-scroll h2 {
+            color: #ccc;
+            font-size: 1.5rem;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+
+        .terms-text-scroll p {
+            margin-bottom: 15px;
+        }
+        
+        /* Fixed Footer/Button Bar */
+        .button-footer {
+            background: #111;
+            border: 2px solid #222;
+            border-top: none; /* Merges visually with the content when expanded */
+            border-radius: 0 0 12px 12px;
+            padding: 10px 20px 20px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Toggle Arrow Button */
+        .toggle-arrow-button {
+            background: none;
+            border: none;
+            color: #5d9cec;
+            cursor: pointer;
+            padding: 5px 10px 15px;
+            margin-bottom: 5px;
+            transition: color 0.2s ease;
+        }
+        
+        .toggle-arrow-button:hover {
+            color: #8cafff;
+        }
+
+        /* Styling for the double-V/chevron icon container */
+        .toggle-icon {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            line-height: 0.5;
+            padding-bottom: 5px; 
+            position: relative;
+        }
+        
+        /* Base SVG style for width/color and transition */
+        .chevron-style {
+            /* This viewBox is set up for a wider "V" shape (40 wide, 10 deep) */
+            fill: none;
+            stroke: #5d9cec;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            transition: transform 0.5s ease-in-out; /* Animation for movement and rotation */
+        }
+
+        /* Smaller, upper V/Chevron */
+        #v-top-puller {
+            width: 30px; /* Make it smaller */
+            height: 10px;
+            margin-bottom: 1px; /* FIX: Added 1px positive margin for separation when idle */
+            z-index: 2;
+        }
+
+        /* Larger, lower V/Chevron - stays put */
+        #v-bottom-anchor {
+            width: 40px; 
+            height: 10px;
+            z-index: 1;
+        }
+
+        /* --- STATE CLASSES --- */
+
+        /* Collapsed State (Default: Content is hidden, both arrows point UP) */
+        #v-top-puller, #v-bottom-anchor {
+            transform: rotate(180deg) translateY(0); 
+        }
+        
+        /* Expanded State for Anchor (Content visible, bottom arrow points DOWN) */
+        .expanded-anchor {
+            transform: rotate(0deg) !important; /* Points down, stays in place */
+        }
+
+        /* Expanded State for Puller (Content visible, top arrow flies UP and points DOWN) */
+        .expanded-puller {
+            /* Pushes the chevron up by a large amount (500px is enough to clear the 70vh max height) */
+            /* Translate Y must be first for the rotation to be correct */
+            transform: translateY(-500px) rotate(0deg) !important; 
+        }
+
+        /* Button Group Layout */
+        .button-group {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        /* Base styles for Agree/Disagree buttons */
+        .button-group button {
+            padding: 15px 30px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            border-radius: 10px;
+            transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+            min-width: 200px;
+        }
+        
+        /* Blue 'I agree' button style */
+        .agree-button {
+            background: #2a2a2a;
+            color: #eee;
+            border: 2px solid #5d9cec;
+            box-shadow: 0 0 10px rgba(93, 156, 236, 0.5);
+        }
+
+        .agree-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 18px #5d9cec;
+            background: #5d9cec;
+            color: #111;
+        }
+        
+        /* Red 'I disagree' button style */
+        .disagree-button {
+            background: #441a1a;
+            color: #eee;
+            border: 2px solid #ef4444;
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+        }
+
+        .disagree-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 18px #ef4444;
+            background: #ef4444;
+            color: #111;
+        }
+        
+        /* Message box for Disagree button */
+        .disagree-message {
+            position: absolute; 
+            bottom: 120px; 
+            width: calc(100% - 40px);
+            max-width: 760px;
+            background: #a80000;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: bold;
+            opacity: 1;
+            transition: opacity 0.3s ease;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            z-index: 10;
+        }
+
+        /* Custom Scrollbar */
+        .terms-text-scroll::-webkit-scrollbar {
+            width: 8px;
+        }
+        .terms-text-scroll::-webkit-scrollbar-track {
+            background: #111;
+            border-radius: 10px;
+        }
+        .terms-text-scroll::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 10px;
+        }
+        .terms-text-scroll::-webkit-scrollbar-thumb:hover {
+            background: #5d9cec;
         }
     </style>
 
@@ -39,18 +251,149 @@
         let clickSound;
 
         window.onload = () => {
+            // Audio loading logic remains the same.
             clickSound = new Audio("boot/audio/click_morph.mp3");
+            console.log("Audio initialized. Ready for interaction.");
         };
 
-        function go() {
-            clickSound.currentTime = 0;
-            clickSound.play();
+        /**
+         * Toggles the visibility of the Terms of Service content area and manages the flying chevron effect.
+         */
+        function toggleToS() {
+            const contentArea = document.getElementById('tos-content');
+            const puller = document.getElementById('v-top-puller');
+            const anchor = document.getElementById('v-bottom-anchor');
+
+            // Check if the current user interaction requires the sound
+            if (clickSound) {
+                clickSound.currentTime = 0;
+                clickSound.play().catch(e => console.error("Could not play sound:", e));
+            }
+
+            // Toggle the 'expanded' and 'collapsed' classes on the content
+            contentArea.classList.toggle('expanded');
+            contentArea.classList.toggle('collapsed');
+            
+            const isExpanded = contentArea.classList.contains('expanded');
+
+            // Toggle classes on the chevron elements for the "pull" and rotation effect
+            if (isExpanded) {
+                // Expanding: Puller flies up (transform Y), both point down (rotate 0deg)
+                puller.classList.add('expanded-puller');
+                anchor.classList.add('expanded-anchor');
+            } else {
+                // Collapsing: Puller flies back down (transform Y reset), both point up (rotate 180deg)
+                puller.classList.remove('expanded-puller');
+                anchor.classList.remove('expanded-anchor');
+            }
+        }
+
+        /**
+         * Function executed when the user agrees to the terms.
+         */
+        function agreeTerms() {
+            if (clickSound) {
+                clickSound.currentTime = 0;
+                clickSound.play().catch(e => console.error("Could not play sound:", e));
+            }
+            // Navigate to the next page as requested
             window.location.href = "boot/bootup.html";
+        }
+        
+        /**
+         * Function executed when the user disagrees with the terms.
+         * This now redirects to a blank page to simulate exiting the application.
+         */
+        function disagreeTerms() {
+            // Play sound for feedback
+            if (clickSound) {
+                clickSound.currentTime = 0;
+                clickSound.play().catch(e => console.error("Could not play sound:", e));
+            }
+            
+            const wrapper = document.querySelector('.app-wrapper');
+            
+            // 1. Remove any existing messages
+            const existingMessage = document.querySelector('.disagree-message');
+            if (existingMessage) {
+                existingMessage.remove();
+            }
+
+            // 2. Create the new message element to inform the user of the exit
+            const message = document.createElement('div');
+            message.textContent = "Exiting application. You will be redirected.";
+            message.classList.add('disagree-message');
+            wrapper.appendChild(message);
+            
+            // 3. Redirect the user to a blank page after a short delay (0.5 seconds)
+            // to simulate leaving the application and returning to the browser/system.
+            setTimeout(() => {
+                window.location.href = "about:blank"; 
+            }, 500); 
         }
     </script>
 </head>
 
 <body>
-    <button onclick="go()">I accept the license</button>
+    <div class="app-wrapper">
+        
+        <!-- 1. Collapsible Content Area -->
+        <div id="tos-content" class="tos-content-area collapsed">
+            <h1>License and Terms of Service (ToS)</h1>
+
+            <div class="terms-text-scroll">
+                <!-- Start of the ToS text. Easily add more here! -->
+                <h2>1. Welcome to MultiPixel</h2>
+                <p>
+                    By proceeding, you agree to these Terms of Service (the "Terms"). This software is provided for your entertainment and personal use only. The creators reserve all rights not expressly granted to you. Since you are under 18, it is important that you have permission from a parent or guardian to use this application.
+                </p>
+
+                <h2>2. Permitted Use</h2>
+                <p>
+                    You are granted a non-exclusive, non-transferable license to use this application for fun, personal, and non-commercial activities on compatible devices. You may not distribute, modify, reverse engineer, or create new versions of this application based on the original code.
+                </p>
+
+                <h2>3. Keeping it Safe</h2>
+                <p>
+                    We want this to be a safe and friendly place. Please remember to be respectful to others. The application is provided "as is" and the creators are not responsible for any issues or losses that might happen from using it. We work hard to keep it running smoothly!
+                </p>
+
+                <h2>4. Future Changes</h2>
+                <p>
+                    The creators might update these Terms in the future. We will let you know about any big changes the next time you open the application. If you keep using the app, it means you accept the new Terms.
+                </p>
+                
+                <h2>5. Contact Information</h2>
+                <p>
+                    If you or your parent/guardian have questions about these terms, please look for the official community support channels.
+                </p>
+                <!-- End of ToS text -->
+            </div>
+        </div>
+
+        <!-- 2. Fixed Button Footer (Stays at the bottom) -->
+        <div class="button-footer">
+            <button onclick="toggleToS()" class="toggle-arrow-button" aria-label="Toggle Terms of Service Visibility">
+                <span class="toggle-icon">
+                    <!-- Smaller V on top, will fly off and pull the TOS -->
+                    <svg id="v-top-puller" class="chevron-style" viewBox="0 0 40 10">
+                         <!-- Path for a wide, small downward chevron -->
+                         <path d="M 10 1 L 20 5 L 30 1"></path>
+                    </svg>
+                    <!-- Larger V on bottom, stays anchored in the footer -->
+                    <svg id="v-bottom-anchor" class="chevron-style" viewBox="0 0 40 10">
+                         <!-- Path for a wide, large downward chevron -->
+                         <path d="M 0 1 L 20 9 L 40 1"></path>
+                    </svg>
+                </span>
+            </button>
+            
+            <div class="button-group">
+                <button onclick="disagreeTerms()" class="disagree-button">I disagree</button>
+                <button onclick="agreeTerms()" class="agree-button">I agree</button>
+            </div>
+        </div>
+
+    </div>
 </body>
 </html>
