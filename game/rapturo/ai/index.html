@@ -3,25 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rapturo AI - MultiPixel</title>
+    <title>Rapturo AI</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js"></script>
 </head>
 <body>
+    <div class="chat-container">
+        <header>
+            <h2>Rapturo AI</h2>
+            <div id="status-indicator" class="status offline">Loading Model...</div>
+        </header>
 
-    <div class="container">
-        <h1>Rapturo AI Interface</h1>
-        
-        <div id="status" class="status">Loading Model...</div>
-
-        <div class="io-container">
-            <textarea id="input-text" placeholder="Type your prompt here..."></textarea>
-            <div id="output-text" class="output-box"></div>
+        <div id="chat-history" class="chat-history">
+            <div class="message system">
+                Welcome. I run entirely in your browser.
+            </div>
         </div>
 
-        <div class="controls">
-            <label>Temp: <input type="range" id="temp-slider" min="0.1" max="1.5" step="0.1" value="0.8"></label>
-            <button id="generate-btn" disabled>Generate</button>
+        <div class="input-area">
+            <input type="text" id="user-input" placeholder="Type a message..." disabled>
+            <button id="send-btn" disabled>Send</button>
         </div>
     </div>
 
