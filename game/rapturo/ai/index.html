@@ -1,11 +1,30 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Rapturo AI</title>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rapturo AI - MultiPixel</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js"></script>
 </head>
 <body>
-  <script type="module" src="./app.js"></script>
+
+    <div class="container">
+        <h1>Rapturo AI Interface</h1>
+        
+        <div id="status" class="status">Loading Model...</div>
+
+        <div class="io-container">
+            <textarea id="input-text" placeholder="Type your prompt here..."></textarea>
+            <div id="output-text" class="output-box"></div>
+        </div>
+
+        <div class="controls">
+            <label>Temp: <input type="range" id="temp-slider" min="0.1" max="1.5" step="0.1" value="0.8"></label>
+            <button id="generate-btn" disabled>Generate</button>
+        </div>
+    </div>
+
+    <script type="module" src="app.js"></script>
 </body>
 </html>
