@@ -1344,7 +1344,7 @@
             }
             
             if (changedX || changedZ) {
-                showGameMessage("You hit the world boundary!");
+                showGameMessage("The world ends here, L!");
                 player.velocity.x = 0;
                 player.velocity.z = 0;
             }
@@ -1393,10 +1393,10 @@
             player.health -= amount;
             if (player.health < 0) player.health = 0;
             renderHearts();
-            showGameMessage(`Ouch! -${amount} HP`);
+            showGameMessage(`Lol!! -${amount} HP`);
             
             if (player.health <= 0) {
-                showGameMessage("YOU DIED! Respawning...");
+                showGameMessage("YOU DIED! Skill issue...");
                 setTimeout(() => {
                     player.health = player.maxHealth;
                     renderHearts();
