@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RE-ENGINE v3.2 | Advanced Urban Sim</title>
+    <style>
+        :root { --gold: #f1c40f; --neon: #00f2ff; --bg: #0a0a0c; }
+        body { margin: 0; background: var(--bg); color: #fff; font-family: 'Courier New', monospace; overflow: hidden; }
+        #game-container { position: relative; width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; }
+        canvas { display: block; background: #1a1a1e; }
+        #ui {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; padding: 25px; box-sizing: border-box;
+            display: flex; flex-direction: column; justify-content: space-between;
+        }
+        .ui-top { display: flex; justify-content: space-between; align-items: flex-start; }
+        .counter { font-size: 38px; font-weight: 900; color: var(--gold); text-shadow: 3px 3px 0px #000; }
+        .label { font-size: 14px; color: #fff; letter-spacing: 1px; text-transform: uppercase; background: #000; padding: 2px 5px; }
+        #debug { 
+            background: rgba(0,0,0,0.8); padding: 10px; border-radius: 4px;
+            font-size: 10px; color: #0f0; border: 1px solid #333;
+        }
+        .badge { background: #fff; color: #000; padding: 4px 10px; font-weight: bold; border: 2px solid #000; }
+        .controls-hint { position: absolute; bottom: 80px; right: 25px; font-size: 12px; color: rgba(255,255,255,0.6); text-align: right; }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <canvas id="canvas"></canvas>
+        <div id="ui">
+            <div class="ui-top">
+                <div>
+                    <div class="label">EXPLORATION POINTS</div>
+                    <div id="score" class="counter">000000000</div>
+                </div>
+                <div style="text-align: right;">
+                    <div class="label">ACTIVITY</div>
+                    <div id="status" class="badge">WALKING</div>
+                </div>
+            </div>
+            
+            <div class="controls-hint">
+                [WASD] MOVE/STEER<br>
+                [SPACE] HANDBRAKE / SPRINT<br>
+                [F] ENTER/EXIT VEHICLE
+            </div>
+
+            <div id="debug">
+                FPS: <span id="fps">0</span> | ENTITIES: <span id="ent-count">0</span><br>
+                POS: <span id="pos">0,0</span>
+            </div>
+        </div>
+    </div>
+
+<script>
+/**
+ * RE-ENGINE 3.2 - "Advanced Entities"
+ * - Detailed Player Character (Animated)
+ * - Autonomous AI Traffic
+ * - Walking NPC Pedestrians
+ * - High-Efficiency Collision & Culling
+ */
+
+const SETTINGS = {
+    TILE_SIZE: 160,
+    FIXED_DT: 1/60,
+    FRICTION: 0.97,
+    MAX_VEHICLES: 12,
+    MAX_PEDS: 25,
+    VIEW_DIST: 1000
+};
+
+const MathUtils = {
+    dist: (x1, y1, x2, y2) => Math.hypot(x2 - x1, y2 - y1),
+    lerp: (a, b, t) => a + (b - a) * t,
+    clamp: (v, min, max) => Math.max(min, Math.min(max, v))
+};
+
+const FastRand = (s) => {
+    let t = s += 0x6D2B79F5;
+    t = Math.imul(t ^ t >>> 15, t | 1);
+    t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+};
+
+// --- TEXTURE CACHE ---
+const TextureFactory = {
+    cache: new Map(),
+    get(type, seed) {
+        const key = `${type}_${seed}`;
+        if (this.cache.has(key)) return this.cache.get(key);
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = SETTINGS.TILE_SIZE;
+        const tctx = canvas.getContext('2d');
+        this.render(type, tctx, seed);
+        this.cache.set(key, canvas);
+        return canvas;
+    },
+    render(type, ctx, seed) {
+        const rng = (offset) => FastRand(seed + offset);
+        const S = SETTINGS.TILE_SIZE;
+        if (type === 'ROAD') {
+            ctx.fillStyle = '#2c3238';
+            ctx.fillRect(0, 0, S, S);
+            ctx.fillStyle = 'rgba(255,255,255,0.05)';
+            for(let i=0; i<100; i++) ctx.fillRect(rng(i)*S, rng(i*2)*S, 2, 2);
+            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            ctx.fillRect(S/2 - 2, 0, 4, S/4);
+            ctx.fillRect(S/2 - 2, S/2, 4, S/4);
+        } else if (type === 'GRASS') {
+            ctx.fillStyle = '#2d5a27';
+            ctx.fillRect(0, 0, S, S);
+            for(let i=0; i<50; i++) {
+                ctx.fillStyle = rng(i) > 0.5 ? '#346b2d' : '#264d21';
+                ctx.fillRect(rng(i*2)*S, rng(i*3)*S, 4, 4);
+            }
+        } else if (type === 'BUILDING') {
+            ctx.fillStyle = '#4a4a4a';
+            ctx.fillRect(0, 0, S, S);
+            ctx.strokeStyle = '#333';
+            ctx.strokeRect(8, 8, S-16, S-16);
+            ctx.fillStyle = '#555';
+            ctx.fillRect(S*0.2, S*0.2, S*0.3, S*0.3);
+            ctx.fillStyle = '#222';
+            ctx.fillRect(S*0.25, S*0.25, S*0.2, S*0.2);
+        }
+    }
+};
+
+class Pedestrian {
+    constructor(x, y) {
+        this.x = x; this.y = y;
+        this.angle = Math.random() * Math.PI * 2;
+        this.speed = 0.8 + Math.random() * 0.5;
+        this.targetAngle = this.angle;
+        this.state = 'walk';
+        this.timer = Math.random() * 100;
+        this.color = `hsl(${Math.random()*360}, 50%, 50%)`;
+        this.frame = 0;
+    }
+    update(world) {
+        this.timer--;
+        if (this.timer <= 0) {
+            this.targetAngle += (Math.random() - 0.5) * 2;
+            this.timer = 100 + Math.random() * 200;
+        }
+        this.angle = MathUtils.lerp(this.angle, this.targetAngle, 0.05);
+        this.frame += 0.1;
+        
+        let nx = this.x + Math.cos(this.angle) * this.speed;
+        let ny = this.y + Math.sin(this.angle) * this.speed;
+
+        if (world.getTile(nx, ny) === 'BUILDING') {
+            this.targetAngle += Math.PI;
+            this.timer = 50;
+        } else {
+            this.x = nx; this.y = ny;
+        }
+    }
+    draw(ctx) {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.angle);
+        // Shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.beginPath(); ctx.ellipse(0, 2, 8, 5, 0, 0, Math.PI*2); ctx.fill();
+        // Arms animation
+        const swing = Math.sin(this.frame) * 5;
+        ctx.fillStyle = '#ffdbac';
+        ctx.fillRect(-6, -8 + swing, 4, 4);
+        ctx.fillRect(-6, 4 - swing, 4, 4);
+        // Body
+        ctx.fillStyle = this.color;
+        ctx.fillRect(-5, -6, 10, 12);
+        // Head
+        ctx.fillStyle = '#ffdbac';
+        ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI*2); ctx.fill();
+        ctx.restore();
+    }
+}
+
+class Vehicle {
+    constructor(x, y, color, isNPC = true) {
+        this.x = x; this.y = y;
+        this.angle = 0;
+        this.speed = 0;
+        this.color = color;
+        this.w = 64; this.h = 32;
+        this.isPlayer = false;
+        this.isNPC = isNPC;
+        this.targetSpeed = isNPC ? 2 + Math.random() * 2 : 0;
+    }
+    update(dt, keys, world) {
+        if (this.isPlayer) {
+            if (keys['w']) this.speed += 0.35;
+            if (keys['s']) this.speed -= 0.15;
+            if (Math.abs(this.speed) > 0.2) {
+                const turn = keys[' '] ? 0.12 : 0.07;
+                const dir = this.speed > 0 ? 1 : -1;
+                if (keys['a']) this.angle -= turn * dir;
+                if (keys['d']) this.angle += turn * dir;
+            }
+        } else if (this.isNPC) {
+            // Simple Traffic AI
+            this.speed = MathUtils.lerp(this.speed, this.targetSpeed, 0.05);
+            // Check for buildings ahead
+            const ax = this.x + Math.cos(this.angle) * 100;
+            const ay = this.y + Math.sin(this.angle) * 100;
+            if (world.getTile(ax, ay) === 'BUILDING') {
+                this.angle += 0.05;
+            }
+        }
+
+        this.speed *= SETTINGS.FRICTION;
+        const nx = this.x + Math.cos(this.angle) * this.speed;
+        const ny = this.y + Math.sin(this.angle) * this.speed;
+
+        if (world.getTile(nx, ny) !== 'BUILDING') {
+            this.x = nx; this.y = ny;
+        } else {
+            this.speed *= -0.5;
+            if (this.isNPC) this.angle += Math.PI * 0.5;
+        }
+    }
+    draw(ctx) {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.angle);
+        // Car shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.fillRect(-this.w/2 + 5, -this.h/2 + 5, this.w, this.h);
+        // Main Body
+        ctx.fillStyle = this.color;
+        ctx.fillRect(-this.w/2, -this.h/2, this.w, this.h);
+        // Roof
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(-15, -this.h/2 + 5, 25, this.h - 10);
+        // Windshield
+        ctx.fillStyle = '#87ceeb';
+        ctx.fillRect(10, -this.h/2 + 6, 8, this.h - 12);
+        // Lights
+        ctx.fillStyle = '#fff'; ctx.fillRect(this.w/2-4, -this.h/2+2, 4, 6); ctx.fillRect(this.w/2-4, this.h/2-8, 4, 6);
+        ctx.fillStyle = '#f00'; ctx.fillRect(-this.w/2, -this.h/2+2, 4, 6); ctx.fillRect(-this.w/2, this.h/2-8, 4, 6);
+        ctx.restore();
+    }
+}
+
+class Engine {
+    constructor() {
+        this.canvas = document.getElementById('canvas');
+        this.ctx = this.canvas.getContext('2d', { alpha: false });
+        this.vehicles = [];
+        this.peds = [];
+        this.player = { x: 400, y: 400, angle: 0, vehicle: null, score: 0, frame: 0 };
+        this.cam = { x: 400, y: 400 };
+        this.keys = {};
+        this.lastTime = 0;
+        this.init();
+    }
+
+    getTile(x, y) {
+        const tx = Math.floor(x / SETTINGS.TILE_SIZE);
+        const ty = Math.floor(y / SETTINGS.TILE_SIZE);
+        if (tx % 5 === 0 || ty % 5 === 0) return 'ROAD';
+        const noise = FastRand(tx * 73 + ty * 31);
+        return noise > 0.4 ? 'BUILDING' : 'GRASS';
+    }
+
+    init() {
+        window.onresize = () => {
+            this.canvas.width = window.innerWidth;
+            this.canvas.height = window.innerHeight;
+        };
+        window.onresize();
+
+        window.onkeydown = (e) => this.keys[e.key.toLowerCase()] = true;
+        window.onkeyup = (e) => this.keys[e.key.toLowerCase()] = false;
+
+        // Spawn Initial Vehicles
+        for(let i=0; i < SETTINGS.MAX_VEHICLES; i++) {
+            this.vehicles.push(new Vehicle(Math.random()*3000, Math.random()*3000, i%2?'#d35400':'#2980b9'));
+        }
+        // Spawn Pedestrians
+        for(let i=0; i < SETTINGS.MAX_PEDS; i++) {
+            this.peds.push(new Pedestrian(Math.random()*2000, Math.random()*2000));
+        }
+
+        requestAnimationFrame(t => this.loop(t));
+    }
+
+    update(dt) {
+        // Vehicle Entry/Exit
+        if (this.keys['f']) {
+            this.keys['f'] = false;
+            if (this.player.vehicle) {
+                this.player.x += 80;
+                this.player.vehicle.isPlayer = false;
+                this.player.vehicle = null;
+            } else {
+                const car = this.vehicles.find(v => MathUtils.dist(v.x, v.y, this.player.x, this.player.y) < 90);
+                if (car) { 
+                    this.player.vehicle = car; 
+                    car.isPlayer = true; 
+                    car.isNPC = false;
+                }
+            }
+        }
+
+        if (this.player.vehicle) {
+            this.player.x = this.player.vehicle.x;
+            this.player.y = this.player.vehicle.y;
+            this.player.angle = this.player.vehicle.angle;
+            this.player.score += Math.abs(this.player.vehicle.speed) * 0.05;
+        } else {
+            // Walking logic
+            let mx = 0, my = 0;
+            const speed = this.keys[' '] ? 5 : 3;
+            if (this.keys['w']) my -= speed; if (this.keys['s']) my += speed;
+            if (this.keys['a']) mx -= speed; if (this.keys['d']) mx += speed;
+            
+            if (this.getTile(this.player.x + mx, this.player.y) !== 'BUILDING') this.player.x += mx;
+            if (this.getTile(this.player.x, this.player.y + my) !== 'BUILDING') this.player.y += my;
+            
+            if (mx || my) {
+                this.player.angle = MathUtils.lerp(this.player.angle, Math.atan2(my, mx), 0.15);
+                this.player.frame += 0.15;
+            }
+        }
+
+        // Update All Entities
+        this.vehicles.forEach(v => v.update(dt, this.keys, this));
+        this.peds.forEach(p => p.update(this));
+
+        // Camera Follow
+        this.cam.x += (this.player.x - this.cam.x) * 0.08;
+        this.cam.y += (this.player.y - this.cam.y) * 0.08;
+    }
+
+    draw() {
+        const ctx = this.ctx;
+        const { width: w, height: h } = this.canvas;
+        const zoom = this.player.vehicle ? 0.85 : 1.15;
+
+        ctx.fillStyle = '#111';
+        ctx.fillRect(0, 0, w, h);
+
+        ctx.save();
+        ctx.translate(w/2, h/2);
+        ctx.scale(zoom, zoom);
+        ctx.translate(-this.cam.x, -this.cam.y);
+
+        const range = SETTINGS.VIEW_DIST / zoom;
+        const sx = Math.floor((this.cam.x - range) / SETTINGS.TILE_SIZE);
+        const ex = Math.ceil((this.cam.x + range) / SETTINGS.TILE_SIZE);
+        const sy = Math.floor((this.cam.y - range) / SETTINGS.TILE_SIZE);
+        const ey = Math.ceil((this.cam.y + range) / SETTINGS.TILE_SIZE);
+
+        // Ground Pass
+        for(let x=sx; x<=ex; x++) {
+            for(let y=sy; y<=ey; y++) {
+                const type = this.getTile(x * SETTINGS.TILE_SIZE, y * SETTINGS.TILE_SIZE);
+                if (type !== 'BUILDING') {
+                    ctx.drawImage(TextureFactory.get(type, x * 1000 + y), x * SETTINGS.TILE_SIZE, y * SETTINGS.TILE_SIZE);
+                } else {
+                    ctx.fillStyle = '#7f8c8d';
+                    ctx.fillRect(x * SETTINGS.TILE_SIZE, y * SETTINGS.TILE_SIZE, SETTINGS.TILE_SIZE, SETTINGS.TILE_SIZE);
+                }
+            }
+        }
+
+        // NPC Pass
+        this.peds.forEach(p => {
+            if (MathUtils.dist(p.x, p.y, this.cam.x, this.cam.y) < range) p.draw(ctx);
+        });
+
+        // Vehicle Pass
+        this.vehicles.forEach(v => {
+            if (MathUtils.dist(v.x, v.y, this.cam.x, this.cam.y) < range) v.draw(ctx);
+        });
+
+        // Player (On Foot)
+        if (!this.player.vehicle) {
+            ctx.save();
+            ctx.translate(this.player.x, this.player.y);
+            ctx.rotate(this.player.angle);
+            // Character Body
+            const swing = Math.sin(this.player.frame) * 6;
+            ctx.fillStyle = '#ffdbac';
+            ctx.fillRect(-7, -10 + swing, 5, 5); // Arm L
+            ctx.fillRect(-7, 5 - swing, 5, 5);  // Arm R
+            ctx.fillStyle = '#3498db'; // Shirt
+            ctx.fillRect(-6, -7, 12, 14);
+            ctx.fillStyle = '#ffdbac'; // Head
+            ctx.beginPath(); ctx.arc(0, 0, 7, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#222'; ctx.fillRect(4, -3, 3, 6); // Eyes/Face dir
+            ctx.restore();
+        }
+
+        // Building Pass (Pseudo-3D)
+        for(let x=sx; x<=ex; x++) {
+            for(let y=sy; y<=ey; y++) {
+                if (this.getTile(x * SETTINGS.TILE_SIZE, y * SETTINGS.TILE_SIZE) === 'BUILDING') {
+                    const bx = x * SETTINGS.TILE_SIZE;
+                    const by = y * SETTINGS.TILE_SIZE;
+                    const offX = (bx + SETTINGS.TILE_SIZE/2 - this.cam.x) * 0.18;
+                    const offY = (by + SETTINGS.TILE_SIZE/2 - this.cam.y) * 0.18;
+
+                    ctx.fillStyle = '#2c3e50';
+                    ctx.beginPath();
+                    ctx.moveTo(bx, by);
+                    ctx.lineTo(bx + offX, by + offY);
+                    ctx.lineTo(bx + offX + SETTINGS.TILE_SIZE, by + offY);
+                    ctx.lineTo(bx + SETTINGS.TILE_SIZE, by);
+                    ctx.fill();
+
+                    ctx.drawImage(TextureFactory.get('BUILDING', x * 1000 + y), bx + offX, by + offY);
+                    ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+                    ctx.strokeRect(bx + offX, by + offY, SETTINGS.TILE_SIZE, SETTINGS.TILE_SIZE);
+                }
+            }
+        }
+
+        ctx.restore();
+
+        // UI
+        document.getElementById('score').innerText = Math.floor(this.player.score).toString().padStart(9, '0');
+        document.getElementById('status').innerText = this.player.vehicle ? 'DRIVING' : 'WALKING';
+        document.getElementById('ent-count').innerText = this.vehicles.length + this.peds.length;
+        document.getElementById('pos').innerText = `${Math.floor(this.player.x)},${Math.floor(this.player.y)}`;
+        document.getElementById('fps').innerText = this.fps;
+    }
+
+    loop(t) {
+        const dt = (t - this.lastTime) / 1000;
+        this.lastTime = t;
+        this.fps = Math.round(1/dt);
+        this.update(dt);
+        this.draw();
+        requestAnimationFrame(t => this.loop(t));
+    }
+}
+
+new Engine();
+</script>
+</body>
+</html>
