@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rap4OS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
+    <style>
+        :root {
+            --accent: #1a73e8;
+            --bg-glass: rgba(255, 255, 255, 0.7);
+            --border-glass: rgba(255, 255, 255, 0.2);
+            --system-brightness: 100%;
+        }
+        .dark {
+            --bg-glass: rgba(32, 33, 36, 0.8);
+            --border-glass: rgba(255, 255, 255, 0.1);
+        }
+        body {
+            overflow: hidden;
+            user-select: none;
+            font-family: 'Inter', -apple-system, sans-serif;
+            background-color: #000;
+            filter: brightness(var(--system-brightness));
+            transition: filter 0.1s ease-out;
+        }
+        .shelf {
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .launcher {
+            background: var(--bg-glass);
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
+            transform: translateY(100vh);
+            transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 10000;
+        }
+        .launcher.open { transform: translateY(0); }
+        
+        .window {
+            position: absolute;
+            background: white;
+            border-radius: 14px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid var(--border-glass);
+        }
+        .dark .window { background: #202124; color: white; }
+        .dark .window-header { background: #202124; border-bottom: 1px solid rgba(255,255,255,0.05); }
+
+        .desktop-icon {
+            width: 90px;
+            padding: 10px;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            color: white;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            transition: background 0.2s;
+            cursor: pointer;
+        }
+        .desktop-icon:hover { background: rgba(255,255,255,0.15); }
+        .desktop-icon i { font-size: 32px; }
+
+        .quick-settings {
+            background: var(--bg-glass);
+            backdrop-filter: blur(25px);
+            border-radius: 24px;
+            transform: translateY(120%);
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            border: 1px solid var(--border-glass);
+        }
+        .quick-settings.open { transform: translateY(0); }
+
+        .active-indicator {
+            width: 12px;
+            height: 4px;
+            background: white;
+            border-radius: 10px;
+            margin-top: 4px;
+            opacity: 0;
+        }
+        .is-running .active-indicator { opacity: 1; }
+        
+        iframe { background: white; transition: filter 0.3s; }
+        .dark iframe { filter: brightness(0.8) contrast(1.1); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="w-screen h-screen transition-all duration-700" id="desktop-body" 
+      style="background-image: url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80&w=2000'); background-size: cover; background-position: center;">
+
+    <!-- Interaction Layer -->
+    <div class="absolute inset-0 z-0" onclick="closeAllMenus()">
+        <div class="p-8 grid grid-flow-col grid-rows-6 gap-4 w-fit">
+            <div class="desktop-icon" ondblclick="openApp('Files', 'explorer.html', 'bg-blue-500', 'fa-folder')">
+                <i class="fa-solid fa-folder text-blue-400"></i>
+                <span class="text-xs font-semibold">My Files</span>
+            </div>
+            <div class="desktop-icon" ondblclick="openApp('Terminal', 'terminal.html', 'bg-gray-800', 'fa-terminal')">
+                <i class="fa-solid fa-terminal text-gray-200"></i>
+                <span class="text-xs font-semibold">Terminal</span>
+            </div>
+            <div class="desktop-icon" ondblclick="openSettings()">
+                <i class="fa-solid fa-gear text-gray-400"></i>
+                <span class="text-xs font-semibold">Settings</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="fixed top-0 left-0 right-0 h-8 bg-black/10 backdrop-blur-sm flex items-center justify-between px-4 z-[9998] text-white text-[11px] font-medium tracking-wide">
+        <div class="flex items-center gap-4">
+            <span class="opacity-80">Rap4OS v1.0.4</span>
+        </div>
+        <div id="top-clock" class="absolute left-1/2 -translate-x-1/2 font-bold uppercase">12:00 PM</div>
+        <div class="flex items-center gap-3">
+            <span id="cpu-load">CPU: 4%</span>
+        </div>
+    </div>
+
+    <div id="windows-container" class="relative z-10 w-full h-full pointer-events-none pt-8 pb-14"></div>
+
+    <!-- Quick Settings -->
+    <div id="quick-settings" class="quick-settings fixed bottom-16 right-4 w-80 p-6 z-[10001] shadow-2xl dark:text-white">
+        <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center">
+                    <i class="fa-solid fa-user"></i>
+                </div>
+                <span class="font-bold">Rap4OS Guest</span>
+            </div>
+            <button onclick="location.reload()" class="p-2 text-red-500 hover:bg-red-500/10 rounded-full">
+                <i class="fa-solid fa-power-off"></i>
+            </button>
+        </div>
+        
+        <div class="grid grid-cols-2 gap-3 mb-6">
+            <button onclick="toggleWifi()" id="wifi-btn" class="flex items-center gap-3 p-3 bg-blue-600 text-white rounded-2xl transition-all">
+                <i class="fa-solid fa-wifi"></i>
+                <span class="text-xs font-bold">Wi-Fi</span>
+            </button>
+            <button onclick="toggleDarkMode()" id="dark-btn" class="flex items-center gap-3 p-3 bg-gray-200 dark:bg-gray-700 rounded-2xl transition-all">
+                <i class="fa-solid fa-moon"></i>
+                <span class="text-xs font-bold">Dark UI</span>
+            </button>
+        </div>
+
+        <div class="space-y-4">
+            <div class="flex items-center gap-4">
+                <i class="fa-solid fa-volume-high opacity-50"></i>
+                <input type="range" class="flex-1 h-1.5 bg-gray-200 dark:bg-gray-800 rounded-lg appearance-none accent-blue-600">
+            </div>
+            <div class="flex items-center gap-4">
+                <i class="fa-solid fa-sun opacity-50"></i>
+                <input type="range" min="30" max="100" value="100" oninput="adjustBrightness(this.value)" class="flex-1 h-1.5 bg-gray-200 dark:bg-gray-800 rounded-lg appearance-none accent-blue-600">
+            </div>
+        </div>
+    </div>
+
+    <!-- App Launcher -->
+    <div id="launcher" class="launcher fixed inset-0 flex items-center justify-center p-8" onclick="closeLauncher()">
+        <div class="w-full max-w-3xl h-[500px] bg-inherit rounded-[32px] shadow-2xl p-10 flex flex-col gap-8" onclick="event.stopPropagation()">
+            <input type="text" placeholder="Search Rap4OS..." class="w-full h-14 pl-12 pr-6 bg-white/20 dark:bg-black/20 backdrop-blur rounded-2xl outline-none text-lg border border-white/20">
+            
+            <div class="grid grid-cols-5 gap-8 overflow-y-auto no-scrollbar">
+                <button onclick="openApp('Files', 'explorer.html', 'bg-blue-500', 'fa-folder')" class="flex flex-col items-center gap-2 group">
+                    <div class="w-16 h-16 bg-blue-500 rounded-2xl shadow-lg flex items-center justify-center text-white text-2xl group-hover:-translate-y-1 transition-transform">
+                        <i class="fa-solid fa-folder"></i>
+                    </div>
+                    <span class="text-xs font-medium">Files</span>
+                </button>
+                <button onclick="openApp('Terminal', 'terminal.html', 'bg-gray-900', 'fa-terminal')" class="flex flex-col items-center gap-2 group">
+                    <div class="w-16 h-16 bg-gray-900 rounded-2xl shadow-lg flex items-center justify-center text-white text-2xl group-hover:-translate-y-1 transition-transform">
+                        <i class="fa-solid fa-terminal"></i>
+                    </div>
+                    <span class="text-xs font-medium">Terminal</span>
+                </button>
+                <button onclick="openSettings()" class="flex flex-col items-center gap-2 group">
+                    <div class="w-16 h-16 bg-gray-400 rounded-2xl shadow-lg flex items-center justify-center text-white text-2xl group-hover:-translate-y-1 transition-transform">
+                        <i class="fa-solid fa-gear"></i>
+                    </div>
+                    <span class="text-xs font-medium">Settings</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Shelf -->
+    <div class="shelf fixed bottom-0 left-0 right-0 h-14 flex items-center justify-between px-6 z-[9999]">
+        <button onclick="toggleLauncher()" class="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all group">
+            <i class="fa-solid fa-cube text-white text-lg group-hover:rotate-45 transition-transform"></i>
+        </button>
+
+        <div id="shelf-apps" class="flex-1 flex justify-center gap-4"></div>
+
+        <button onclick="toggleQuickSettings()" class="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-white flex items-center gap-3">
+            <i class="fa-solid fa-wifi text-[10px]"></i>
+            <span id="clock" class="text-xs font-bold">00:00</span>
+        </button>
+    </div>
+
+    <script>
+        const APP_BASE_PATH = 'MultiPixel/game/rapturo/os/apps/';
+        let zIndexCounter = 100;
+        const openWindows = {};
+        let isWifiOn = true;
+        let isDark = false;
+
+        function updateSystemInfo() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+            document.getElementById('clock').textContent = timeStr;
+            document.getElementById('top-clock').textContent = timeStr;
+            document.getElementById('cpu-load').textContent = `CPU: ${Math.floor(Math.random() * 10) + 2}%`;
+        }
+        setInterval(updateSystemInfo, 1000);
+        updateSystemInfo();
+
+        function toggleLauncher() { document.getElementById('launcher').classList.toggle('open'); document.getElementById('quick-settings').classList.remove('open'); }
+        function closeLauncher() { document.getElementById('launcher').classList.remove('open'); }
+        function toggleQuickSettings() { document.getElementById('quick-settings').classList.toggle('open'); closeLauncher(); }
+        function closeAllMenus() { closeLauncher(); document.getElementById('quick-settings').classList.remove('open'); }
+
+        function adjustBrightness(val) {
+            document.documentElement.style.setProperty('--system-brightness', val + '%');
+        }
+
+        function toggleDarkMode() {
+            isDark = !isDark;
+            const doc = document.documentElement;
+            const btn = document.getElementById('dark-btn');
+            
+            if (isDark) {
+                doc.classList.add('dark');
+                doc.classList.remove('light');
+                btn.className = "flex items-center gap-3 p-3 bg-blue-600 text-white rounded-2xl transition-all";
+            } else {
+                doc.classList.remove('dark');
+                doc.classList.add('light');
+                btn.className = "flex items-center gap-3 p-3 bg-gray-200 dark:bg-gray-700 rounded-2xl transition-all";
+            }
+        }
+
+        function toggleWifi() {
+            isWifiOn = !isWifiOn;
+            document.getElementById('wifi-btn').className = `flex items-center gap-3 p-3 rounded-2xl transition-all ${isWifiOn ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 dark:text-gray-400'}`;
+        }
+
+        function openApp(title, fileName, color, icon) {
+            if (openWindows[title]) { focusWindow(title); closeLauncher(); return; }
+            const winId = `win-${Date.now()}`;
+            const win = document.createElement('div');
+            win.id = winId;
+            win.className = 'window pointer-events-auto';
+            win.style.width = '800px'; win.style.height = '500px';
+            win.style.left = '100px'; win.style.top = '100px';
+            win.style.zIndex = ++zIndexCounter;
+
+            win.innerHTML = `
+                <div class="window-header h-11 flex items-center justify-between px-4 bg-white" onmousedown="startDrag(event, '${winId}')">
+                    <span class="text-xs font-bold opacity-70 flex items-center gap-2">
+                        <i class="fa-solid ${icon} ${color.replace('bg-', 'text-')}"></i> ${title}
+                    </span>
+                    <button class="w-7 h-7 hover:bg-red-500 hover:text-white rounded-lg transition-colors" onclick="closeWindow('${title}', '${winId}')">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <div class="flex-1 relative">
+                    <iframe src="${APP_BASE_PATH}${fileName}" class="w-full h-full border-none"></iframe>
+                </div>
+            `;
+            document.getElementById('windows-container').appendChild(win);
+            openWindows[title] = { id: winId, color, icon };
+            renderShelf();
+            closeLauncher();
+        }
+
+        function openSettings() {
+            openApp('Settings', 'settings.html', 'bg-gray-500', 'fa-gear');
+        }
+
+        function closeWindow(title, id) {
+            document.getElementById(id).remove();
+            delete openWindows[title];
+            renderShelf();
+        }
+
+        function focusWindow(title) {
+            const data = openWindows[title];
+            document.getElementById(data.id).style.zIndex = ++zIndexCounter;
+        }
+
+        function renderShelf() {
+            const container = document.getElementById('shelf-apps');
+            container.innerHTML = '';
+            Object.keys(openWindows).forEach(title => {
+                const data = openWindows[title];
+                const btn = document.createElement('button');
+                btn.className = 'w-10 h-10 rounded-xl ' + data.color + ' flex items-center justify-center text-white shadow-lg is-running';
+                btn.onclick = () => focusWindow(title);
+                btn.innerHTML = `<i class="fa-solid ${data.icon}"></i><div class="active-indicator"></div>`;
+                container.appendChild(btn);
+            });
+        }
+
+        let dragItem = null, offset = { x: 0, y: 0 };
+        function startDrag(e, id) {
+            dragItem = document.getElementById(id);
+            dragItem.style.zIndex = ++zIndexCounter;
+            const rect = dragItem.getBoundingClientRect();
+            offset.x = e.clientX - rect.left; offset.y = e.clientY - rect.top;
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', endDrag);
+        }
+        function drag(e) { if (dragItem) { dragItem.style.left = (e.clientX - offset.x) + 'px'; dragItem.style.top = (e.clientY - offset.y) + 'px'; } }
+        function endDrag() { dragItem = null; document.removeEventListener('mousemove', drag); document.removeEventListener('mouseup', endDrag); }
+    </script>
+</body>
+</html>
