@@ -1,1 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Raptor4 Boot Sequence</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #050505;
+            color: #e0e0e0;
+            font-family: 'Orbitron', sans-serif;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            perspective: 1000px;
+        }
 
+        /* CRT Scanline Effect */
+        .scanlines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                to bottom,
+                rgba(255,255,255,0),
+                rgba(255,255,255,0) 50%,
+                rgba(0,0,0,0.2) 50%,
+                rgba(0,0,0,0.2)
+            );
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* White Out Overlay */
+        .white-out {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: white;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 100;
+            transition: opacity 0.8s ease-in;
+        }
+        .white-out.active {
+            opacity: 1;
+        }
+
+        /* Wrapper to stack logo and loader vertically */
+        .main-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2rem;
+        }
+
+        .container {
+            font-size: 4rem;
+            font-weight: 900;
+            display: flex;
+            align-items: center;
+            letter-spacing: 0.05em;
+            position: relative;
+            filter: drop-shadow(0 0 10px rgba(0, 255, 255, 0.5));
+        }
+
+        .text-part {
+            display: inline-block;
+            white-space: nowrap;
+            transition: all 0.5s ease;
+        }
+
+        .static-r {
+            color: #0ff;
+            text-shadow: 0 0 15px #0ff;
+        }
+        
+        .static-tor {
+            color: #0ff;
+            text-shadow: 0 0 15px #0ff;
+            transform-origin: left;
+            overflow: hidden;
+            max-width: 3em; 
+            opacity: 1;
+        }
+
+        .morph-zone {
+            position: relative;
+            display: inline-flex;
+            overflow: visible;
+            height: 1.2em;
+            align-items: center;
+            width: 3.5em; 
+            transition: width 1.5s cubic-bezier(0.4, 0.0, 0.2, 1);
+        }
+
+        .elimin {
+            position: absolute;
+            left: 0;
+            color: #0ff;
+            text-shadow: 0 0 15px #0ff;
+            transform-origin: left center;
+        }
+
+        .apt {
+            position: absolute;
+            left: 0;
+            opacity: 0;
+            color: #0ff;
+            text-shadow: 0 0 15px #0ff;
+            transform: translateX(20px) scale(0.9);
+        }
+
+        .burn-number {
+            opacity: 0;
+            color: #ffaa00;
+            margin-left: 0.1em;
+            transform: scale(3);
+            display: inline-block;
+            transition: transform 1s ease;
+        }
+
+        .os-text {
+            color: #0ff;
+            text-shadow: 0 0 15px #0ff;
+            opacity: 0;
+            transform: translateX(50px);
+            margin-left: 0.1em;
+            width: 0; 
+        }
+
+        /* --- Loading Animation --- */
+        .loader-container {
+            width: 80px;
+            height: 80px;
+            position: relative;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .loader-container.active {
+            opacity: 1;
+        }
+
+        .loader-ring {
+            position: absolute;
+            border-radius: 50%;
+            border: 1px solid rgba(0, 255, 255, 0.15);
+            box-shadow: 0 0 5px rgba(0, 255, 255, 0.05);
+        }
+
+        .ring-1 { width: 100%; height: 100%; }
+        .ring-2 { width: 70%; height: 70%; border-color: rgba(0, 255, 255, 0.1); }
+        .ring-3 { width: 40%; height: 40%; border-color: rgba(0, 255, 255, 0.05); }
+
+        .central-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #0ff;
+            border-radius: 50%;
+            box-shadow: 0 0 15px #0ff;
+            animation: pulseCentral 1s ease-in-out infinite;
+        }
+
+        .orbiter {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            animation: spin 1.5s linear infinite;
+        }
+
+        .dot {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%) translateY(-50%);
+            width: 6px;
+            height: 6px;
+            background-color: #0ff;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #0ff, 0 0 20px #0ff;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes pulseCentral {
+            0%, 100% { transform: scale(1); opacity: 0.8; box-shadow: 0 0 10px #0ff; }
+            50% { transform: scale(1.5); opacity: 1; box-shadow: 0 0 25px #0ff; }
+        }
+
+        /* --- Animation Classes --- */
+        .anim-elimin-out { animation: eliminExit 1.5s forwards cubic-bezier(0.4, 0.0, 0.2, 1); }
+        .anim-apt-in { animation: aptEnter 1.5s forwards cubic-bezier(0.4, 0.0, 0.2, 1); }
+        .shrink-zone { width: 1.6em !important; }
+        .anim-burn { animation: burnIn 0.8s forwards ease-out; }
+        .anim-tor-gone { animation: torGone 1.2s forwards cubic-bezier(0.4, 0.0, 0.2, 1); }
+        .anim-os-enter { animation: osEnter 1.2s forwards cubic-bezier(0.4, 0.0, 0.2, 1); }
+
+        @keyframes eliminExit {
+            0% { opacity: 1; transform: translateX(0) scaleX(1); filter: blur(0px); }
+            100% { opacity: 0; transform: translateX(-150%) scaleX(1.5); filter: blur(10px); }
+        }
+
+        @keyframes aptEnter {
+            0% { opacity: 0; transform: translateX(50px); filter: blur(5px); }
+            100% { opacity: 1; transform: translateX(0); filter: blur(0px); }
+        }
+
+        @keyframes burnIn {
+            0% { opacity: 0; transform: scale(4); color: #fff; text-shadow: 0 0 50px #fff, 0 0 100px #ffaa00; }
+            20% { opacity: 1; }
+            60% { transform: scale(1); color: #fff; text-shadow: 0 0 30px #ff4d00, 0 0 60px #ff0000; }
+            100% { opacity: 1; transform: scale(1); color: #ff3300; text-shadow: 0 0 5px #ff0000, 0 0 10px #ff3300, 0 0 20px #800000; }
+        }
+
+        @keyframes torGone {
+            0% { opacity: 1; max-width: 3em; transform: translateX(0); }
+            100% { opacity: 0; max-width: 0; transform: translateX(-50px); margin: 0; }
+        }
+
+        @keyframes osEnter {
+            0% { opacity: 0; width: 0; transform: translateX(50px); }
+            50% { width: 1.5em; } 
+            100% { opacity: 1; width: auto; transform: translateX(0); }
+        }
+
+        .action-btn {
+            position: absolute;
+            bottom: 15%;
+            padding: 12px 24px;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid #333;
+            color: #555;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1rem;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: all 0.3s;
+            opacity: 0;
+            pointer-events: none;
+            text-transform: uppercase;
+        }
+        .action-btn.visible {
+            opacity: 1;
+            pointer-events: all;
+            animation: pulseBtn 2s infinite;
+        }
+        .action-btn:hover {
+            border-color: #0ff;
+            color: #0ff;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+            background: rgba(0, 255, 255, 0.05);
+        }
+
+        .status-msg {
+            position: absolute;
+            bottom: -40px;
+            font-size: 0.8rem;
+            color: #0ff;
+            opacity: 0;
+            transition: opacity 0.5s;
+            letter-spacing: 2px;
+        }
+        .status-msg.show {
+            opacity: 1;
+        }
+
+        @keyframes pulseBtn {
+            0% { box-shadow: 0 0 0 0 rgba(0, 255, 255, 0); }
+            70% { box-shadow: 0 0 0 10px rgba(0, 255, 255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(0, 255, 255, 0); }
+        }
+
+        @media (max-width: 600px) {
+            .container { font-size: 2rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="scanlines"></div>
+    <div class="white-out" id="whiteOut"></div>
+
+    <div class="main-wrapper">
+        <div class="container">
+            <span class="text-part static-r">R</span>
+            <div class="morph-zone" id="morphZone">
+                <span class="text-part elimin" id="eliminText">elimin</span>
+                <span class="text-part apt" id="aptText">ap</span>
+            </div>
+            <span class="text-part static-tor" id="torText">tor</span>
+            <span class="text-part burn-number" id="number4">4</span>
+            <span class="text-part os-text" id="osText">OS</span>
+        </div>
+
+        <div class="loader-container" id="loader">
+            <div class="loader-ring ring-1"></div>
+            <div class="loader-ring ring-2"></div>
+            <div class="loader-ring ring-3"></div>
+            <div class="central-dot"></div>
+            <div class="orbiter">
+                <div class="dot"></div>
+            </div>
+            <div class="status-msg" id="statusMsg">SYSTEM READY</div>
+        </div>
+    </div>
+
+    <button class="action-btn" id="actionBtn" onclick="bootOS()">BOOT OS</button>
+
+    <script>
+        const morphZone = document.getElementById('morphZone');
+        const eliminText = document.getElementById('eliminText');
+        const aptText = document.getElementById('aptText');
+        const torText = document.getElementById('torText');
+        const number4 = document.getElementById('number4');
+        const osText = document.getElementById('osText');
+        const actionBtn = document.getElementById('actionBtn');
+        const loader = document.getElementById('loader');
+        const statusMsg = document.getElementById('statusMsg');
+        const whiteOut = document.getElementById('whiteOut');
+
+        function runInitialSequence() {
+            setTimeout(() => {
+                eliminText.classList.add('anim-elimin-out');
+                aptText.classList.add('anim-apt-in');
+                morphZone.classList.add('shrink-zone');
+            }, 1000);
+
+            setTimeout(() => {
+                number4.classList.add('anim-burn');
+            }, 2600);
+
+            setTimeout(() => {
+                actionBtn.classList.add('visible');
+            }, 4000);
+        }
+
+        function bootOS() {
+            actionBtn.classList.remove('visible');
+            torText.classList.add('anim-tor-gone');
+            
+            setTimeout(() => {
+                osText.classList.add('anim-os-enter');
+            }, 400);
+
+            setTimeout(() => {
+                startLoading();
+            }, 1600);
+        }
+
+        function startLoading() {
+            loader.classList.add('active');
+            const randomDuration = Math.floor(Math.random() * 4000) + 3000;
+
+            setTimeout(() => {
+                // Fade loader out
+                loader.style.opacity = '0';
+                
+                setTimeout(() => {
+                    // Flash screen white
+                    whiteOut.classList.add('active');
+                    
+                    // Redirect after flash has begun (0.8s into transition)
+                    setTimeout(() => {
+                        window.location.href = "MultiPixel/game/rapturo/os/.os.html";
+                    }, 1000);
+                }, 500);
+            }, randomDuration);
+        }
+
+        window.addEventListener('load', runInitialSequence);
+    </script>
+</body>
+</html>
