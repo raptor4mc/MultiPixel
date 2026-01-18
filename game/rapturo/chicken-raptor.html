@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAPTOR PROTOCOL // ADVANCED EVOLUTIONARY ENGINE</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=JetBrains+Mono:ital,wght@0,300;0,700;1,400&display=swap');
+
+        :root {
+            --primary: #00ff9d;
+            --primary-dim: #006b42;
+            --bg-dark: #020617;
+            --bg-card: #0f172a;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --accent: #38bdf8;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: #e2e8f0;
+            font-family: 'JetBrains Mono', monospace;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* --- UI UTILITIES --- */
+        .glass { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.1); }
+        .neon-text { text-shadow: 0 0 10px var(--primary); }
+        .neon-border { box-shadow: 0 0 15px rgba(0, 255, 157, 0.2); }
+        
+        /* --- ANIMATIONS --- */
+        @keyframes scan {
+            0% { top: -10%; }
+            100% { top: 110%; }
+        }
+        .scanner-line {
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            box-shadow: 0 0 15px var(--primary);
+            animation: scan 4s linear infinite;
+            z-index: 10;
+        }
+
+        @keyframes pulse-dna {
+            0%, 100% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.05); opacity: 1; }
+        }
+        .dna-pulse { animation: pulse-dna 3s ease-in-out infinite; }
+
+        @keyframes shake {
+            0%, 100% { transform: translate(0, 0); }
+            25% { transform: translate(-2px, 2px); }
+            50% { transform: translate(2px, -2px); }
+            75% { transform: translate(-2px, -2px); }
+        }
+        .unstable { animation: shake 0.1s infinite; }
+
+        /* --- CUSTOM SCROLLBAR --- */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: var(--bg-dark); }
+        ::-webkit-scrollbar-thumb { background: var(--primary-dim); border-radius: 2px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+
+        /* --- RAPTOR PARTS TRANSITIONS --- */
+        .raptor-part { transition: all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        
+        .tab-active { border-bottom: 2px solid var(--primary); color: var(--primary); }
+        
+        canvas#dna-canvas {
+            position: absolute;
+            top: 0; left: 0;
+            pointer-events: none;
+            opacity: 0.3;
+        }
+
+        .tooltip { visibility: hidden; position: absolute; z-index: 100; bottom: 125%; left: 50%; transform: translateX(-50%); }
+        .group:hover .tooltip { visibility: visible; }
+    </style>
+</head>
+<body class="flex items-center justify-center p-4">
+
+    <!-- GLOBAL OVERLAYS -->
+    <div id="glitch-overlay" class="fixed inset-0 pointer-events-none z-[100] opacity-0 bg-red-500/10"></div>
+    <div class="fixed inset-0 pointer-events-none z-[90] bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.4)_100%)]"></div>
+
+    <div class="w-full max-w-7xl h-full max-h-[900px] grid grid-cols-12 gap-4 relative">
+        
+        <!-- LEFT: GENOMIC DATA & LOGS -->
+        <div class="col-span-3 flex flex-col gap-4 overflow-hidden">
+            <!-- Header Card -->
+            <div class="glass p-4 rounded-xl relative overflow-hidden">
+                <div class="scanner-line"></div>
+                <h1 class="text-xl font-bold tracking-tighter italic text-primary">RAPTOR_PROTOCOL <span class="text-white text-xs not-italic">v4.0.2</span></h1>
+                <div class="mt-4 space-y-3">
+                    <div class="flex justify-between items-end">
+                        <span class="text-[10px] text-slate-500 font-bold uppercase">Biomass Points</span>
+                        <span id="stat-bp" class="text-primary text-lg font-bold">0.00</span>
+                    </div>
+                    <div class="h-1 w-full bg-slate-800 rounded-full overflow-hidden">
+                        <div id="bar-bp" class="h-full bg-primary transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                    <div class="flex justify-between items-end">
+                        <span class="text-[10px] text-slate-500 font-bold uppercase">Genomic Load</span>
+                        <span id="stat-load" class="text-accent font-bold">0%</span>
+                    </div>
+                    <div class="h-1 w-full bg-slate-800 rounded-full overflow-hidden">
+                        <div id="bar-load" class="h-full bg-accent transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detailed Stats Table -->
+            <div class="glass p-4 rounded-xl flex-1 overflow-y-auto">
+                <h2 class="text-[10px] font-bold text-slate-500 uppercase mb-4 tracking-widest flex items-center gap-2">
+                    <span class="w-2 h-2 bg-primary rounded-full animate-pulse"></span> Terminal Matrix
+                </h2>
+                <div id="detailed-stats" class="space-y-3 font-mono text-[10px]">
+                    <div class="flex justify-between border-b border-slate-800 pb-1">
+                        <span class="text-slate-500">GEN_LINEAGE</span>
+                        <span id="stat-gen" class="text-white">001</span>
+                    </div>
+                    <div class="flex justify-between border-b border-slate-800 pb-1">
+                        <span class="text-slate-500">MUTATION_COUNT</span>
+                        <span id="stat-mut-count" class="text-white">0</span>
+                    </div>
+                    <div class="flex justify-between border-b border-slate-800 pb-1">
+                        <span class="text-slate-500">SYNC_COEFFICIENT</span>
+                        <span id="stat-sync" class="text-white">1.0x</span>
+                    </div>
+                    <div class="flex justify-between border-b border-slate-800 pb-1">
+                        <span class="text-slate-500">PASSIVE_SYNTH</span>
+                        <span id="stat-passive" class="text-white">0/s</span>
+                    </div>
+                    <div class="flex justify-between border-b border-slate-800 pb-1">
+                        <span class="text-slate-500">CELL_DENSITY</span>
+                        <span id="stat-density" class="text-white">10.4%</span>
+                    </div>
+                </div>
+
+                <div class="mt-6">
+                    <h3 class="text-[9px] font-bold text-slate-600 uppercase mb-2">Neural Feed</h3>
+                    <div id="system-log" class="h-40 overflow-y-auto text-[9px] text-emerald-500/70 leading-relaxed font-mono custom-scrollbar pr-2 italic">
+                        [SYS] KERNEL INITIALIZED...<br>
+                        [SYS] WAITING FOR DNA INPUT...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CENTER: INTERACTIVE VIEWPORT -->
+        <div class="col-span-6 flex flex-col gap-4">
+            <div id="main-viewport" class="relative flex-1 bg-slate-950 border-2 border-slate-900 rounded-2xl overflow-hidden cursor-crosshair group shadow-2xl flex items-center justify-center">
+                <canvas id="dna-canvas"></canvas>
+                
+                <div id="viewport-ui" class="absolute inset-0 z-20 pointer-events-none flex flex-col justify-between p-6">
+                    <div class="flex justify-between items-start">
+                        <div class="bg-black/40 p-2 rounded border border-white/5 backdrop-blur-sm">
+                            <p class="text-[8px] text-slate-500 uppercase font-bold tracking-widest">Scanning Target</p>
+                            <p class="text-[10px] text-primary font-mono">DROM_SPECIMEN_ALPHA</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[8px] text-slate-500 uppercase font-bold tracking-widest">Coord Matrix</p>
+                            <p id="mouse-coords" class="text-[10px] text-slate-400 font-mono">00.0 // 00.0</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-center">
+                        <div class="bg-primary/10 border border-primary/20 px-4 py-1 rounded-full animate-pulse">
+                            <span class="text-[10px] text-primary font-bold tracking-widest uppercase">Bio-Authentication Active</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SVG RENDERER -->
+                <svg id="raptor-svg" viewBox="0 0 400 400" class="w-4/5 h-4/5 z-10 dna-pulse">
+                    <defs>
+                        <filter id="neon-glow" x="-50%" y="-50%" width="200%" height="200%">
+                            <feGaussianBlur stdDeviation="3" result="blur"/>
+                            <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+                        </filter>
+                    </defs>
+                    <g id="raptor-master" transform="translate(200, 220)" filter="url(#neon-glow)">
+                        <!-- Tail Section -->
+                        <path id="svg-tail" class="raptor-part" d="M-20,0 Q-100,20 -140,50" fill="none" stroke="#00ff9d" stroke-width="4" stroke-linecap="round"/>
+                        <!-- Legs -->
+                        <g id="svg-legs">
+                            <path id="svg-leg-l" class="raptor-part" d="M-5,10 L-15,40 L-5,80" fill="none" stroke="#00ff9d" stroke-width="6"/>
+                            <path id="svg-leg-r" class="raptor-part" d="M15,10 L5,40 L15,80" fill="none" stroke="#00ff9d" stroke-width="6"/>
+                        </g>
+                        <!-- Main Body -->
+                        <path id="svg-body" class="raptor-part" d="M-40,0 Q0,-40 40,0 Q0,40 -40,0" fill="rgba(0, 255, 157, 0.05)" stroke="#00ff9d" stroke-width="3"/>
+                        <!-- Neck & Head -->
+                        <path id="svg-neck" class="raptor-part" d="M30,-15 Q60,-40 50,-80" fill="none" stroke="#00ff9d" stroke-width="4"/>
+                        <g id="svg-head-group" transform="translate(50, -80)">
+                            <path id="svg-skull" class="raptor-part" d="M-15,-10 L25,-10 L35,10 L-5,15 Z" fill="none" stroke="#00ff9d" stroke-width="3"/>
+                            <circle id="svg-eye" cx="10" cy="0" r="2" fill="#00ff9d" class="animate-pulse"/>
+                        </g>
+                        <!-- Forelimbs -->
+                        <path id="svg-arm-l" class="raptor-part" d="M25,5 L45,25 L35,35" fill="none" stroke="#00ff9d" stroke-width="3"/>
+                    </g>
+                </svg>
+
+                <div id="collapse-screen" class="absolute inset-0 bg-red-950/95 z-[110] flex-col items-center justify-center p-12 text-center hidden">
+                    <div class="w-20 h-20 border-4 border-red-500 rounded-full flex items-center justify-center animate-ping mb-8">
+                        <span class="text-4xl font-black text-red-500">!</span>
+                    </div>
+                    <h2 class="text-4xl font-black text-white italic tracking-tighter mb-4">GENOMIC COLLAPSE</h2>
+                    <p class="text-red-400 font-mono text-sm max-w-md">System cannot sustain mutation density. Cellular degradation imminent. Immediate lineage reset required for stabilization.</p>
+                    <button onclick="evolutionEngine.hatch()" class="mt-10 px-8 py-4 bg-red-600 hover:bg-red-500 text-white font-bold uppercase tracking-widest transition-all rounded-lg">Purge & Evolve</button>
+                </div>
+            </div>
+
+            <!-- Dashboard Interaction -->
+            <div class="h-24 glass rounded-xl flex items-center px-6 gap-6 relative overflow-hidden">
+                <div class="flex-1">
+                    <p class="text-[9px] text-slate-500 font-bold uppercase mb-2">Manual Interaction Pulse</p>
+                    <div class="flex gap-2">
+                        <button onclick="evolutionEngine.manualPulse()" class="px-6 py-2 bg-primary/10 border border-primary/40 text-primary text-xs font-bold rounded hover:bg-primary hover:text-black transition-all">PULSE CELL</button>
+                        <button id="auto-btn" class="px-6 py-2 bg-slate-800 border border-slate-700 text-slate-500 text-xs font-bold rounded cursor-not-allowed">AUTO_SYNC: OFF</button>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <p class="text-[9px] text-slate-500 font-bold uppercase mb-2">Session Evolution</p>
+                    <p id="session-time" class="text-xl font-mono text-slate-300">00:00:00</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT: MUTATION TREE -->
+        <div class="col-span-3 flex flex-col gap-4 overflow-hidden">
+            <div class="glass flex-1 flex flex-col rounded-xl overflow-hidden">
+                <!-- Tabs -->
+                <div class="flex border-b border-slate-800 bg-black/20">
+                    <button onclick="evolutionEngine.setTab('SKELETAL')" id="tab-SKELETAL" class="flex-1 py-3 text-[10px] font-bold tracking-tighter text-slate-500 tab-active">SKELETAL</button>
+                    <button onclick="evolutionEngine.setTab('NEURAL')" id="tab-NEURAL" class="flex-1 py-3 text-[10px] font-bold tracking-tighter text-slate-500">NEURAL</button>
+                    <button onclick="evolutionEngine.setTab('DERMAL')" id="tab-DERMAL" class="flex-1 py-3 text-[10px] font-bold tracking-tighter text-slate-500">DERMAL</button>
+                </div>
+                
+                <div id="mutation-container" class="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+                    <!-- Dynamic Loading -->
+                </div>
+
+                <div class="p-4 bg-black/40 border-t border-slate-800">
+                    <div class="flex justify-between items-center text-[10px]">
+                        <span class="text-slate-500 font-bold">TOTAL_MUTATIONS</span>
+                        <span id="footer-count" class="text-primary font-mono">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * RAPTOR PROTOCOL: EVOLUTIONARY ENGINE CORE
+         * Architecture: State-Driven Procedural Simulation
+         */
+
+        const MUTATION_DB = [
+            // SKELETAL
+            { id: 'tail_stiff', name: 'Vertebrae Fusion', cat: 'SKELETAL', cost: 15, growth: 1.25, load: 4, desc: 'Stiffens the tail for aerodynamic stabilization.' },
+            { id: 'jaw_ext', name: 'Mandible Elongation', cat: 'SKELETAL', cost: 150, growth: 1.3, load: 8, desc: 'Increases bite force and reach.' },
+            { id: 'bone_dens', name: 'Pneumatization', cat: 'SKELETAL', cost: 800, growth: 1.4, load: 12, desc: 'Hollows bones for agility and speed.' },
+            { id: 'sickle_claw', name: 'Sickle Claw v2', cat: 'SKELETAL', cost: 2500, growth: 1.5, load: 18, desc: 'Lethal enlarged toe claw specialized for piercing.' },
+            { id: 'sternum_lock', name: 'Sternum Anchor', cat: 'SKELETAL', cost: 12000, growth: 1.6, load: 25, desc: 'Reinforced chest plate for immense muscle attachments.' },
+
+            // NEURAL
+            { id: 'nodes_p', name: 'Nerve Clusters', cat: 'NEURAL', cost: 50, growth: 1.3, load: 5, desc: 'Adds secondary processing nodes in the spine.' },
+            { id: 'optic_map', name: 'Hyper-Focus', cat: 'NEURAL', cost: 400, growth: 1.4, load: 10, desc: 'Enhances depth perception and motion tracking.' },
+            { id: 'synaptic_v', name: 'Synaptic Acceleration', cat: 'NEURAL', cost: 1500, growth: 1.5, load: 15, desc: 'Reduces signal latency across the nervous system.' },
+            { id: 'instinct_p', name: 'Pack Simulation', cat: 'NEURAL', cost: 6000, growth: 1.6, load: 22, desc: 'Predicts movements of surrounding organisms.' },
+            { id: 'omega_brain', name: 'Digital Consciousness', cat: 'NEURAL', cost: 45000, growth: 2.0, load: 35, desc: 'Full neural-silicon hybrid integration.' },
+
+            // DERMAL
+            { id: 'proto_feather', name: 'Proto-Down', cat: 'DERMAL', cost: 25, growth: 1.2, load: 3, desc: 'Soft fibers for temperature regulation.' },
+            { id: 'scute_plate', name: 'Hardened Scutes', cat: 'DERMAL', cost: 200, growth: 1.35, load: 7, desc: 'Durable overlapping plates on the legs.' },
+            { id: 'chroma_skin', name: 'Active Camo', cat: 'DERMAL', cost: 1200, growth: 1.45, load: 14, desc: 'Skin shifts color to match the environment.' },
+            { id: 'quill_defense', name: 'Reactive Quills', cat: 'DERMAL', cost: 5500, growth: 1.55, load: 20, desc: 'Vibrating quills that warn predators.' },
+            { id: 'nano_mesh', name: 'Hyper-Dermal Mesh', cat: 'DERMAL', cost: 30000, growth: 1.7, load: 30, desc: 'Sub-dermal armor stronger than steel.' }
+        ];
+
+        class EvolutionEngine {
+            constructor() {
+                this.state = {
+                    biomass: 0,
+                    totalBiomass: 0,
+                    genomicLoad: 0,
+                    generation: 1,
+                    multiplier: 1.0,
+                    activeTab: 'SKELETAL',
+                    upgrades: {},
+                    sessionStart: Date.now(),
+                    isCollapsing: false
+                };
+
+                this.init();
+            }
+
+            init() {
+                this.setupDnaCanvas();
+                this.bindEvents();
+                this.tick();
+                this.renderMutations();
+                this.updateUI();
+                
+                // Initialize upgrade counts
+                MUTATION_DB.forEach(m => this.state.upgrades[m.id] = 0);
+            }
+
+            bindEvents() {
+                const viewport = document.getElementById('main-viewport');
+                viewport.addEventListener('mousemove', (e) => {
+                    const rect = viewport.getBoundingClientRect();
+                    const x = ((e.clientX - rect.left) / rect.width * 100).toFixed(1);
+                    const y = ((e.clientY - rect.top) / rect.height * 100).toFixed(1);
+                    document.getElementById('mouse-coords').textContent = `${x} // ${y}`;
+                });
+            }
+
+            setupDnaCanvas() {
+                const canvas = document.getElementById('dna-canvas');
+                const ctx = canvas.getContext('2d');
+                let particles = [];
+
+                const resize = () => {
+                    canvas.width = canvas.offsetWidth;
+                    canvas.height = canvas.offsetHeight;
+                };
+                window.addEventListener('resize', resize);
+                resize();
+
+                class Particle {
+                    constructor() {
+                        this.reset();
+                    }
+                    reset() {
+                        this.x = Math.random() * canvas.width;
+                        this.y = canvas.height + 10;
+                        this.speed = Math.random() * 0.5 + 0.2;
+                        this.size = Math.random() * 2;
+                        this.color = Math.random() > 0.5 ? '#00ff9d' : '#38bdf8';
+                    }
+                    update() {
+                        this.y -= this.speed;
+                        this.x += Math.sin(this.y / 20) * 0.5;
+                        if (this.y < -10) this.reset();
+                    }
+                    draw() {
+                        ctx.fillStyle = this.color;
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+
+                for (let i = 0; i < 50; i++) particles.push(new Particle());
+
+                const animate = () => {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    particles.forEach(p => { p.update(); p.draw(); });
+                    requestAnimationFrame(animate);
+                };
+                animate();
+            }
+
+            manualPulse() {
+                if (this.state.isCollapsing) return;
+                const gain = 1 * this.state.multiplier;
+                this.state.biomass += gain;
+                this.state.totalBiomass += gain;
+                this.showFloatingText(`+${gain.toFixed(1)}`, 'primary');
+                this.updateUI();
+            }
+
+            showFloatingText(text, colorType) {
+                const container = document.getElementById('main-viewport');
+                const div = document.createElement('div');
+                div.className = `absolute text-[10px] font-bold z-[60] pointer-events-none text-${colorType}`;
+                div.style.left = `calc(50% + ${(Math.random() - 0.5) * 100}px)`;
+                div.style.top = `calc(50% + ${(Math.random() - 0.5) * 100}px)`;
+                div.textContent = text;
+                container.appendChild(div);
+                
+                div.animate([
+                    { transform: 'translateY(0)', opacity: 1 },
+                    { transform: 'translateY(-50px)', opacity: 0 }
+                ], { duration: 1000, easing: 'ease-out' }).onfinish = () => div.remove();
+            }
+
+            setTab(tab) {
+                this.state.activeTab = tab;
+                ['SKELETAL', 'NEURAL', 'DERMAL'].forEach(t => {
+                    document.getElementById(`tab-${t}`).classList.toggle('tab-active', t === tab);
+                });
+                this.renderMutations();
+            }
+
+            getCost(m) {
+                return Math.floor(m.cost * Math.pow(m.growth, this.state.upgrades[m.id]));
+            }
+
+            buyMutation(id) {
+                if (this.state.isCollapsing) return;
+                const m = MUTATION_DB.find(x => x.id === id);
+                const cost = this.getCost(m);
+
+                if (this.state.biomass >= cost) {
+                    this.state.biomass -= cost;
+                    this.state.upgrades[id]++;
+                    
+                    this.calculateLoad();
+                    this.addLog(`MUTATION SEQUENCED: ${m.name.toUpperCase()}`);
+                    this.renderMutations();
+                    this.updateUI();
+                }
+            }
+
+            calculateLoad() {
+                let load = 0;
+                MUTATION_DB.forEach(m => {
+                    load += m.load * this.state.upgrades[m.id];
+                });
+                this.state.genomicLoad = load;
+
+                if (this.state.genomicLoad >= 100) {
+                    this.state.isCollapsing = true;
+                    document.getElementById('collapse-screen').style.display = 'flex';
+                    document.getElementById('main-viewport').classList.add('unstable');
+                    document.getElementById('glitch-overlay').style.opacity = '1';
+                }
+            }
+
+            hatch() {
+                // Next Gen Logic
+                const bonus = (this.state.genomicLoad / 100) * 0.5;
+                this.state.generation++;
+                this.state.multiplier += bonus;
+                
+                // Reset temporary stats
+                this.state.biomass = 0;
+                this.state.genomicLoad = 0;
+                this.state.isCollapsing = false;
+                
+                // Keep some upgrades but clear current load
+                // In this complex version, we actually keep the visual evolution but reset the "stress"
+                document.getElementById('collapse-screen').style.display = 'none';
+                document.getElementById('main-viewport').classList.remove('unstable');
+                document.getElementById('glitch-overlay').style.opacity = '0';
+                
+                this.addLog(`--- LINEAGE ${this.state.generation} AWAKENED ---`);
+                this.updateUI();
+                this.renderMutations();
+            }
+
+            renderMutations() {
+                const container = document.getElementById('mutation-container');
+                container.innerHTML = '';
+
+                MUTATION_DB.filter(m => m.cat === this.state.activeTab).forEach(m => {
+                    const cost = this.getCost(m);
+                    const count = this.state.upgrades[m.id];
+                    const canAfford = this.state.biomass >= cost;
+
+                    const div = document.createElement('div');
+                    div.className = `group relative p-3 border rounded-lg transition-all ${canAfford ? 'bg-slate-900 border-slate-700 hover:border-primary cursor-pointer' : 'bg-black/20 border-slate-900 opacity-60'}`;
+                    div.onclick = () => this.buyMutation(m.id);
+
+                    div.innerHTML = `
+                        <div class="flex justify-between items-start mb-1">
+                            <span class="text-[10px] font-bold ${canAfford ? 'text-primary' : 'text-slate-500'}">${m.name.toUpperCase()}</span>
+                            <span class="text-[9px] font-mono text-slate-400">${cost.toLocaleString()} BP</span>
+                        </div>
+                        <p class="text-[8px] text-slate-600 mb-2 leading-relaxed">${m.desc}</p>
+                        <div class="flex justify-between items-center">
+                            <span class="text-[8px] px-1 bg-slate-800 text-slate-400 rounded">LVL ${count}</span>
+                            <span class="text-[8px] text-accent">LOAD: +${m.load}%</span>
+                        </div>
+                    `;
+                    container.appendChild(div);
+                });
+
+                document.getElementById('footer-count').textContent = Object.values(this.state.upgrades).reduce((a, b) => a + b, 0);
+            }
+
+            updateUI() {
+                document.getElementById('stat-bp').textContent = Math.floor(this.state.biomass).toLocaleString();
+                document.getElementById('bar-bp').style.width = `${Math.min(100, (this.state.biomass / 1000) * 100)}%`;
+                
+                const load = Math.min(100, this.state.genomicLoad);
+                document.getElementById('stat-load').textContent = `${load.toFixed(1)}%`;
+                document.getElementById('bar-load').style.width = `${load}%`;
+                document.getElementById('bar-load').style.backgroundColor = load > 80 ? 'var(--danger)' : 'var(--accent)';
+
+                document.getElementById('stat-gen').textContent = this.state.generation.toString().padStart(3, '0');
+                document.getElementById('stat-mut-count').textContent = Object.values(this.state.upgrades).reduce((a, b) => a + b, 0);
+                document.getElementById('stat-sync').textContent = `${this.state.multiplier.toFixed(2)}x`;
+                
+                const passive = (this.state.multiplier * Object.values(this.state.upgrades).reduce((a, b) => a + b, 0) * 0.5).toFixed(1);
+                document.getElementById('stat-passive').textContent = `${passive}/s`;
+
+                this.updateRaptorGeometry();
+            }
+
+            updateRaptorGeometry() {
+                const up = (id) => this.state.upgrades[id] || 0;
+                
+                // Color shift based on tab
+                const colors = { SKELETAL: '#cbd5e1', NEURAL: '#38bdf8', DERMAL: '#00ff9d' };
+                const curColor = colors[this.state.activeTab];
+                
+                document.querySelectorAll('.raptor-part').forEach(p => {
+                    p.setAttribute('stroke', curColor);
+                    if(p.tagName === 'circle') p.setAttribute('fill', curColor);
+                });
+
+                // Tail length/curve based on skeletal upgrades
+                const tailLvl = up('tail_stiff');
+                document.getElementById('svg-tail').setAttribute('d', `M-20,0 Q-${100 - tailLvl * 5},${20 + tailLvl * 2} -${140 + tailLvl * 10},${50 - tailLvl * 3}`);
+                
+                // Jaw size
+                const jawLvl = up('jaw_ext');
+                document.getElementById('svg-skull').setAttribute('d', `M-15,-10 L${25 + jawLvl * 5},-10 L${35 + jawLvl * 8},10 L-5,15 Z`);
+
+                // Eye size (Neural)
+                const neuralLvl = up('optic_map') + up('synaptic_v');
+                document.getElementById('svg-eye').setAttribute('r', 2 + (neuralLvl * 0.5));
+            }
+
+            addLog(msg) {
+                const log = document.getElementById('system-log');
+                const time = new Date().toLocaleTimeString([], { hour12: false });
+                log.innerHTML = `[${time}] ${msg}<br>` + log.innerHTML;
+                if (log.childNodes.length > 50) log.removeChild(log.lastChild);
+            }
+
+            tick() {
+                setInterval(() => {
+                    if (!this.state.isCollapsing) {
+                        const count = Object.values(this.state.upgrades).reduce((a, b) => a + b, 0);
+                        const passive = (this.state.multiplier * count * 0.05); // Balanced ticker
+                        this.state.biomass += passive;
+                        this.state.totalBiomass += passive;
+                        
+                        // Update session timer
+                        const diff = Date.now() - this.state.sessionStart;
+                        const h = Math.floor(diff / 3600000).toString().padStart(2, '0');
+                        const m = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0');
+                        const s = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
+                        document.getElementById('session-time').textContent = `${h}:${m}:${s}`;
+                        
+                        this.updateUI();
+                    }
+                }, 100);
+            }
+        }
+
+        // Boot system
+        const evolutionEngine = new EvolutionEngine();
+    </script>
+</body>
+</html>
