@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Raptor Evolution</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@400;600&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #010409;
+            color: #f8fafc;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .orbitron { font-family: 'Orbitron', sans-serif; }
+
+        .glass {
+            background: rgba(13, 17, 23, 0.7);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .btn-view {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            filter: grayscale(0.8);
+            opacity: 0.6;
+        }
+        .btn-view.active { filter: grayscale(0); opacity: 1; transform: scale(1.1); border-color: #6366f1; }
+
+        .dna-float {
+            position: absolute;
+            pointer-events: none;
+            animation: floatUp 1.2s ease-out forwards;
+            font-weight: 900;
+            z-index: 50;
+            text-shadow: 0 0 10px rgba(0,0,0,0.8);
+        }
+
+        @keyframes floatUp {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-180px) scale(1.4); opacity: 0; }
+        }
+
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 10px; }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col md:flex-row overflow-hidden">
+
+    <!-- Left UI - Slimmed to w-48 -->
+    <div class="w-full md:w-48 glass border-r border-slate-800 p-3 flex flex-col gap-2 z-10 shrink-0">
+        <div class="flex items-center gap-2 mb-2">
+            <div class="w-8 h-8 bg-indigo-600 rounded flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                <svg viewBox="0 0 24 24" class="w-5 h-5 fill-white"><path d="M12,2L4.5,20.29L5.21,21L12,18L18.79,21L19.5,20.29L12,2Z"/></svg>
+            </div>
+            <div class="overflow-hidden">
+                <h1 class="orbitron text-[9px] font-black tracking-widest text-indigo-400 truncate">APEX-GEN</h1>
+                <div class="text-[6px] text-slate-500 font-bold uppercase tracking-widest">Evolution Engine</div>
+            </div>
+        </div>
+
+        <div id="currency-list" class="space-y-2"></div>
+
+        <div class="mt-auto pt-3 border-t border-slate-800 space-y-2">
+            <div class="flex justify-between text-[8px] font-black text-slate-500 uppercase">
+                <span>Fossilize</span>
+                <span id="fossil-gain" class="text-indigo-400">+0</span>
+            </div>
+            <button id="btn-fossilize" class="w-full py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all disabled:opacity-10 shadow-lg shadow-indigo-600/30">
+                Reset DNA
+            </button>
+            <div id="ancient-display" class="text-center text-amber-500 text-[7px] font-black uppercase tracking-widest opacity-80">
+                0 Ancient Tokens
+            </div>
+        </div>
+    </div>
+
+    <!-- Center - Main Workspace -->
+    <div id="canvas-container" class="flex-1 relative overflow-hidden bg-black">
+        <!-- View Controls - Compact -->
+        <div class="absolute top-4 left-1/2 -translate-x-1/2 flex gap-2 z-20">
+            <button onclick="setViewMode('bone')" class="btn-view glass p-2 rounded-lg border" id="btn-view-bone">
+                <span class="text-base">🦴</span>
+            </button>
+            <button onclick="setViewMode('muscle')" class="btn-view glass p-2 rounded-lg border" id="btn-view-muscle">
+                <span class="text-base">🥩</span>
+            </button>
+            <button onclick="setViewMode('full')" class="btn-view glass p-2 rounded-lg border" id="btn-view-full">
+                <span class="text-base">🦖</span>
+            </button>
+            <button onclick="setViewMode('brain')" class="btn-view glass p-2 rounded-lg border" id="btn-view-brain">
+                <span class="text-base">🧠</span>
+            </button>
+        </div>
+
+        <div id="iq-overlay" class="absolute top-20 left-1/2 -translate-x-1/2 text-center pointer-events-none z-20">
+            <div class="orbitron text-sky-400 text-xl font-black" id="iq-value">IQ: 100</div>
+        </div>
+
+        <div id="click-target" class="absolute inset-0 z-10 cursor-crosshair"></div>
+        
+        <div class="absolute bottom-4 left-4 pointer-events-none orbitron text-[7px] text-indigo-500/50 space-y-0.5">
+            <div id="hud-status">SYSTEM: ONLINE</div>
+            <div id="hud-posture">VERTEBRAE: ALIGNED</div>
+        </div>
+    </div>
+
+    <!-- Right UI - Slimmed to w-56 -->
+    <div class="w-full md:w-56 glass border-l border-slate-800 p-3 overflow-y-auto z-10 shrink-0">
+        <h2 class="orbitron text-[8px] font-black text-indigo-400 uppercase tracking-widest mb-4 text-center border-b border-indigo-500/10 pb-2">Upgrades</h2>
+        <div id="mutation-list" class="space-y-1.5"></div>
+    </div>
+
+    <script>
+        const DNA_TYPES = {
+            basic: { label: 'DNA', color: 'text-indigo-400', symbol: '🧬' },
+            protein: { label: 'Prot', color: 'text-rose-400', symbol: '🥩' },
+            neural: { label: 'Neur', color: 'text-sky-400', symbol: '🧠' }
+        };
+
+        const MUTATIONS = [
+            { id: 'b_vert_1', category: 'bone', name: 'Spinal Extension I', cost: 15, costType: 'basic', desc: 'Adds vertebrae (+Tap)', effect: { tapAdd: 2 } },
+            { id: 'b_ribs', category: 'bone', name: 'Intercostal Frame', cost: 100, costType: 'basic', desc: 'Expands ribcage', effect: { proteinMult: 1.5 } },
+            { id: 'b_posture', category: 'bone', name: 'Stalking Stance', cost: 500, costType: 'basic', desc: 'Lower posture', effect: { tapMult: 2, stanceShift: -0.2 } },
+            { id: 'b_vert_2', category: 'bone', name: 'Spinal Extension II', cost: 2000, costType: 'basic', desc: 'More vertebrae (+Tap)', effect: { tapAdd: 50 } },
+            { id: 'b_hips', category: 'bone', name: 'Agile Hip Joints', cost: 5000, costType: 'basic', desc: 'Bird-like agility x2.5', effect: { tapMult: 2.5 } },
+            { id: 'b_tail_bone', category: 'bone', name: 'Tail Weighting', cost: 15000, costType: 'basic', desc: 'Longer tail balance', effect: { globalMult: 1.3, tailLen: 10 } },
+            { id: 'b_skull_1', category: 'bone', name: 'Cranium Elongation', cost: 40000, costType: 'basic', desc: 'Sleeker skull', effect: { tapAdd: 500, skullSize: 1.8 } },
+            { id: 'm_red', category: 'muscle', name: 'Red Fiber Sync', cost: 50, costType: 'protein', desc: 'Tap efficiency', effect: { tapAdd: 20, iqMod: -15 } },
+            { id: 'm_legs', category: 'muscle', name: 'Hyper-Extensors', cost: 300, costType: 'protein', desc: 'Passive DNA drive', effect: { autoBasic: 25, iqMod: -30 } },
+            { id: 'm_claws', category: 'muscle', name: 'Tendon Tension', cost: 8000, costType: 'protein', desc: 'Click power x4', effect: { tapMult: 4, iqMod: -120 } },
+            { id: 'n_synapse', category: 'brain', name: 'Synaptic Link', cost: 40, costType: 'neural', desc: 'Auto tapping', effect: { autoTap: 1, iqMod: 50, lobe: 'frontal' } },
+            { id: 'n_cortex', category: 'brain', name: 'Enhanced Lobe', cost: 200, costType: 'neural', desc: 'Tap value x3', effect: { tapMult: 3, iqMod: 120, lobe: 'parietal' } },
+            { id: 'n_instinct', category: 'brain', name: 'Apex Drive', cost: 1000, costType: 'neural', desc: 'Higher neural load', effect: { essenceGen: 2, iqMod: 250, lobe: 'occipital' } },
+            { id: 'f_claw_vis', category: 'full', name: 'Sickle Claw', cost: 200, costType: 'basic', desc: 'Visual raptor claws', effect: { tapAdd: 100 } },
+            { id: 'f_scales', category: 'full', name: 'Obsidian Scales', cost: 2000, costType: 'protein', desc: 'Indoraptor skin', effect: { globalMult: 2 } }
+        ];
+
+        let state = {
+            currencies: { basic: 0, protein: 0, neural: 0, elemental: 0 },
+            activeMutations: [],
+            ancientFossils: 0,
+            viewMode: 'full'
+        };
+
+        let scene, camera, renderer, raptorGroup, brainGroup;
+        let layers = { bone: null, muscle: null, full: null, brain: null };
+        
+        function initThree() {
+            const container = document.getElementById('canvas-container');
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(35, container.clientWidth / container.clientHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            container.appendChild(renderer.domElement);
+
+            scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+            const light = new THREE.DirectionalLight(0x6366f1, 2);
+            light.position.set(10, 20, 10);
+            scene.add(light);
+
+            raptorGroup = new THREE.Group();
+            scene.add(raptorGroup);
+            brainGroup = new THREE.Group();
+            scene.add(brainGroup);
+
+            rebuildRaptor();
+            rebuildBrain();
+            camera.position.set(0, 1, 12);
+            animate();
+        }
+
+        // Helper to create a segment that is parent-child compatible
+        function createVertebraSegment(radius, length, mat) {
+            const group = new THREE.Group();
+            const cylinder = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius * 0.95, length, 12), mat);
+            cylinder.position.y = length / 2; // Move cylinder up so pivot is at base
+            group.add(cylinder);
+            
+            // Add a cap at the joint
+            const cap = new THREE.Mesh(new THREE.SphereGeometry(radius, 8, 8), mat);
+            group.add(cap);
+
+            return { group, length };
+        }
+
+        function buildModularRaptor(color, isWireframe, opacity) {
+            const group = new THREE.Group();
+            const mat = new THREE.MeshPhongMaterial({ color, wireframe: isWireframe, transparent: true, opacity, shininess: 80 });
+
+            const hasPosture = state.activeMutations.includes('b_posture');
+            const hasTail = state.activeMutations.includes('b_tail_bone');
+            const hasRibs = state.activeMutations.includes('b_ribs');
+            const hasSkull = state.activeMutations.includes('b_skull_1');
+
+            const torso = new THREE.Group();
+            torso.rotation.x = hasPosture ? -0.1 : 0.1;
+            group.add(torso);
+
+            // TORSO CORE
+            const segCount = hasRibs ? 7 : 5;
+            const torsoRoot = new THREE.Group();
+            torso.add(torsoRoot);
+            let lastTorsoSeg = torsoRoot;
+
+            for(let i=0; i<segCount; i++) {
+                const w = (hasRibs ? 1.2 : 0.8) * Math.sin((i/segCount) * Math.PI + 0.4);
+                const seg = new THREE.Mesh(new THREE.BoxGeometry(w, 1.0, 0.5), mat);
+                seg.position.z = -i * 0.5;
+                torsoRoot.add(seg);
+                if (i === 0) {
+                    // NECK ROOT
+                    const neckRoot = new THREE.Group();
+                    neckRoot.position.set(0, 0.2, 0.25);
+                    seg.add(neckRoot);
+                    
+                    let currentJoint = neckRoot;
+                    const neckSegs = 8;
+                    for(let j=0; j<neckSegs; j++) {
+                        const { group: nSeg, length } = createVertebraSegment(0.18 * (1 - j/16), 0.35, mat);
+                        
+                        // S-CURVE LOGIC
+                        if (j < 3) nSeg.rotation.x = -0.4; // Base curves back
+                        else if (j < 6) nSeg.rotation.x = 0.5; // Mid curves forward
+                        else nSeg.rotation.x = 0.3; // Top levels
+                        
+                        currentJoint.add(nSeg);
+                        
+                        // Create next attachment point at the end of this segment
+                        const nextJoint = new THREE.Group();
+                        nextJoint.position.y = length;
+                        nSeg.add(nextJoint);
+                        currentJoint = nextJoint;
+
+                        if(j === neckSegs - 1) {
+                            const head = new THREE.Group();
+                            head.rotation.x = 0.3; // Look forward
+                            const sLen = hasSkull ? 1.6 : 0.8;
+                            const skull = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.3, sLen), mat);
+                            skull.position.z = sLen/2;
+                            head.add(skull);
+                            const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.1, sLen * 0.7), mat);
+                            jaw.position.set(0, -0.2, sLen/2);
+                            head.add(jaw);
+                            currentJoint.add(head);
+                        }
+                    }
+                }
+                
+                if (i === segCount - 1) {
+                    // TAIL ROOT
+                    const tailRoot = new THREE.Group();
+                    tailRoot.position.set(0, 0, -0.25);
+                    seg.add(tailRoot);
+                    let currentT = tailRoot;
+                    const tCount = hasTail ? 25 : 15;
+                    for(let k=0; k<tCount; k++) {
+                        const tSize = 0.4 * Math.pow(0.92, k);
+                        const tSeg = new THREE.Mesh(new THREE.BoxGeometry(tSize, tSize, 0.4), mat);
+                        tSeg.position.z = -0.2;
+                        tSeg.rotation.x = -0.05; // Slight organic droop
+                        currentT.add(tSeg);
+                        
+                        const nextT = new THREE.Group();
+                        nextT.position.z = -0.4;
+                        tSeg.add(nextT);
+                        currentT = nextT;
+                    }
+                }
+            }
+
+            const createLeg = (side) => {
+                const leg = new THREE.Group();
+                leg.position.set(side * 0.6, -0.2, -1.2);
+                const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.15, 1, 12), mat);
+                thigh.rotation.x = 0.8;
+                leg.add(thigh);
+                const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.08, 1.2, 12), mat);
+                shin.position.set(0, -0.6, 0.5);
+                shin.rotation.x = -1.6;
+                thigh.add(shin);
+                const foot = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.1, 0.4), mat);
+                foot.position.set(0, -0.6, 0.2);
+                foot.rotation.x = 0.8;
+                shin.add(foot);
+                return leg;
+            };
+            torso.add(createLeg(1));
+            torso.add(createLeg(-1));
+
+            return group;
+        }
+
+        function rebuildRaptor() {
+            if (layers.bone) raptorGroup.remove(layers.bone);
+            if (layers.muscle) raptorGroup.remove(layers.muscle);
+            if (layers.full) raptorGroup.remove(layers.full);
+            layers.bone = buildModularRaptor(0xffffff, true, 1.0);
+            layers.muscle = buildModularRaptor(0xf43f5e, false, 0.35);
+            layers.full = buildModularRaptor(0x0f172a, false, 1.0);
+            raptorGroup.add(layers.bone, layers.muscle, layers.full);
+            setViewMode(state.viewMode);
+        }
+
+        function rebuildBrain() {
+            if (layers.brain) brainGroup.remove(layers.brain);
+            const group = new THREE.Group();
+            const mat = new THREE.MeshPhongMaterial({ color: 0xf472b6 });
+            const lobes = {};
+            const createLobe = (w, h, d, x, y, z) => {
+                const l = new THREE.Mesh(new THREE.SphereGeometry(0.5, 24, 24), mat);
+                l.scale.set(w, h, d);
+                l.position.set(x, y, z);
+                return l;
+            };
+            lobes.frontal = createLobe(0.8, 0.7, 0.9, 0, 0.2, 0.5);
+            lobes.parietal = createLobe(0.9, 0.8, 0.7, 0, 0.4, 0);
+            lobes.occipital = createLobe(0.7, 0.6, 0.6, 0, 0.1, -0.5);
+            group.add(lobes.frontal, lobes.parietal, lobes.occipital);
+            layers.brain = group;
+            brainGroup.add(group);
+        }
+
+        function setViewMode(mode) {
+            state.viewMode = mode;
+            const isBrain = mode === 'brain';
+            raptorGroup.visible = !isBrain;
+            brainGroup.visible = isBrain;
+            if(!isBrain) {
+                layers.bone.visible = (mode === 'bone');
+                layers.muscle.visible = (mode === 'muscle');
+                layers.full.visible = (mode === 'full');
+            }
+            document.querySelectorAll('.btn-view').forEach(b => b.classList.remove('active'));
+            document.getElementById(`btn-view-${mode}`).classList.add('active');
+            updateUI();
+        }
+
+        function getStats() {
+            let s = { tap: 1, globalMult: 1, proteinMult: 1, autoTap: 0, autoBasic: 0, essenceGen: 0, iq: 100 };
+            state.activeMutations.forEach(mId => {
+                const m = MUTATIONS.find(x => x.id === mId);
+                if (m.effect.tapAdd) s.tap += m.effect.tapAdd;
+                if (m.effect.tapMult) s.tap *= m.effect.tapMult;
+                if (m.effect.globalMult) s.globalMult *= m.effect.globalMult;
+                if (m.effect.proteinMult) s.proteinMult *= m.effect.proteinMult;
+                if (m.effect.autoTap) s.autoTap += m.effect.autoTap;
+                if (m.effect.autoBasic) s.autoBasic += m.effect.autoBasic;
+                if (m.effect.iqMod) s.iq += m.effect.iqMod;
+            });
+            s.globalMult *= Math.max(0.1, s.iq / 100);
+            s.globalMult *= (1 + state.ancientFossils * 0.5);
+            return s;
+        }
+
+        function updateUI() {
+            const stats = getStats();
+            document.getElementById('iq-value').innerText = `IQ: ${Math.floor(stats.iq)}`;
+
+            document.getElementById('currency-list').innerHTML = Object.entries(DNA_TYPES).map(([id, data]) => `
+                <div class="bg-slate-900/60 border border-slate-800/50 p-2 rounded-lg">
+                    <div class="text-[6px] font-black uppercase text-slate-500 mb-0.5 tracking-widest">${data.symbol} ${data.label}</div>
+                    <div class="text-sm font-mono font-bold ${data.color}">${Math.floor(state.currencies[id]).toLocaleString()}</div>
+                </div>
+            `).join('');
+
+            const filtered = MUTATIONS.filter(m => m.category === state.viewMode);
+            document.getElementById('mutation-list').innerHTML = filtered.map(m => {
+                const owned = state.activeMutations.includes(m.id);
+                const canAfford = state.currencies[m.costType] >= m.cost;
+                return `
+                    <button onclick="buyMutation('${m.id}')" ${owned || !canAfford ? 'disabled' : ''} 
+                        class="w-full text-left p-2 rounded-lg border transition-all ${
+                            owned ? 'bg-indigo-500/10 border-indigo-500/30 opacity-40' : 
+                            canAfford ? 'bg-slate-800/90 border-slate-700 hover:border-indigo-500' : 'bg-slate-900/50 border-slate-800 opacity-30 cursor-not-allowed'
+                        }">
+                        <div class="flex justify-between font-bold text-[8px] mb-0.5">
+                            <span class="${owned ? 'text-indigo-400' : ''}">${m.name}</span>
+                            ${!owned ? `<span class="text-[7px] px-1 bg-slate-700 rounded text-white">${m.cost}</span>` : ''}
+                        </div>
+                        <p class="text-[6px] text-slate-500 leading-none">${m.desc}</p>
+                    </button>
+                `;
+            }).join('');
+
+            const fossilGain = Math.floor(Math.sqrt(state.currencies.basic / 20000));
+            document.getElementById('fossil-gain').innerText = `+${fossilGain}`;
+            document.getElementById('ancient-display').innerText = `${state.ancientFossils} Ancient Tokens`;
+            document.getElementById('btn-fossilize').disabled = state.currencies.basic < 20000;
+        }
+
+        function buyMutation(id) {
+            const m = MUTATIONS.find(x => x.id === id);
+            if (state.currencies[m.costType] >= m.cost) {
+                state.currencies[m.costType] -= m.cost;
+                state.activeMutations.push(id);
+                rebuildRaptor();
+                rebuildBrain();
+                updateUI();
+            }
+        }
+
+        document.getElementById('click-target').addEventListener('mousedown', (e) => {
+            const stats = getStats();
+            const val = stats.tap * stats.globalMult;
+            state.currencies.basic += val;
+            if(Math.random() < 0.3) state.currencies.protein += 1 * stats.proteinMult * stats.globalMult;
+            if(Math.random() < 0.1) state.currencies.neural += 1 * stats.globalMult;
+            spawnFloatText(e.clientX, e.clientY, `+${Math.floor(val)}`, "#818cf8");
+            updateUI();
+        });
+
+        function spawnFloatText(x, y, text, color) {
+            const div = document.createElement('div');
+            div.className = 'dna-float orbitron text-[9px]';
+            div.innerText = text;
+            div.style.color = color;
+            div.style.left = `${x}px`;
+            div.style.top = `${y}px`;
+            document.body.appendChild(div);
+            setTimeout(() => div.remove(), 1200);
+        }
+
+        document.getElementById('btn-fossilize').onclick = () => {
+            state.ancientFossils += Math.floor(Math.sqrt(state.currencies.basic / 20000));
+            state.currencies = { basic: 0, protein: 0, neural: 0 };
+            state.activeMutations = [];
+            rebuildRaptor();
+            rebuildBrain();
+            updateUI();
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if(raptorGroup.visible) {
+                raptorGroup.rotation.y += 0.005;
+                raptorGroup.position.y = Math.sin(Date.now()*0.001)*0.03;
+            } else {
+                brainGroup.rotation.y += 0.01;
+            }
+            renderer.render(scene, camera);
+        }
+
+        window.onload = () => {
+            initThree();
+            setInterval(() => {
+                const stats = getStats();
+                state.currencies.basic += (stats.autoTap * stats.tap * stats.globalMult) / 10;
+                state.currencies.basic += (stats.autoBasic * stats.globalMult) / 10;
+                updateUI();
+            }, 100);
+        };
+    </script>
+</body>
+</html>
