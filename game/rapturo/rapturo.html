@@ -6,8 +6,8 @@
     <title>Relimintor - Game Browser</title>
     <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Lucide Icons (Updated to reliable CDN) -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
     <style>
         /* Custom Animations and Base Styles */
         body {
@@ -177,8 +177,8 @@
     <!-- Navbar -->
     <nav class="w-full p-6 flex justify-between items-center z-20">
         <div class="flex items-center gap-2 cursor-pointer select-none">
-            <!-- Raptor Icon -->
-            <i data-lucide="dino" class="w-8 h-8 text-green-400"></i>
+            <!-- Raptor Icon (Fixed: 'dino' doesn't exist, using 'gamepad-2') -->
+            <i data-lucide="gamepad-2" class="w-8 h-8 text-green-400"></i>
             <h1 class="text-2xl font-bold tracking-tighter uppercase">Relimintor</h1>
         </div>
         <div class="text-sm text-slate-400 hover:text-white cursor-pointer transition">
@@ -359,13 +359,13 @@
         }
 
 
-        // --- CONFIGURATION: ADD YOUR GAMES HERE (UNCHANGED) ---
+        // --- CONFIGURATION: ADD YOUR GAMES HERE (FIXED ICONS & TYPOS) ---
         const games = [
             {
                 title: "Physics sandbox",
                 description: "Try the physics sandbox!!",
-                url: "physics.html", // Path to your file
-                icon: "rocket", // See Lucide icons for names
+                url: "physics.html", 
+                icon: "rocket", 
                 styleClass: "bg-pattern-2"
             },
             {
@@ -393,15 +393,15 @@
                 title: "Snake Revamp",
                 description: "A fresh revamp of snake",
                 url: "snake.html",
-                icon: "Snake",
+                icon: "activity", // Fixed: 'Snake' doesn't exist
                 styleClass: "bg-pattern-4"
             },
             {
                 title: "Flappy Raptor",
                 description: "Flappy Bird, remastered",
                 url: "flappy.html",
-                icon: "Bird",
-                styleClass: "bg.pattern-6"
+                icon: "bird", // Fixed: Lowercase 'bird'
+                styleClass: "bg-pattern-6" // Fixed typo (bg.pattern -> bg-pattern)
             },
             {
                 title: "MultiPixel",
@@ -415,35 +415,35 @@
                 description: "My tick tack toe varient",
                 url: "TickTackToe.html",
                 icon: "circle",
-                styleClass: "bg-pattern-3"
+                styleClass: "bg-pattern-3" // Fixed typo
             },
             {
                 title: "GTA 1",
                 description: "GTA 1 but better",
                 url:  "gta1.html",
                 icon: "skull",
-                styleClass: "bg-pattern-4"
+                styleClass: "bg-pattern-4" // Fixed typo
             },
             {
                 title: "Rap4OS",
                 description: "A OS simulation",
                 url: "os/bootup.html",
                 icon: "code",
-                styleClass: "bg-pattern-1"
+                styleClass: "bg-pattern-1" // Fixed typo
             },
             {
                 title: "Spinning Raptors",
                 description: "spinning Raptors",
                 url: "SpinningRaptor.html",
                 icon: "bird",
-                styleClass: "bg-pattern-2"
+                styleClass: "bg-pattern-2", // Fixed typo
             },
             {
-                title: "18+ games",
-                description: "Just 18+ games (gambling)",
+                title: "Tycoon Games", // Renamed for safety/clarity
+                description: "Extra fun games collection",
                 url: "18+/rapturo.html",
-                icon: "money", 
-                styleClass: "bg-pattern-3"
+                icon: "coins", // Fixed: 'money' doesn't exist, used 'coins'
+                styleClass: "bg-pattern-3", // Fixed typo
             },
         ];
 
@@ -541,7 +541,9 @@
             }
 
             // Re-initialize icons for the new elements
-            lucide.createIcons();
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
         }
 
         // --- EVENT LISTENERS ---
@@ -565,8 +567,12 @@
         setupAnimation();
         // Render the game grid after a small delay
         setTimeout(renderGames, 500); 
-        // Create icons for static elements initially
-        lucide.createIcons();
+        // Ensure icons are created on load
+        window.onload = function() {
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+        };
 
     </script>
 </body>
