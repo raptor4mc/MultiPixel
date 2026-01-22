@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Animation Studio</title>
+    <!-- Tailwind CSS for modern styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+        
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #0f172a;
+            color: #f8fafc;
+            font-family: 'Inter', sans-serif;
+            user-select: none;
+        }
+
+        canvas {
+            display: block;
+            touch-action: none; /* Prevents scrolling while interacting with particles */
+        }
+
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.6);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        /* Custom Scrollbar for Settings */
+        #sidebar::-webkit-scrollbar {
+            width: 4px;
+        }
+        #sidebar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+        }
+
+        input[type="range"] {
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="flex flex-col h-screen">
+
+    <!-- Top Navigation Bar -->
+    <header class="fixed top-0 left-0 right-0 p-5 flex justify-between items-center z-30 pointer-events-none">
+        <div class="pointer-events-auto">
+            <h1 class="text-xl font-bold tracking-tighter bg-gradient-to-br from-white to-slate-400 bg-clip-text text-transparent">
+                STUDIO<span class="text-cyan-400">ANIM</span>
+            </h1>
+            <div id="fpsCounter" class="text-[10px] font-mono text-slate-500 uppercase tracking-widest mt-1">60 FPS</div>
+        </div>
+        
+        <div class="pointer-events-auto flex items-center gap-3">
+            <button id="resetBtn" class="glass-panel px-5 py-2 rounded-xl text-xs font-semibold hover:bg-slate-700/50 transition-all active:scale-95">
+                Reset
+            </button>
+            <button id="toggleControls" class="glass-panel px-5 py-2 rounded-xl text-xs font-semibold bg-cyan-500/20 border-cyan-500/30 text-cyan-200 hover:bg-cyan-500/30 transition-all active:scale-95">
+                Settings
+            </button>
+        </div>
+    </header>
+
+    <!-- Side Control Panel -->
+    <aside id="sidebar" class="fixed right-6 top-24 bottom-10 w-80 glass-panel rounded-3xl p-8 transition-all duration-500 ease-out translate-x-[120%] z-40 pointer-events-auto overflow-y-auto">
+        <div class="flex justify-between items-center mb-8">
+            <h2 class="text-lg font-bold">Workspace</h2>
+            <button id="closeSidebar" class="text-slate-400 hover:text-white">✕</button>
+        </div>
+        
+        <div class="space-y-8">
+            <!-- Physics Group -->
+            <section>
+                <div class="flex items-center gap-2 mb-4">
+                    <div class="w-1 h-4 bg-cyan-400 rounded-full"></div>
+                    <h3 class="text-xs uppercase font-bold text-slate-400 tracking-widest">Physics Engine</h3>
+                </div>
+                
+                <div class="space-y-6">
+                    <div>
+                        <div class="flex justify-between text-[11px] mb-2">
+                            <span>GRAVITY</span>
+                            <span id="gravityVal" class="text-cyan-400">0.05</span>
+                        </div>
+                        <input type="range" id="gravityRange" min="-0.3" max="0.3" step="0.01" value="0.05" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none accent-cyan-400">
+                    </div>
+                    
+                    <div>
+                        <div class="flex justify-between text-[11px] mb-2">
+                            <span>FRICTION</span>
+                            <span id="frictionVal" class="text-cyan-400">0.95</span>
+                        </div>
+                        <input type="range" id="frictionRange" min="0.85" max="0.99" step="0.01" value="0.95" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none accent-cyan-400">
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between text-[11px] mb-2">
+                            <span>PARTICLE DENSITY</span>
+                            <span id="countVal" class="text-cyan-400">120</span>
+                        </div>
+                        <input type="range" id="countRange" min="10" max="400" step="10" value="120" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none accent-cyan-400">
+                    </div>
+                </div>
+            </section>
+
+            <!-- Aesthetics Group -->
+            <section>
+                <div class="flex items-center gap-2 mb-4">
+                    <div class="w-1 h-4 bg-purple-400 rounded-full"></div>
+                    <h3 class="text-xs uppercase font-bold text-slate-400 tracking-widest">Visual Style</h3>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <button class="color-theme p-3 rounded-2xl bg-cyan-900/20 border border-cyan-500/20 text-[10px] font-bold text-cyan-300 hover:bg-cyan-500/20 transition-all" data-colors='["#22d3ee", "#0891b2", "#06b6d4"]'>ELECTRIC</button>
+                    <button class="color-theme p-3 rounded-2xl bg-rose-900/20 border border-rose-500/20 text-[10px] font-bold text-rose-300 hover:bg-rose-500/20 transition-all" data-colors='["#fb7185", "#e11d48", "#f43f5e"]'>CRIMSON</button>
+                    <button class="color-theme p-3 rounded-2xl bg-emerald-900/20 border border-emerald-500/20 text-[10px] font-bold text-emerald-300 hover:bg-emerald-500/20 transition-all" data-colors='["#34d399", "#059669", "#10b981"]'>NATURE</button>
+                    <button class="color-theme p-3 rounded-2xl bg-amber-900/20 border border-amber-500/20 text-[10px] font-bold text-amber-300 hover:bg-amber-500/20 transition-all" data-colors='["#fbbf24", "#d97706", "#f59e0b"]'>COSMIC</button>
+                </div>
+            </section>
+        </div>
+
+        <div class="mt-12 text-center">
+            <p class="text-[10px] text-slate-500 leading-relaxed italic">
+                Drag to attract particles.<br>Adjust sliders to change behavior.
+            </p>
+        </div>
+    </aside>
+
+    <!-- Canvas Container -->
+    <main class="relative flex-grow cursor-crosshair">
+        <canvas id="mainCanvas"></canvas>
+    </main>
+
+    <script>
+        /**
+         * ANIMATION STUDIO ENGINE
+         */
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+        const sidebar = document.getElementById('sidebar');
+        const toggleBtn = document.getElementById('toggleControls');
+        const closeBtn = document.getElementById('closeSidebar');
+        const resetBtn = document.getElementById('resetBtn');
+        const fpsEl = document.getElementById('fpsCounter');
+
+        // State & Configuration
+        let width, height;
+        let particles = [];
+        let mouse = { x: -2000, y: -2000, active: false };
+        let lastTime = 0;
+        
+        const config = {
+            gravity: 0.05,
+            friction: 0.95,
+            count: 120,
+            colors: ["#22d3ee", "#0891b2", "#06b6d4"],
+            connectionDist: 100
+        };
+
+        class Particle {
+            constructor(isInit = false) {
+                this.reset(isInit);
+            }
+
+            reset(isInit) {
+                this.x = isInit ? Math.random() * width : (mouse.active ? mouse.x : Math.random() * width);
+                this.y = isInit ? Math.random() * height : (mouse.active ? mouse.y : Math.random() * height);
+                this.vx = (Math.random() - 0.5) * 8;
+                this.vy = (Math.random() - 0.5) * 8;
+                this.radius = Math.random() * 3.5 + 1.5;
+                this.color = config.colors[Math.floor(Math.random() * config.colors.length)];
+                this.alpha = Math.random() * 0.5 + 0.5;
+            }
+
+            update() {
+                // Mouse Interaction (Attraction)
+                if (mouse.active) {
+                    const dx = mouse.x - this.x;
+                    const dy = mouse.y - this.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    if (distance < 250) {
+                        const force = (250 - distance) / 3000;
+                        this.vx += dx * force;
+                        this.vy += dy * force;
+                    }
+                }
+
+                // Physics application
+                this.vy += config.gravity;
+                this.vx *= config.friction;
+                this.vy *= config.friction;
+
+                this.x += this.vx;
+                this.y += this.vy;
+
+                // Screen Boundary Constraints
+                if (this.y + this.radius > height) {
+                    this.y = height - this.radius;
+                    this.vy *= -0.7;
+                } else if (this.y - this.radius < 0) {
+                    this.y = this.radius;
+                    this.vy *= -0.7;
+                }
+
+                if (this.x + this.radius > width) {
+                    this.x = width - this.radius;
+                    this.vx *= -0.7;
+                } else if (this.x - this.radius < 0) {
+                    this.x = this.radius;
+                    this.vx *= -0.7;
+                }
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.globalAlpha = this.alpha;
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+        }
+
+        function initParticles() {
+            particles = [];
+            for (let i = 0; i < config.count; i++) {
+                particles.push(new Particle(true));
+            }
+        }
+
+        function drawConnections() {
+            ctx.lineWidth = 0.6;
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const p1 = particles[i];
+                    const p2 = particles[j];
+                    const dx = p1.x - p2.x;
+                    const dy = p1.y - p2.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < config.connectionDist) {
+                        const opacity = 1 - (dist / config.connectionDist);
+                        ctx.strokeStyle = `rgba(148, 163, 184, ${opacity * 0.4})`;
+                        ctx.beginPath();
+                        ctx.moveTo(p1.x, p1.y);
+                        ctx.lineTo(p2.x, p2.y);
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+
+        function animate(timestamp) {
+            // FPS Calculation
+            if (lastTime) {
+                const fps = Math.round(1000 / (timestamp - lastTime));
+                if (timestamp % 10 < 1) fpsEl.innerText = `${fps} FPS`;
+            }
+            lastTime = timestamp;
+
+            // Clear with trail effect
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.25)';
+            ctx.fillRect(0, 0, width, height);
+
+            drawConnections();
+
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        // Event Handlers
+        window.addEventListener('resize', () => {
+            resize();
+            initParticles();
+        });
+
+        // Mouse/Touch tracking
+        const handleInteraction = (e) => {
+            const pos = e.touches ? e.touches[0] : e;
+            mouse.x = pos.clientX;
+            mouse.y = pos.clientY;
+        };
+
+        canvas.addEventListener('mousedown', (e) => { mouse.active = true; handleInteraction(e); });
+        canvas.addEventListener('mousemove', handleInteraction);
+        window.addEventListener('mouseup', () => { mouse.active = false; });
+
+        canvas.addEventListener('touchstart', (e) => { mouse.active = true; handleInteraction(e); });
+        canvas.addEventListener('touchmove', handleInteraction);
+        window.addEventListener('touchend', () => { mouse.active = false; });
+
+        // Sidebar Controls
+        toggleBtn.addEventListener('click', () => {
+            sidebar.classList.toggle('translate-x-[120%]');
+        });
+
+        closeBtn.addEventListener('click', () => {
+            sidebar.classList.add('translate-x-[120%]');
+        });
+
+        resetBtn.addEventListener('click', () => {
+            initParticles();
+            // Tiny feedback effect
+            resetBtn.innerText = "Cleared!";
+            setTimeout(() => resetBtn.innerText = "Reset", 800);
+        });
+
+        // Range Inputs
+        document.getElementById('gravityRange').addEventListener('input', (e) => {
+            config.gravity = parseFloat(e.target.value);
+            document.getElementById('gravityVal').innerText = config.gravity;
+        });
+
+        document.getElementById('frictionRange').addEventListener('input', (e) => {
+            config.friction = parseFloat(e.target.value);
+            document.getElementById('frictionVal').innerText = config.friction;
+        });
+
+        document.getElementById('countRange').addEventListener('input', (e) => {
+            config.count = parseInt(e.target.value);
+            document.getElementById('countVal').innerText = config.count;
+            initParticles();
+        });
+
+        // Theme Switcher
+        document.querySelectorAll('.color-theme').forEach(btn => {
+            btn.addEventListener('click', () => {
+                config.colors = JSON.parse(btn.dataset.colors);
+                particles.forEach(p => {
+                    p.color = config.colors[Math.floor(Math.random() * config.colors.length)];
+                });
+            });
+        });
+
+        // App Start
+        window.onload = () => {
+            resize();
+            initParticles();
+            requestAnimationFrame(animate);
+            
+            // Interaction Hint
+            setTimeout(() => {
+                sidebar.classList.remove('translate-x-[120%]');
+                setTimeout(() => sidebar.classList.add('translate-x-[120%]'), 2500);
+            }, 800);
+        };
+    </script>
+</body>
+</html>
