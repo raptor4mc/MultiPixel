@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="Content-Type" content="text/html charset=UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="msapplication-tap-highlight" content="no">
+        <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=5">
+        <title>247 Game Frame</title>
+        <meta name="description" content="247 Game Frame">
+        <meta name="keywords" content="247, games">
+        <meta name="robots" content="noindex">
+        <link rel="canonical" href="https://www.247roulette.org/game/frame.html">
+        <style>
+            * {
+                -webkit-box-sizing: border-box;
+                -moz-box-sizing: border-box;
+                box-sizing: border-box;
+                position: relative;
+                margin: 0;
+                padding: 0;
+                line-height: initial;
+                -webkit-tap-highlight-color: transparent;
+                -webkit-tap-highlight-color: transparent
+            }
+
+            html {
+                width: 100%;
+                height: 100%;
+                overflow: hidden;
+                -webkit-touch-callout: none;
+                -webkit-user-select: none;
+                -khtml-user-select: none;
+                -moz-user-select: none;
+                -ms-user-select: none;
+                user-select: none
+            }
+
+            body {
+                width: 100%;
+                height: 100%;
+                overflow: hidden;
+                font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,"Helvetica Neue",Cantarell,Arial,Oxygen-Sans,Ubuntu,sans-serif
+            }
+
+            #game {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                overflow: hidden
+            }
+
+            #preloader {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                overflow: hidden;
+                background: #f4e858;
+                background: -moz-radial-gradient(center,ellipse cover,#f4e858 0,#fba149 100%);
+                background: -webkit-radial-gradient(center,ellipse cover,#f4e858 0,#fba149 100%);
+                background: radial-gradient(ellipse at center,#f4e858 0,#fba149 100%)
+            }
+
+            #pause-overlay {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                overflow: hidden;
+                background-color: rgba(0,0,0,.4);
+                cursor: pointer
+            }
+
+            #pause-overlay-text {
+                position: absolute;
+                width: 80%;
+                bottom: 5%;
+                left: 10%;
+                text-align: center;
+                color: #fff;
+                font-weight: 700;
+                font-size: 24px
+            }
+
+            #pause-pic {
+                position: absolute;
+                left: 50%;
+                top: calc(50% - 20px);
+                width: 380px;
+                height: 380px;
+                max-width: 50%;
+                max-height: 50%;
+                transform: translate(-50%,-50%)
+            }
+
+            #pause-pic>svg {
+                top: 50%;
+                left: 50%;
+                width: 100%;
+                height: 100%;
+                transform: translate(-50%,-50%)
+            }
+        </style>
+        <script>
+            "use strict";
+            function gtag() {
+                dataLayer.push(arguments)
+            }
+            window.dataLayer = window.dataLayer || [],
+            window.gtag = gtag,
+            ( () => {
+                function e() {
+                    window.parent.games247 && window.parent.games247.gameSupport && window.parent.games247.gameSupport.frameUserInteraction && (window.parent.games247.gameSupport.frameUserInteraction(),
+                    window.removeEventListener("touchend", e, {
+                        capture: !0,
+                        passive: !0
+                    }),
+                    window.removeEventListener("mouseup", e, {
+                        capture: !0,
+                        passive: !0
+                    }))
+                }
+                document.oncontextmenu = function(e) {
+                    return e && (e.preventDefault(),
+                    e.stopImmediatePropagation(),
+                    e.stopPropagation()),
+                    !0
+                }
+                ,
+                window.addEventListener("touchend", e, {
+                    capture: !0,
+                    passive: !0
+                }),
+                window.addEventListener("mouseup", e, {
+                    capture: !0,
+                    passive: !0
+                });
+                var o = window.parent.games247;
+                function r() {
+                    com.battleline.App.create()
+                }
+                o.gameSupport.ready = function() {
+                    var e, t, a, n;
+                    o.gameSupport.isReady = 1,
+                    e = r,
+                    n = 0 <= (a = (n = document.location.href).lastIndexOf("?")) && 0 <= (a = (n = n.substr(a + 1)).lastIndexOf("build=")) ? "?" + (0 < (a = (n = n.substr(a)).lastIndexOf("&")) ? n.substr(0, a) : n) : "",
+                    (a = document.createElement("script")).onload = e,
+                    a.onerror = t,
+                    a.onabort = t,
+                    a.ontimeout = t,
+                    a.async = !0,
+                    a.src = "js/game.js?v=1715998093988" + n,
+                    document.head.appendChild(a)
+                }
+                ,
+                o.gameSupport.isReady && o.gameSupport.ready()
+            }
+            )()
+        </script>
+    </head>
+    <body>
+        <div id="game"></div>
+        <div id="pause-overlay">
+            <div id="pause-pic">
+                <svg viewBox="0 0 100 100">
+                    <circle fill="none" stroke-width="8" stroke="#fff" cx="50" cy="50" r="44"/>
+                    <path fill="#fff" d="M34 52V25l41 25-41 25z"/>
+                </svg>
+            </div>
+            <div id="pause-overlay-text">Press here to play!</div>
+        </div>
+        <div id="preloader">
+            <div style="pointer-events:none;font-weight:700;position:absolute;text-align:center;bottom:5%;width:100%;font-size:12pt;color:rgba(0,0,0,.3)">LOADING...</div>
+            <div style="pointer-events:none;position:absolute;left:50%;top:calc(50% - 20px);width:342px;max-width:calc(100% - 40px);height:359px;max-height:calc(100% - 20px - 60px);max-width:50%;max-height:50%;transform:translate(-50%,-50%)">
+                <svg style="top:50%;left:50%;width:100%;height:100%;transform:translate(-50%,-50%)" viewBox="0 0 350 219.8">
+                    <g>
+                        <path d="M245.2 70l-6.9-2.3a.6.6 0 00-.6.2 1 1 0 00-.3.7v.4l.2 2.6V75a.8.8 0 00.5.7l4.5 1.5-1.6 3.6 6.2 2.1 3-7.1a87.1 87.1 0 004.8-23.2h-6.8a72.6 72.6 0 01-3 17.5zm-67.6-16.2l6.8 2.3h.1a.6.6 0 00.5-.2 1 1 0 00.3-.7l-.3-3.4V49a.8.8 0 00-.4-.7l-4.5-1.5c8.6-20.8 25-35 40.7-35a24.2 24.2 0 015.3.6l-3.3 10.1a1 1 0 000 .8.6.6 0 00.5.3.4.4 0 00.2 0 26.5 26.5 0 012.7-.8 16.8 16.8 0 012.6-.3.7.7 0 00.6-.6l2.5-7.4a25.3 25.3 0 013 2l3-2.8 2.7-2.3a6.7 6.7 0 011.3-1 28.8 28.8 0 00-10-6.1 28 28 0 00-6.1-1.4h-50l-70.6 54.9-5.4 15.8H83.2a15.7 15.7 0 01-14.7 14.7 16 16 0 01-8.5-2.5A18 18 0 0049.9 83h-7.2l5.2-1.7c39-12.6 61.2-30.8 61.2-50C109.1 12.4 92.6.2 67 .2 41.9.2 19 19.3 19 40.3c0 9.3 6.8 16.2 15.8 16.2 8.1 0 16.5-6 16.5-16a17.9 17.9 0 00-1-5.6c-.8-2 0-4.8 1.7-7.3a10.3 10.3 0 018-4.6c6 0 9 3.4 9 10 .1 19.5-44.7 48.4-69 61.3l8.7 19.4a68.6 68.6 0 0122.7-5.6c7.5 0 12.5 1.8 17.3 3.5s9.1 3.2 15.9 3.2c25.4 0 38-12.3 38.7-37.5V75.6H145l-3.4 9.8h-13l-9.3 26.6h52a6.2 6.2 0 01.2-1l.5-1.5 1-3.1a43 43 0 015.2-11.4 61 61 0 01-.7-41.2zM151.4 58h-21.1l30-25.9zM337.8.6A26.5 26.5 0 01320.6 7c-5.2 0-11-1.6-17.1-3.3S291.1 0 285.3 0c-9 0-21.6 2.7-28.3 7.8l-13 39.9h25.8l4.2-13.5.2-.2c2.7-2 5.8-2.8 10.7-2.8a14.4 14.4 0 015.3 1.3 18.1 18.1 0 006.7 1.4 31.6 31.6 0 0014.3-3.3l.9 1.5c-41 31.5-55.4 44.3-55.4 64.7 0 9 6.1 18 19.6 18 15 0 18.7-10.6 24.2-26.8 4.7-14 10.6-31.3 26.4-47.7a123.8 123.8 0 0123.1-19zm-96.2 27.5c2.8-4.3 6-13 4.8-13.9s-10.2 6.2-12.9 10.1c-2.4 3.5-17.5 27.8-21 33.6a5.7 5.7 0 00-1-.1 6 6 0 00-5.2 9 500.9 500.9 0 00-25 32.6c-2.7 4.3-5.9 13-4.7 13.8s10.1-6.2 12.8-10l21-33.4a5.7 5.7 0 001.1.1 6 6 0 006-6 6 6 0 00-.8-3.2c4.4-5.5 21.8-27 25-32.6zM37.2 147.6h24.3v7.1h-3v16.7H44l-2.3-4.2a10.4 10.4 0 01-4.4 3.4A17.2 17.2 0 0130 172a24.4 24.4 0 01-9-1.6 21.3 21.3 0 01-7.3-4.7 22.3 22.3 0 01-4.8-7.5 25.2 25.2 0 01-1.8-9.7 25.6 25.6 0 011.9-10 25 25 0 015-7.7 23.1 23.1 0 017.2-5 20.2 20.2 0 018.3-1.8 24 24 0 016.5.7 17.7 17.7 0 014.2 1.7 9.4 9.4 0 012.4 1.9 13.7 13.7 0 001.2 1.3l1.5-4.8h10.9v19.7H43a10.3 10.3 0 00-.8-3.6 7.9 7.9 0 00-1.8-2.7 8.5 8.5 0 00-2.7-1.6 8.3 8.3 0 00-3-.6 8.2 8.2 0 00-4.1 1 10.4 10.4 0 00-3.2 2.7 13 13 0 00-2 4 15.7 15.7 0 00-.7 4.8 16.9 16.9 0 00.6 4.8 11.9 11.9 0 002 3.9 9.3 9.3 0 003.1 2.6 9.1 9.1 0 004.3 1 8.9 8.9 0 004.7-1 7 7 0 002.3-2.3v-2.8h-4.5zm130-22.9h27.9v8.7h-4v29.4h4v8.6H172v-8.6h4.2l-.2-22.4v-3.9h-.3l-.5 2.5-.6 2.5a139.9 139.9 0 00-1 4l-7.7 26h-15.2l-4.1-13.4-4.1-13.3a11.1 11.1 0 01-.4-1.3 39.3 39.3 0 01-.9-4.4 24.5 24.5 0 01-.2-2.6h-.3V163h4.1v8.6H125v-8.6h4v-29.6h-3.9v-8.6h27.7l7.4 25zm32.4 0h44.1v14.8H231v-6h-11.7v9.3h13.9v8.9h-13.9v10.9H231v-6.3h12.7v15.1h-44.1v-8.8h4.6v-29h-4.6zm97 33.6a11.7 11.7 0 01-1.9 6.6 14.7 14.7 0 01-4.6 4.4 20.3 20.3 0 01-6.2 2.4 32 32 0 01-6.7.7 22.8 22.8 0 01-5.2-.5 21.4 21.4 0 01-4.2-1.4 18.7 18.7 0 01-3.4-2 16.2 16.2 0 01-2.5-2.2l-.8 5.1h-12.8v-16.8h13.6a5.3 5.3 0 001 3.4 7.3 7.3 0 002.4 2 10.8 10.8 0 003 1 23.8 23.8 0 002.8.3 17 17 0 002 0 8.1 8.1 0 002-.6 4.3 4.3 0 001.6-1 2.3 2.3 0 00.6-1.7c0-.8-.7-1.5-2-2a42 42 0 00-5.3-1.8l-6.8-1.8a29.7 29.7 0 01-6.7-2.9 17 17 0 01-5.2-4.6 11.4 11.4 0 01-2.1-7 11.8 11.8 0 011.7-6.4 14.7 14.7 0 014.3-4.5 20 20 0 015.7-2.6 20.8 20.8 0 015.7-.8 27.8 27.8 0 014.5.3 20.9 20.9 0 014.3 1.2 14.2 14.2 0 013.7 2.1 11.3 11.3 0 012.8 3.2l.7-5.6h12.6v16.7H282a7.2 7.2 0 00-.7-3.3 7.4 7.4 0 00-2-2.4 9 9 0 00-3-1.6 13 13 0 00-3.7-.4 6.7 6.7 0 00-1.6.2 7.6 7.6 0 00-1.7.6 3.7 3.7 0 00-1.2 1.2 2.5 2.5 0 00-.5 1.5c0 1.1.7 2.1 2.2 2.9a33 33 0 005.3 2.1l7 2.2a38.6 38.6 0 017 2.9 18 18 0 015.3 4.3 10 10 0 012.1 6.6zM103 124.7H81l-2.9 8.7-9.8 29.3h-5v8.7h23.3v-8.7h-5.7l1.5-4.6h15l1.5 4.6h-7v8.7h29.4v-8.7H116zm-16.7 25.4l4.7-14.4L96 150zm-10 63.6a5.5 5.5 0 01.4-2 5.7 5.7 0 011-1.8 5.3 5.3 0 011.8-1.4 5.9 5.9 0 014.8 0 6 6 0 011.8 1.4 5.6 5.6 0 011.2 1.8 5.7 5.7 0 01.3 2 5.5 5.5 0 01-1.4 3.8 5.5 5.5 0 01-4.3 1.6 5.5 5.5 0 01-2.3-.5 6.2 6.2 0 01-1.7-1.2 5.8 5.8 0 01-1.2-1.7 5 5 0 01-.4-2zm47.5-1a26.6 26.6 0 01-3 2.6 20.5 20.5 0 01-7.5 3.8 18.4 18.4 0 01-4.6.6 20.5 20.5 0 01-7.3-1.2 15.3 15.3 0 01-5.5-3.6 16.1 16.1 0 01-3.6-5.6 20.8 20.8 0 01-1.2-7.5 19.5 19.5 0 011.4-7.7 19.1 19.1 0 013.7-5.8 16.2 16.2 0 014.9-3.6 12 12 0 015.1-1.2 10.4 10.4 0 013.2.4 11.4 11.4 0 012.3 1 6.7 6.7 0 011.5 1.2l.7.7 1.1-2.8h7.9v14.2h-9a8.8 8.8 0 00-.4-2.3 6.6 6.6 0 00-1-2 4.6 4.6 0 00-1.6-1.4 4.8 4.8 0 00-2.3-.6 4.2 4.2 0 00-2.5.8 6.5 6.5 0 00-1.8 2.1 11.7 11.7 0 00-1.2 3.2 16.9 16.9 0 00-.4 3.8 13 13 0 00.4 3.5 9.3 9.3 0 001.4 3 7 7 0 002.4 2.1 6.1 6.1 0 003.1.8 6.6 6.6 0 003-.7 13 13 0 002.4-1.6 15.4 15.4 0 001.7-1.6l.9-1zm21.4 7.1a21.5 21.5 0 01-7.2-1.2 15.2 15.2 0 01-5.6-3.4 15.5 15.5 0 01-3.7-5.7 22.9 22.9 0 01-1.3-8.2 20.6 20.6 0 011.2-7.4 16.9 16.9 0 013.6-5.7 16 16 0 015.6-3.8 18.5 18.5 0 017-1.3 21.8 21.8 0 018 1.3 14.8 14.8 0 015.6 3.8 15.2 15.2 0 013.3 5.8 25.4 25.4 0 011 7.7 23.6 23.6 0 01-1.1 7.6 15.2 15.2 0 01-3.4 5.7 14.7 14.7 0 01-5.5 3.5 20.9 20.9 0 01-7.5 1.3zm0-7.8a3.3 3.3 0 002.1-.8 6.3 6.3 0 001.6-2 11.9 11.9 0 001-3.3 23.6 23.6 0 00.4-4.2 26 26 0 00-.4-4.3 13.3 13.3 0 00-1-3.4 6.5 6.5 0 00-1.7-2.4 3.8 3.8 0 00-2.4-.8 3.2 3.2 0 00-2.1.8 6.3 6.3 0 00-1.7 2.1 13.4 13.4 0 00-1 3.4 22.4 22.4 0 00-.3 4.2 20.5 20.5 0 00.4 4.4 13.5 13.5 0 001.1 3.4 6 6 0 001.8 2.1 3.7 3.7 0 002.2.8zm55.8-19.2l-.3 1.9-.4 1.9-.4 1.7a12 12 0 01-.3 1.2l-5.3 19.4H184l-2.8-9.9-2.8-10-.2-1a140.3 140.3 0 01-.6-3.3 17.3 17.3 0 01-.2-2h-.2v19.7h2.8v6.5h-13.5v-6.5h2.7v-22h-2.6V184h18.8l5 18.6 4.8-18.6h19v6.4h-2.7v22h2.7v6.4h-15.7v-6.5h2.8v-19.6z"/>
+                    </g>
+                </svg>
+            </div>
+        </div>
+    </body>
+</html>
