@@ -6,168 +6,117 @@
     <title>Relimintor - Game Browser</title>
     <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Lucide Icons (Updated to reliable CDN) -->
-    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         /* Custom Animations and Base Styles */
         body {
-            background-color: #0f172a; /* Dark slate background */
+            background-color: #0f172a; 
             color: #e2e8f0;
-            font-family: 'Inter', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
             overflow-x: hidden;
         }
 
-        /* Base floating animation for the entire title area */
         @keyframes floatUp {
             0% { opacity: 0; transform: translateY(20px) scale(0.95); }
             100% { opacity: 1; transform: translateY(0) scale(1); }
         }
         
-        /* Keyframes for text transformation effect (devouring) */
         @keyframes vanish-to-r {
             0% { opacity: 1; transform: scale(1) translate(0, 0); }
-            /* Target moves left towards the center of the first 'R' */
             100% { opacity: 0; transform: scale(0.1) translateX(-80px); } 
         }
 
         @keyframes vanish-to-o {
             0% { opacity: 1; transform: scale(1) translate(0, 0); }
-            /* Target moves left towards the center of the 'O' */
             100% { opacity: 0; transform: scale(0.1) translateX(-10px); }
         }
 
-        /* Keyframes for text transformation effect (emergence) */
         @keyframes emerge {
             0% { opacity: 0; transform: scale(0.1) translateY(20px); }
             100% { opacity: 1; transform: scale(1) translateY(0); }
         }
 
-        /* The Gradient Color (applied by JS to individual spans) */
         .raptor-gradient-color {
             background: linear-gradient(to right, #4ade80, #22c55e);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
-        /* Container styling for the animated text */
         .animated-title-container {
             display: flex;
             justify-content: center;
             align-items: center;
             flex-wrap: nowrap;
             overflow: hidden; 
-            min-height: 80px; /* Ensure space for the animation */
+            min-height: 80px;
             animation: floatUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
         
-        /* The initial 'R' and 'O' need to be relatively positioned during transition 
-           to prevent reflow while other letters vanish. */
         .initial-r, .initial-o {
             position: relative;
         }
 
-
-        /* Search Bar Glow */
         .search-container:focus-within {
             box-shadow: 0 0 20px rgba(74, 222, 128, 0.3);
             border-color: #4ade80;
         }
 
-        /* --- REFINED GAME CARD STYLES --- */
         .game-card {
             transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
             position: relative;
             overflow: hidden;
             border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4); /* Base shadow */
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
         }
 
         .game-card:hover {
-            transform: scale(1.06); /* Slightly more aggressive scale */
-            border-color: #4ade80; /* Green border on hover */
-            /* Add an inner glow effect and a larger shadow */
+            transform: scale(1.06);
+            border-color: #4ade80;
             box-shadow: 0 15px 40px rgba(74, 222, 128, 0.25), 0 0 0 3px rgba(74, 222, 128, 0.5); 
             z-index: 10;
         }
 
-        /* Dynamic Background Patterns for Cards (preserved) */
         .bg-pattern-1 { background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%); }
         .bg-pattern-2 { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); }
         .bg-pattern-3 { background: linear-gradient(135deg, #eab308 0%, #a16207 100%); }
         .bg-pattern-4 { background: linear-gradient(135deg, #a855f7 0%, #7e22ce 100%); }
-        .bg-pattern-5 { background: linear-gradient(135deg, #ec4899 0%, #be185d 100%); }
-        .bg-pattern-6 { background: linear-gradient(135deg, #14b8a6 0%, #0f766e 100%); }
         
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #0f172a;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #334155;
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #4ade80;
-        }
-
-        /* --- NEW ANIMATION STYLES FOR GAME CARD --- */
-
-        /* Keyframes for the rolling icon (on hover): moves right across the button space and back */
         @keyframes iconRoll {
             0% { transform: translateX(0) rotate(0deg); }
             50% { transform: translateX(calc(100% + 4px)) rotate(180deg); }
             100% { transform: translateX(0) rotate(360deg); }
         }
         
-        /* Keyframes for the icon jump (on click): moves to the 'A' position, holds, then returns */
         @keyframes iconJumpAndReturn {
             0% { transform: translateX(0) scale(1); }
-            20% { transform: translateX(40px) scale(1.1); } /* Jump towards 'A' position (approx. 40px) */
-            70% { transform: translateX(40px) scale(1.1); } /* Hold at 'A' position (50% duration = 0.5s) */
-            100% { transform: translateX(0) scale(1); } /* Return to start */
+            20% { transform: translateX(40px) scale(1.1); }
+            70% { transform: translateX(40px) scale(1.1); }
+            100% { transform: translateX(0) scale(1); }
         }
 
-
-        /* Description visibility and "plop up" effect (FIXED for 2-line wrap) */
         .game-description-popup {
             opacity: 0;
             transition: opacity 0.3s ease-out, transform 0.3s ease-out;
             position: absolute;
-            
-            /* Positioning: Right of the icon box, centered vertically to the icon row */
             left: 5rem; 
             top: 50%;
-            /* Translate Y to truly center it vertically, Translate X for the "plop" effect */
             transform: translateY(-50%) translateX(10px); 
-            
             z-index: 20;
             padding: 0.5rem 0.75rem; 
-
-            /* Subtle Styling */
-            background-color: rgba(30, 41, 59, 0.9); /* slate-800 semi-transparent */
+            background-color: rgba(30, 41, 59, 0.95);
             border-radius: 0.5rem;
-            border: 1px solid rgba(74, 222, 128, 0.2); /* Green border accent */
-            
-            /* --- 2-LINE WRAP FIX --- */
-            max-width: 150px; /* Forces the text to wrap */
-            line-height: 1.25rem; /* Standard text-sm line height (20px) */
-            /* Height calculation: 2 * 1.25rem (lines) + 2 * 0.5rem (padding) = 3.5rem. Use 3.75rem for safety. */
-            max-height: 3.75rem; 
-            overflow: hidden; /* Hides any text that goes past 2 lines */
+            border: 1px solid rgba(74, 222, 128, 0.3);
+            max-width: 150px;
+            pointer-events: none;
         }
 
-        /* When hovering over the entire card, the description shows */
         .game-card:hover .game-description-popup {
             opacity: 1;
-            transform: translateY(-50%) translateX(0); /* Slide in horizontally */
+            transform: translateY(-50%) translateX(0);
         }
 
-        /* Apply rolling animation only when the card is hovered */
         .game-card:hover .play-icon-roll {
-            /* This will be overridden by the JS click animation */
             animation: iconRoll 0.8s ease-in-out forwards;
         }
     </style>
@@ -177,8 +126,7 @@
     <!-- Navbar -->
     <nav class="w-full p-6 flex justify-between items-center z-20">
         <div class="flex items-center gap-2 cursor-pointer select-none">
-            <!-- Raptor Icon (Fixed: 'dino' doesn't exist, using 'gamepad-2') -->
-            <i data-lucide="gamepad-2" class="w-8 h-8 text-green-400"></i>
+            <i data-lucide="layout-grid" class="w-8 h-8 text-green-400"></i>
             <h1 class="text-2xl font-bold tracking-tighter uppercase">Relimintor</h1>
         </div>
         <div class="text-sm text-slate-400 hover:text-white cursor-pointer transition">
@@ -186,35 +134,30 @@
         </div>
     </nav>
 
-    <!-- Main Content Area -->
+    <!-- Main Content -->
     <main class="flex-1 w-full max-w-6xl px-4 flex flex-col items-center mt-10 mb-20">
         
-        <!-- Logo & Search Section (Google Style) -->
         <div class="flex flex-col items-center w-full max-w-2xl mb-16 text-center">
             <div class="mb-8">
-                <i data-lucide="ghost" class="w-20 h-20 text-green-500 mx-auto mb-4 animate-bounce"></i>
-                <!-- Animated Title Container: Starts with Relimintor, transforms to Rapturo -->
+                <i data-lucide="sparkles" class="w-16 h-16 text-green-500 mx-auto mb-4 animate-pulse"></i>
                 <h1 id="animatedTitle" class="text-5xl md:text-6xl animated-title-container font-black mb-2"></h1>
             </div>
 
-            <!-- Search Input -->
             <div class="search-container w-full relative group transition-all duration-300 rounded-full bg-slate-800/50 border border-slate-700 backdrop-blur-sm">
-                <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5"></i>
+                <i data-lucide="search" class="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5"></i>
                 <input 
                     type="text" 
                     id="searchInput"
-                    placeholder="Search your games..." 
-                    class="w-full bg-transparent text-white px-12 py-4 rounded-full outline-none placeholder:text-slate-500 text-lg"
+                    placeholder="Search your library..." 
+                    class="w-full bg-transparent text-white px-14 py-4 rounded-full outline-none placeholder:text-slate-500 text-lg"
                     autocomplete="off"
                 >
-                <!-- Clear Button -->
-                <button id="clearBtn" class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white hidden">
-                    <i data-lucide="x" class="w-5 h-5"></i>
+                <button id="clearBtn" class="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white hidden">
+                    <i data-lucide="x-circle" class="w-5 h-5"></i>
                 </button>
             </div>
         </div>
 
-        <!-- Games Grid (Disney+ Style) -->
         <div class="w-full">
             <h2 class="text-xl font-semibold mb-6 text-slate-200 flex items-center gap-2">
                 <i data-lucide="gamepad-2" class="w-5 h-5 text-green-400"></i>
@@ -222,162 +165,101 @@
             </h2>
             
             <div id="gamesGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                <!-- Game cards will be injected here by JavaScript -->
+                <!-- Cards injected here -->
             </div>
 
-            <!-- No Results Message -->
             <div id="noResults" class="hidden w-full text-center py-20">
-                <i data-lucide="frown" class="w-16 h-16 text-slate-600 mx-auto mb-4"></i>
-                <h3 class="text-xl text-slate-400">No Games with that name (YET!).</h3>
+                <i data-lucide="search-x" class="w-16 h-16 text-slate-600 mx-auto mb-4"></i>
+                <h3 class="text-xl text-slate-400">No matches found.</h3>
             </div>
         </div>
 
     </main>
 
-    <!-- Footer -->
     <footer class="w-full py-6 text-center text-slate-600 text-sm border-t border-slate-800/50">
-        <p>&copy; 2025 Relimintor. Coded by MultiPixel/Raptor4, Textured by Eliminate404</p>
+        <p>&copy; 2025 Relimintor</p>
     </footer>
 
-    <!-- LOGIC -->
     <script>
-        // --- TEXT ANIMATION LOGIC (UNCHANGED) ---
-        const initialText = "RELIMINTOR"; // 10 letters
-        const targetText = "RAPTURO";    // 7 letters
+        const initialText = "RELIMINTOR";
+        const targetText = "RAPTURO";
         const titleH1 = document.getElementById('animatedTitle');
 
         function setupAnimation() {
             titleH1.innerHTML = '';
-            
-            // 1. Inject initial text (RELIMINTOR) as spans
             initialText.split('').forEach((char, index) => {
                 const span = document.createElement('span');
                 span.textContent = char;
                 span.className = 'inline-block transition-transform text-white/80';
-                
-                // Identify the R (index 0) and O (index 8) to be kept
-                if (index === 0) { 
-                    span.classList.add('initial-r');
-                } else if (index === 8) {
-                    span.classList.add('initial-o');
-                } else {
-                    span.classList.add('raptor-gradient-color');
-                }
-
+                if (index === 0) span.classList.add('initial-r');
+                else if (index === 8) span.classList.add('initial-o');
+                else span.classList.add('raptor-gradient-color');
                 titleH1.appendChild(span);
             });
-
-            // 2. Start transformation after a short delay
             setTimeout(transformText, 1000);
         }
 
         function transformText() {
             const initialSpans = titleH1.querySelectorAll('span');
-            
-            // Get references to the persistent spans
             const initialR = titleH1.querySelector('.initial-r');
             const initialO = titleH1.querySelector('.initial-o');
 
-            // --- SMOOTH SLIDE COMPENSATION ---
-            const R_SHIFT_PX = '50px'; 
-            const O_SHIFT_PX = '-15px'; 
-            const SLIDE_DURATION = '1600ms'; 
-
             setTimeout(() => {
-                // R(0): Needs to move right to accommodate the 5 new letters 'APTUR'
-                initialR.style.transition = `transform ${SLIDE_DURATION} cubic-bezier(0.4, 0, 0.2, 1)`;
-                initialR.style.transform = `translateX(${R_SHIFT_PX})`; 
-
-                // O(8): Needs to move left as the entire word shrinks
-                initialO.style.transition = `transform ${SLIDE_DURATION} cubic-bezier(0.4, 0, 0.2, 1)`; 
-                initialO.style.transform = `translateX(${O_SHIFT_PX})`; 
+                initialR.style.transition = `transform 1.6s cubic-bezier(0.4, 0, 0.2, 1)`;
+                initialR.style.transform = `translateX(50px)`; 
+                initialO.style.transition = `transform 1.6s cubic-bezier(0.4, 0, 0.2, 1)`; 
+                initialO.style.transform = `translateX(-15px)`; 
             }, 100);
 
-            // Phase A: Devour (E L I M I N T R)
             initialSpans.forEach((span, index) => {
                 const delay = (index - 1) * 70;
-
-                if (index === 0 || index === 8) {
-                    // R(0) and O(8) are handled by the transition above, they don't vanish.
-                } else if (index === 9) {
-                    // R(9) vanishes into O(8)
-                    span.style.animation = `vanish-to-o 0.5s ease-in forwards`;
-                    span.style.animationDelay = `500ms`; 
+                if (index === 0 || index === 8) return;
+                if (index === 9) {
+                    span.style.animation = `vanish-to-o 0.5s ease-in forwards 0.5s`;
                 } else { 
-                    // E L I M I N T (indices 1-7) vanish into R(0)
-                    span.style.animation = `vanish-to-r 0.5s ease-in forwards`;
-                    span.style.animationDelay = `${delay}ms`;
+                    span.style.animation = `vanish-to-r 0.5s ease-in forwards ${delay}ms`;
                 }
             });
 
-            // Phase B: Emerge Rapturo (R A P T U R O)
             setTimeout(() => {
-                
-                // 1. Clean up and remove vanished spans (indices 1,2,3,4,5,6,7,9)
-                initialSpans.forEach((span, index) => {
-                    if (index !== 0 && index !== 8) {
-                        span.remove();
-                    }
-                });
-                
-                // 2. INSTANTLY reset the manual transform and transition to allow reflow.
-                initialR.style.transition = 'none'; 
-                initialR.style.transform = 'none'; 
-                initialO.style.transition = 'none'; 
-                initialO.style.transform = 'none'; 
+                initialSpans.forEach((span, index) => { if (index !== 0 && index !== 8) span.remove(); });
+                initialR.style.transition = 'none'; initialR.style.transform = 'none'; 
+                initialO.style.transition = 'none'; initialO.style.transform = 'none'; 
 
-                // 3. Inject new letters A P T U R
-                const newLetters = targetText.slice(1, -1); // "APTUR"
-                
-                // Fixed, small delay for simultaneous emergence
-                const EMERGE_DELAY = 10; 
+                const newLetters = targetText.slice(1, -1);
+                initialR.classList.replace('text-white/80', 'text-white');
+                initialR.style.animation = `emerge 0.5s forwards`;
 
-                // 4. Final positioning of R(0)
-                initialR.classList.remove('text-white/80');
-                initialR.classList.add('text-white'); 
-                initialR.style.animation = `emerge 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards`;
-                initialR.style.animationDelay = `${EMERGE_DELAY}ms`; 
-
-                // Insert and animate the new letters (A P T U R) simultaneously
                 newLetters.split('').forEach((char) => {
                     const span = document.createElement('span');
                     span.textContent = char;
-                    span.className = 'inline-block transition-transform relative font-black raptor-gradient-color';
-                    span.style.animation = `emerge 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards`;
-                    span.style.animationDelay = `${EMERGE_DELAY}ms`; // Same delay for all
-                    
+                    span.className = 'inline-block raptor-gradient-color font-black';
+                    span.style.animation = `emerge 0.5s forwards`;
                     titleH1.insertBefore(span, initialO);
                 });
 
-                // 5. Final positioning of O(8)
-                initialO.classList.remove('text-white/80');
-                initialO.classList.add('text-white'); 
-                initialO.style.animation = `emerge 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards`;
-                initialO.style.animationDelay = `${EMERGE_DELAY}ms`; // Same delay for all
-
-            }, 1800); // Wait for the devour animations and slides to complete
+                initialO.classList.replace('text-white/80', 'text-white');
+                initialO.style.animation = `emerge 0.5s forwards`;
+            }, 1800);
         }
 
-
-        // --- CONFIGURATION: ADD YOUR GAMES HERE (FIXED ICONS & TYPOS) ---
+        // UPDATED ICONS: Ensuring all icon names exist in Lucide
         const games = [
             {
-                title: "universe.html",
-                description: "A UNIVERSEEEE",
+                title: "Universe Explorer",
+                description: "Venture into the cosmic unknown.",
                 url: "universe.html", 
                 icon: "rocket", 
                 styleClass: "bg-pattern-1",
             },
             {
-                title: "particle accelerator",
-                description: "upgrade it",
+                title: "Particle Lab",
+                description: "Upgrade the accelerator and discover new elements.",
                 url: "particle.html",
-                icon: "h2o",
+                icon: "atom", // Changed from 'h2o' to 'atom'
                 styleClass: "bg-pattern-2",
-            },
+            }
         ];
-
-        // --- RENDER LOGIC (UPDATED CARD TEMPLATE) ---
 
         const grid = document.getElementById('gamesGrid');
         const searchInput = document.getElementById('searchInput');
@@ -387,55 +269,34 @@
         function renderGames(filterText = "") {
             grid.innerHTML = "";
             let count = 0;
-
             const lowerFilter = filterText.toLowerCase();
 
             games.forEach(game => {
-                // Helper to get a short, 7-word description
-                const shortDescription = game.description.split(' ').slice(0, 7).join(' ');
-
-                // Search logic: check title or description
                 if (game.title.toLowerCase().includes(lowerFilter) || 
                     game.description.toLowerCase().includes(lowerFilter)) {
                     
                     count++;
+                    const card = document.createElement('div');
+                    card.className = `game-card block rounded-xl h-48 relative cursor-pointer group ${game.styleClass}`;
                     
-                    // Create the main link element (card)
-                    const card = document.createElement('a');
-                    card.href = game.url;
-                    card.className = `game-card block rounded-xl h-48 relative cursor-pointer no-underline group ${game.styleClass}`;
-                    card.setAttribute('data-url', game.url); // Store URL for button click handling
-                    
-                    const buttonId = `playBtn-${game.title.replace(/\s/g, '-')}-${count}`;
+                    const buttonId = `playBtn-${count}`;
 
                     card.innerHTML = `
-                        <!-- Content Wrapper, flex-col to stack top/bottom sections -->
                         <div class="relative z-10 h-full flex flex-col justify-between p-5">
-                            
-                            <!-- TOP SECTION (Icon and Short Description Pop-up) -->
-                            <!-- Structure: (Icon) (Pop-up Description) -->
                             <div class="flex items-start relative mb-4">
-                                <!-- Icon Area -->
-                                <div class="p-3 bg-black/10 rounded-xl backdrop-blur-sm border border-white/20 shadow-xl transform group-hover:scale-[1.1] transition duration-300 z-10 flex-shrink-0">
+                                <div class="p-3 bg-black/20 rounded-xl backdrop-blur-md border border-white/20 transform group-hover:scale-110 transition duration-300">
                                     <i data-lucide="${game.icon}" class="w-8 h-8 text-white"></i>
                                 </div>
-                                
-                                <!-- Description Pop-up (Visible only on Card Hover, positioned beside icon, above title) -->
                                 <div class="game-description-popup">
-                                    <p class="text-white/90 text-sm font-medium">${shortDescription}</p>
+                                    <p class="text-white/90 text-xs font-medium">${game.description}</p>
                                 </div>
                             </div>
-
-                            <!-- BOTTOM SECTION (Title and Button) -->
                             <div>
-                                <!-- Title: Positioned above the button -->
-                                <h3 class="text-xl font-extrabold text-white tracking-wider mb-4">${game.title}</h3>
-                                
-                                <!-- Engage Button: Static, always visible at the bottom, covers full width -->
+                                <h3 class="text-xl font-bold text-white mb-3">${game.title}</h3>
                                 <button id="${buttonId}" 
-                                    class="w-full flex items-center justify-center gap-2 bg-green-500 text-white px-4 py-3 rounded-full font-bold shadow-2xl shadow-green-700/50 transition duration-300 hover:bg-green-400">
-                                    <i data-lucide="play" class="w-5 h-5 fill-white play-icon-roll transition-transform"></i>
-                                    <span>ENGAGE</span>
+                                    class="w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-400 text-white py-2.5 rounded-full font-bold transition">
+                                    <i data-lucide="play" class="w-4 h-4 fill-white play-icon-roll"></i>
+                                    <span>PLAY</span>
                                 </button>
                             </div>
                         </div>
@@ -443,67 +304,43 @@
                     
                     grid.appendChild(card);
                     
-                    // --- Attach Click Listener for Play Icon Jump Animation ---
-                    const playButton = card.querySelector(`#${buttonId}`);
-                    const playIcon = playButton.querySelector('.play-icon-roll');
+                    const btn = card.querySelector(`#${buttonId}`);
+                    const icon = btn.querySelector('.play-icon-roll');
 
-                    playButton.addEventListener('click', (e) => {
-                        e.preventDefault(); // Stop the link from navigating immediately
-                        
-                        // Apply the new jump animation to the icon for 1 second
-                        playIcon.style.animation = 'iconJumpAndReturn 1s ease-in-out forwards';
-                        
-                        // After the animation finishes (1s), perform the navigation
-                        setTimeout(() => {
-                            // Clear animation style (so hover works again) and navigate
-                            playIcon.style.animation = ''; 
-                            window.location.href = game.url;
-                        }, 1000); // Wait for the 1000ms animation duration
-                    });
+                    const handlePlay = (e) => {
+                        e.stopPropagation();
+                        icon.style.animation = 'iconJumpAndReturn 1s ease-in-out forwards';
+                        setTimeout(() => { window.location.href = game.url; }, 800);
+                    };
+
+                    btn.addEventListener('click', handlePlay);
+                    card.addEventListener('click', handlePlay);
                 }
             });
 
-            // Handle No Results
-            if (count === 0) {
-                noResults.classList.remove('hidden');
-            } else {
-                noResults.classList.add('hidden');
-            }
+            if (count === 0) noResults.classList.remove('hidden');
+            else noResults.classList.add('hidden');
 
-            // Re-initialize icons for the new elements
-            if (typeof lucide !== 'undefined') {
-                lucide.createIcons();
-            }
+            if (window.lucide) lucide.createIcons();
         }
 
-        // --- EVENT LISTENERS ---
-
         searchInput.addEventListener('input', (e) => {
-            const val = e.target.value;
-            renderGames(val);
-            if (val.length > 0) clearBtn.classList.remove('hidden');
-            else clearBtn.classList.add('hidden');
+            renderGames(e.target.value);
+            clearBtn.classList.toggle('hidden', e.target.value.length === 0);
         });
 
         clearBtn.addEventListener('click', () => {
             searchInput.value = "";
             renderGames();
             clearBtn.classList.add('hidden');
-            searchInput.focus();
         });
 
-        // Initial Calls
-        // Run the logo animation setup
+        // Initialize
         setupAnimation();
-        // Render the game grid after a small delay
-        setTimeout(renderGames, 500); 
-        // Ensure icons are created on load
-        window.onload = function() {
-            if (typeof lucide !== 'undefined') {
-                lucide.createIcons();
-            }
-        };
-
+        renderGames();
+        
+        // Final fallback to ensure icons render even if some libraries take time
+        window.onload = () => { if (window.lucide) lucide.createIcons(); };
     </script>
 </body>
 </html>
