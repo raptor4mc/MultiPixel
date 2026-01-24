@@ -1,1 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sleek Browser Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
 
+        .browser-chrome {
+            background: #1e293b;
+            padding: 8px 16px;
+            border-bottom: 1px solid #334155;
+            z-index: 50;
+        }
+
+        .address-bar-container {
+            position: relative;
+            max-width: 800px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .address-input {
+            width: 100%;
+            background: #0f172a;
+            border: 1px solid #475569;
+            border-radius: 20px;
+            padding: 8px 20px;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            color: #f8fafc;
+        }
+
+        .address-input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+        }
+
+        .suggestions-dropdown {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            right: 0;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+            display: none;
+            overflow: hidden;
+        }
+
+        .suggestion-item {
+            padding: 12px 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: background 0.2s;
+        }
+
+        .suggestion-item:hover {
+            background: #334155;
+        }
+
+        .viewport {
+            flex-grow: 1;
+            background: #f8fafc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .empty-state {
+            color: #94a3b8;
+            text-align: center;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #3b82f6;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="browser-chrome">
+        <div class="flex items-center gap-4 mb-2">
+            <div class="flex gap-2">
+                <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                <div class="w-3 h-3 rounded-full bg-green-500"></div>
+            </div>
+            <div class="flex gap-4 text-slate-400">
+                <button class="hover:text-white" onclick="window.history.back()">←</button>
+                <button class="hover:text-white" onclick="window.history.forward()">→</button>
+                <button class="hover:text-white" onclick="location.reload()">↻</button>
+            </div>
+        </div>
+
+        <div class="address-bar-container">
+            <input 
+                type="text" 
+                id="addressBar" 
+                class="address-input" 
+                placeholder="Type a website name..."
+                autocomplete="off"
+            >
+            <div id="suggestions" class="suggestions-dropdown"></div>
+        </div>
+    </div>
+
+    <div class="viewport">
+        <div class="empty-state">
+            <h1 class="text-4xl font-bold mb-4 text-slate-800">Browser Ready</h1>
+            <p class="text-slate-500">Search for a site to navigate</p>
+        </div>
+    </div>
+
+    <script>
+        // ADD NEW WEBSITES HERE EFFORTLESSLY
+        const siteList = ["dude", "google", "github", "discord", "apple", "youtube", "twitter"];
+
+        const addressBar = document.getElementById('addressBar');
+        const suggestionsDiv = document.getElementById('suggestions');
+
+        addressBar.addEventListener('input', (e) => {
+            let val = e.target.value.toLowerCase();
+            
+            // Auto-add rap:// if user starts typing
+            if (val.length > 0 && !val.startsWith('rap://')) {
+                val = 'rap://' + val;
+                addressBar.value = val;
+            }
+
+            const query = val.replace('rap://', '');
+            
+            if (query.length > 0) {
+                const filtered = siteList
+                    .filter(name => name.includes(query))
+                    .sort((a, b) => {
+                        if (a.startsWith(query) && !b.startsWith(query)) return -1;
+                        if (!a.startsWith(query) && b.startsWith(query)) return 1;
+                        return a.length - b.length;
+                    });
+
+                if (filtered.length > 0) {
+                    suggestionsDiv.innerHTML = filtered.map(name => `
+                        <div class="suggestion-item" onclick="loadSite('${name}')">
+                            <div class="status-dot"></div>
+                            <div class="flex flex-col">
+                                <span class="font-bold text-white">${name}</span>
+                                <span class="text-xs text-slate-400">rap://${name}</span>
+                            </div>
+                        </div>
+                    `).join('');
+                    suggestionsDiv.style.display = 'block';
+                } else {
+                    suggestionsDiv.style.display = 'none';
+                }
+            } else {
+                suggestionsDiv.style.display = 'none';
+            }
+        });
+
+        // Hide suggestions when clicking away
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.address-bar-container')) suggestionsDiv.style.display = 'none';
+        });
+
+        function loadSite(name) {
+            // Path logic: websites/name.html
+            window.location.href = `websites/${name}.html`;
+        }
+
+        addressBar.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const query = addressBar.value.replace('rap://', '').toLowerCase();
+                if (siteList.includes(query)) loadSite(query);
+            }
+        });
+    </script>
+</body>
+</html>
