@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cyclotron: Particle Accelerator</title>
+    <style>
+        :root {
+            --neon-blue: #00f3ff;
+            --neon-pink: #ff00ff;
+            --neon-green: #00ff9d;
+            --neon-orange: #ff9d00;
+            --bg-color: #050505;
+            --panel-bg: rgba(10, 15, 20, 0.85);
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            font-family: 'Courier New', Courier, monospace;
+            color: white;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+
+        #gameCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            pointer-events: none; /* Let clicks pass through to canvas logic */
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .hud-panel {
+            padding: 20px;
+            pointer-events: auto; /* Enable buttons */
+        }
+
+        #top-bar {
+            display: flex;
+            justify-content: space-between;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
+        }
+
+        #stats-container {
+            display: flex;
+            gap: 20px;
+            font-size: 1.2rem;
+            text-shadow: 0 0 10px var(--neon-blue);
+        }
+
+        .stat-box {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+            opacity: 0.7;
+            text-transform: uppercase;
+        }
+
+        .stat-value {
+            font-weight: bold;
+        }
+
+        #currency-display {
+            color: var(--neon-orange);
+            text-shadow: 0 0 10px var(--neon-orange);
+        }
+
+        #bottom-bar {
+            display: flex;
+            justify-content: center;
+            padding-bottom: 30px;
+        }
+
+        #controls-hint {
+            position: absolute;
+            bottom: 120px;
+            width: 100%;
+            text-align: center;
+            opacity: 0.5;
+            animation: pulse 2s infinite;
+            pointer-events: none;
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+        }
+
+        #upgrade-panel {
+            display: flex;
+            gap: 15px;
+            background: var(--panel-bg);
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(5px);
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 90%; 
+        }
+
+        .upgrade-card {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 10px;
+            width: 90px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .upgrade-card:hover {
+            background: rgba(255,255,255,0.1);
+            transform: translateY(-2px);
+            border-color: var(--neon-blue);
+        }
+
+        .upgrade-card:active {
+            transform: translateY(0);
+        }
+
+        .upgrade-card.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            border-color: red;
+        }
+
+        .up-name {
+            font-size: 0.7rem;
+            color: var(--neon-blue);
+            margin-bottom: 5px;
+        }
+
+        .up-level {
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin-bottom: 2px;
+        }
+
+        .up-cost {
+            font-size: 0.6rem;
+            color: var(--neon-orange);
+        }
+
+        #heat-warning {
+            position: absolute;
+            top: 20%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: red;
+            font-size: 2rem;
+            font-weight: bold;
+            display: none;
+            text-shadow: 0 0 20px red;
+            pointer-events: none;
+            border: 2px solid red;
+            padding: 10px 30px;
+            background: rgba(50,0,0,0.8);
+            z-index: 10;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.3; }
+            50% { opacity: 0.8; }
+            100% { opacity: 0.3; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="gameCanvasContainer">
+        <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <div id="heat-warning">OVERHEAT</div>
+
+    <div id="ui-layer">
+        <div id="top-bar" class="hud-panel">
+            <div id="stats-container">
+                <div class="stat-box">
+                    <span class="stat-label">Velocity</span>
+                    <span class="stat-value" id="velocity-display">0 c</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-label">Heat</span>
+                    <span class="stat-value" id="heat-display">0%</span>
+                </div>
+            </div>
+            <div class="stat-box">
+                <span class="stat-label">Quarks</span>
+                <span class="stat-value" id="currency-display">0</span>
+            </div>
+        </div>
+
+        <div id="controls-hint">PRESS & HOLD CORE TO ACCELERATE</div>
+
+        <div id="bottom-bar" class="hud-panel">
+            <div id="upgrade-panel">
+                <div class="upgrade-card" id="up-magnets" onclick="game.buyUpgrade('magnets')">
+                    <div class="up-name">Magnets</div>
+                    <div class="up-level" id="lvl-magnets">Lvl 1</div>
+                    <div class="up-cost" id="cost-magnets">10 Q</div>
+                </div>
+                <div class="upgrade-card" id="up-cooling" onclick="game.buyUpgrade('cooling')">
+                    <div class="up-name">Cooling</div>
+                    <div class="up-level" id="lvl-cooling">Lvl 1</div>
+                    <div class="up-cost" id="cost-cooling">15 Q</div>
+                </div>
+                <div class="upgrade-card" id="up-density" onclick="game.buyUpgrade('density')">
+                    <div class="up-name">Targets</div>
+                    <div class="up-level" id="lvl-density">Lvl 1</div>
+                    <div class="up-cost" id="cost-density">50 Q</div>
+                </div>
+                <div class="upgrade-card" id="up-multiball" onclick="game.buyUpgrade('multiball')">
+                    <div class="up-name">Particles</div>
+                    <div class="up-level" id="lvl-multiball">Lvl 1</div>
+                    <div class="up-cost" id="cost-multiball">1000 Q</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+/**
+ * Particle Accelerator Game
+ * A high-performance canvas simulation.
+ */
+
+class Utils {
+    static random(min, max) { return Math.random() * (max - min) + min; }
+    static toRad(deg) { return deg * (Math.PI / 180); }
+    static lerp(a, b, t) { return a + (b - a) * t; }
+    static clamp(val, min, max) { return Math.min(Math.max(val, min), max); }
+    
+    // Returns a color based on speed (0 to 1)
+    static getSpeedColor(t) {
+        // Blue -> Purple -> White
+        if(t < 0.5) {
+            // Cyan to Purple
+            // Cyan: 0, 243, 255
+            // Purple: 255, 0, 255
+            const p = t * 2; 
+            const r = Utils.lerp(0, 255, p);
+            const g = Utils.lerp(243, 0, p);
+            const b = 255;
+            return `rgb(${r},${g},${b})`;
+        } else {
+            // Purple to White
+            const p = (t - 0.5) * 2;
+            const r = 255;
+            const g = Utils.lerp(0, 255, p);
+            const b = 255;
+            return `rgb(${r},${g},${b})`;
+        }
+    }
+
+    static getHeatColor(t) {
+        // Blue (cool) -> Yellow -> Red -> White (hot)
+        const r = Utils.clamp(t * 3 * 255, 0, 255);
+        const g = Utils.clamp((1 - Math.abs(t - 0.5) * 2) * 200, 0, 255);
+        const b = Utils.clamp((1 - t) * 255, 0, 255);
+        return `rgb(${r},${g},${b})`;
+    }
+}
+
+class VisualEffect {
+    constructor(x, y, color, speed, life) {
+        this.x = x;
+        this.y = y;
+        this.vx = (Math.random() - 0.5) * speed;
+        this.vy = (Math.random() - 0.5) * speed;
+        this.color = color;
+        this.life = life;
+        this.maxLife = life;
+        this.size = Math.random() * 3 + 1;
+        this.decay = Math.random() * 0.95 + 0.05; // Random drag
+    }
+
+    update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.vx *= 0.95;
+        this.vy *= 0.95;
+        this.life--;
+    }
+
+    draw(ctx) {
+        const alpha = this.life / this.maxLife;
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+    }
+}
+
+class FloatingText {
+    constructor(text, x, y, size, color) {
+        this.text = text;
+        this.x = x;
+        this.y = y;
+        this.life = 60;
+        this.vy = -1; // Float up
+        this.size = size;
+        this.color = color;
+    }
+
+    update() {
+        this.y += this.vy;
+        this.life--;
+    }
+
+    draw(ctx) {
+        const alpha = Utils.clamp(this.life / 20, 0, 1);
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = this.color;
+        ctx.font = `bold ${this.size}px Courier New`;
+        ctx.textAlign = 'center';
+        ctx.fillText(this.text, this.x, this.y);
+        ctx.globalAlpha = 1;
+    }
+}
+
+class Game {
+    constructor() {
+        this.canvas = document.getElementById('gameCanvas');
+        this.ctx = this.canvas.getContext('2d', { alpha: false }); // Optimize
+        
+        // Game State
+        this.quarks = 0;
+        this.velocity = 0; // Angular velocity
+        this.angle = 0;
+        this.heat = 0;
+        this.isAccelerating = false;
+        
+        this.maxVelocity = 2.0; // Increased to 2.0 radians/frame (very fast visual)
+        this.drag = 0.99;
+        this.baseAccel = 0.005;
+        
+        // Track
+        this.cx = 0;
+        this.cy = 0;
+        this.trackRadius = 0;
+        
+        // Upgrades
+        this.upgrades = {
+            magnets: { level: 1, cost: 10, name: "Magnets" }, // Increases acceleration
+            cooling: { level: 1, cost: 15, name: "Cooling" }, // Reduces heat gain / increases cooling
+            density: { level: 1, cost: 50, name: "Targets" }, // More targets spawn
+            multiball: { level: 1, cost: 1000, name: "Particles" } // Number of particles
+        };
+
+        // Entities
+        this.playerTrails = []; // Array of Arrays (one trail per particle)
+        this.effects = []; // Visual debris
+        this.texts = []; // Floating text
+        this.targets = []; // Collidable atoms
+        
+        // Visuals
+        this.shake = 0;
+        this.pulse = 0;
+        this.corePulse = 0;
+        
+        // Bindings
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
+        
+        // Controls
+        const startAccel = (e) => { 
+            // if clicking upgrade panel, ignore
+            if(e.target.closest('.hud-panel')) return;
+            this.isAccelerating = true; 
+            document.getElementById('controls-hint').style.display = 'none';
+        };
+        const endAccel = () => { this.isAccelerating = false; };
+        
+        window.addEventListener('mousedown', startAccel);
+        window.addEventListener('mouseup', endAccel);
+        window.addEventListener('touchstart', (e) => { startAccel(e); }, {passive: false});
+        window.addEventListener('touchend', endAccel);
+        
+        // Loop
+        this.lastTime = 0;
+        this.animate = this.animate.bind(this);
+        requestAnimationFrame(this.animate);
+
+        // Initial targets
+        this.spawnTarget();
+    }
+
+    resize() {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+        this.cx = this.canvas.width / 2;
+        this.cy = this.canvas.height / 2;
+        // Responsive radius
+        this.trackRadius = Math.min(this.cx, this.cy) * 0.7;
+    }
+
+    buyUpgrade(type) {
+        const up = this.upgrades[type];
+        if (this.quarks >= up.cost) {
+            this.quarks -= up.cost;
+            up.level++;
+            up.cost = Math.floor(up.cost * 1.5);
+            this.updateUI();
+            
+            // Visual feedback
+            this.spawnText("UPGRADE!", this.cx, this.cy, 30, "#00ff9d");
+            
+            // Logic update
+            if(type === 'density') {
+                this.spawnTarget();
+            }
+        }
+    }
+
+    spawnTarget() {
+        // Don't spawn if too many
+        const maxTargets = 2 + this.upgrades.density.level;
+        if(this.targets.length >= maxTargets) return;
+
+        // Spawn at random angle
+        const angle = Math.random() * Math.PI * 2;
+        // Determine type based on rarity (random)
+        const typeRoll = Math.random();
+        let type = 'hydrogen'; // standard
+        let color = '#0088ff';
+        let radius = 10;
+        let hp = 1;
+        let value = 1;
+
+        if (typeRoll > 0.9) {
+            type = 'gold'; // rare
+            color = '#ffd700';
+            radius = 15;
+            hp = 3;
+            value = 10;
+        } else if (typeRoll > 0.7) {
+            type = 'carbon'; // medium
+            color = '#ff4444';
+            radius = 12;
+            hp = 2;
+            value = 3;
+        }
+
+        this.targets.push({
+            angle: angle,
+            type: type,
+            color: color,
+            radius: radius,
+            hp: hp,
+            maxHp: hp,
+            value: value,
+            pulse: Math.random()
+        });
+    }
+
+    updateUI() {
+        document.getElementById('currency-display').innerText = Math.floor(this.quarks);
+        // Map 2.0 internal velocity to 1000 display velocity
+        const displayVelocity = Math.floor((this.velocity / this.maxVelocity) * 1000);
+        document.getElementById('velocity-display').innerText = displayVelocity + " c";
+        
+        const heatPct = Math.min(100, Math.floor(this.heat));
+        const heatEl = document.getElementById('heat-display');
+        heatEl.innerText = heatPct + "%";
+        heatEl.style.color = heatPct > 80 ? 'red' : 'white';
+
+        // Check upgrade affordability
+        for (const [key, up] of Object.entries(this.upgrades)) {
+            const card = document.getElementById(`up-${key}`);
+            document.getElementById(`lvl-${key}`).innerText = "Lvl " + up.level;
+            document.getElementById(`cost-${key}`).innerText = up.cost + " Q";
+            
+            if (this.quarks >= up.cost) {
+                card.classList.remove('disabled');
+            } else {
+                card.classList.add('disabled');
+            }
+        }
+        
+        // Heat warning
+        const warning = document.getElementById('heat-warning');
+        if(this.heat >= 100) {
+            warning.style.display = 'block';
+            this.shake = 10; // Violent shake
+        } else {
+            warning.style.display = 'none';
+        }
+    }
+
+    spawnText(text, x, y, size, color) {
+        this.texts.push(new FloatingText(text, x, y, size, color));
+    }
+
+    spawnExplosion(x, y, color, count, speed) {
+        for(let i=0; i<count; i++) {
+            this.effects.push(new VisualEffect(x, y, color, speed, 40));
+        }
+    }
+
+    drawCore() {
+        // Draw the central "Button" / Reactor Core
+        const heatRatio = this.heat / 100;
+        
+        // Pulse Effect
+        this.corePulse += 0.05 + (heatRatio * 0.2);
+        const pulseSize = Math.sin(this.corePulse) * (5 + heatRatio * 15);
+        
+        const coreRadius = 50 + (heatRatio * 10);
+        
+        // Glow
+        this.ctx.shadowBlur = 20 + (heatRatio * 100);
+        this.ctx.shadowColor = heatRatio > 0.5 ? 'red' : 'cyan';
+        if (heatRatio > 0.8) this.ctx.shadowColor = 'white';
+
+        // Fill Color Gradient
+        // Cold: Dark Blue/Grey. Hot: Bright Red/White
+        let r, g, b;
+        if (heatRatio < 0.5) {
+            // Blue to Yellowish
+            r = Utils.lerp(20, 200, heatRatio * 2);
+            g = Utils.lerp(30, 50, heatRatio * 2);
+            b = Utils.lerp(50, 0, heatRatio * 2);
+        } else {
+            // Yellowish to Red/White
+            r = 255;
+            g = Utils.lerp(50, 255, (heatRatio - 0.5) * 2);
+            b = Utils.lerp(0, 255, (heatRatio - 0.5) * 2);
+        }
+        
+        this.ctx.fillStyle = `rgb(${r},${g},${b})`;
+        this.ctx.beginPath();
+        this.ctx.arc(this.cx, this.cy, coreRadius + pulseSize, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        // Inner Circle (Button look)
+        this.ctx.fillStyle = heatRatio > 0.8 ? '#fff' : 'rgba(0,0,0,0.5)';
+        this.ctx.beginPath();
+        this.ctx.arc(this.cx, this.cy, coreRadius * 0.8, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        // Text
+        this.ctx.shadowBlur = 0;
+        this.ctx.fillStyle = 'white';
+        this.ctx.font = 'bold 16px Courier New';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        
+        let label = "PRESS ME";
+        if (this.heat >= 100) label = "CRITICAL";
+        else if (this.isAccelerating) label = "ACTIVE";
+        
+        this.ctx.fillText(label, this.cx, this.cy);
+    }
+
+    animate(timestamp) {
+        const dt = timestamp - this.lastTime;
+        this.lastTime = timestamp;
+
+        this.ctx.fillStyle = 'var(--bg-color)';
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.fillStyle = '#050505';
+        this.ctx.fillRect(0,0, this.canvas.width, this.canvas.height);
+
+        // Shake Camera
+        this.ctx.save();
+        if(this.shake > 0) {
+            const sx = (Math.random() - 0.5) * this.shake;
+            const sy = (Math.random() - 0.5) * this.shake;
+            this.ctx.translate(sx, sy);
+            this.shake *= 0.9;
+            if(this.shake < 0.5) this.shake = 0;
+        }
+
+        // --- Logic ---
+
+        // Acceleration
+        let accelForce = this.baseAccel * (1 + this.upgrades.magnets.level * 0.2);
+        
+        // Heat Logic
+        if (this.isAccelerating) {
+            // Add velocity
+            if(this.heat < 100) {
+                this.velocity += accelForce;
+                // Add heat
+                let heatGain = 0.5 - (this.upgrades.cooling.level * 0.05);
+                if(heatGain < 0.1) heatGain = 0.1;
+                this.heat += heatGain;
+            } else {
+                // Overheated!
+                this.velocity *= 0.95; // Drag
+            }
+        } else {
+            // Cooling
+            let coolingRate = 0.2 + (this.upgrades.cooling.level * 0.1);
+            this.heat -= coolingRate;
+        }
+
+        this.velocity *= this.drag;
+        this.heat = Utils.clamp(this.heat, 0, 100);
+        this.velocity = Utils.clamp(this.velocity, 0, this.maxVelocity);
+
+        // Capture previous angle for swept collision
+        const oldAngle = this.angle;
+
+        // Move Base Angle (The 'Engine')
+        this.angle += this.velocity;
+        
+        // Normalize angle calc for render, but keep cumulative for logic if needed? 
+        // No, keep 0-2PI for simplicity
+        if(this.angle > Math.PI * 2) this.angle -= Math.PI * 2;
+
+
+        // --- Drawing ---
+
+        // Draw Central Reactor
+        this.drawCore();
+
+        // 1. Draw Track
+        this.ctx.beginPath();
+        this.ctx.arc(this.cx, this.cy, this.trackRadius, 0, Math.PI * 2);
+        this.ctx.strokeStyle = '#1a1a1a';
+        this.ctx.lineWidth = 20;
+        this.ctx.stroke();
+
+        // Track Glow (increases with speed)
+        const speedRatio = this.velocity / this.maxVelocity;
+        const mainColor = Utils.getSpeedColor(speedRatio);
+        
+        this.ctx.shadowBlur = 20 * speedRatio;
+        this.ctx.shadowColor = mainColor;
+        this.ctx.beginPath();
+        this.ctx.arc(this.cx, this.cy, this.trackRadius, 0, Math.PI * 2);
+        this.ctx.strokeStyle = `rgba(255, 255, 255, ${0.1 + speedRatio * 0.5})`;
+        this.ctx.lineWidth = 2;
+        this.ctx.stroke();
+        this.ctx.shadowBlur = 0; // Reset
+
+
+        // --- Particle Loop ---
+        const particleCount = this.upgrades.multiball.level;
+        
+        // Prepare Trails container
+        while(this.playerTrails.length < particleCount) {
+            this.playerTrails.push([]);
+        }
+
+        for (let i = 0; i < particleCount; i++) {
+            // Calculate Position for this particle
+            // Evenly spaced around the ring
+            const offset = (Math.PI * 2 * i) / particleCount;
+            const pAngle = this.angle + offset;
+            
+            const px = this.cx + Math.cos(pAngle) * this.trackRadius;
+            const py = this.cy + Math.sin(pAngle) * this.trackRadius;
+
+            // -- Trail Logic --
+            const trail = this.playerTrails[i];
+            trail.push({ x: px, y: py, life: 1.0 });
+
+            this.ctx.globalCompositeOperation = 'lighter';
+            this.ctx.lineWidth = 5 + (speedRatio * 5);
+            this.ctx.lineCap = 'round';
+            this.ctx.shadowBlur = 10 * speedRatio;
+            this.ctx.shadowColor = mainColor;
+
+            if (trail.length > 1) {
+                this.ctx.beginPath();
+                // Draw last 20 points only if list is huge
+                let startIdx = Math.max(0, trail.length - 20 - Math.floor(speedRatio * 50));
+                
+                for (let j = startIdx; j < trail.length - 1; j++) {
+                    const t1 = trail[j];
+                    const t2 = trail[j+1];
+                    if(Math.abs(t1.x - t2.x) > 100 || Math.abs(t1.y - t2.y) > 100) continue;
+
+                    this.ctx.moveTo(t1.x, t1.y);
+                    this.ctx.lineTo(t2.x, t2.y);
+                }
+                this.ctx.strokeStyle = mainColor; 
+                this.ctx.globalAlpha = 0.5 * speedRatio + 0.2; 
+                this.ctx.stroke();
+            }
+            
+            // Age trails faster at high speed to prevent lag
+            for (let j = trail.length - 1; j >= 0; j--) {
+                trail[j].life -= 0.05 + (speedRatio * 0.05);
+                if (trail[j].life <= 0) {
+                    trail.splice(j, 1);
+                }
+            }
+            this.ctx.globalAlpha = 1;
+            this.ctx.shadowBlur = 0;
+
+            // -- Draw Particle --
+            this.ctx.shadowBlur = 15;
+            this.ctx.shadowColor = mainColor;
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.beginPath();
+            // Stretch particle at high speed
+            // If speed is high, we can draw an arc segment instead of a circle for "motion blur"
+            if (speedRatio > 0.5) {
+                this.ctx.beginPath();
+                this.ctx.strokeStyle = '#ffffff';
+                this.ctx.lineWidth = 6 + speedRatio * 4;
+                this.ctx.arc(this.cx, this.cy, this.trackRadius, pAngle - 0.2, pAngle);
+                this.ctx.stroke();
+            } else {
+                this.ctx.arc(px, py, 6 + speedRatio * 4, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+            
+            this.ctx.shadowBlur = 0;
+            this.ctx.globalCompositeOperation = 'source-over';
+
+            // -- Collision Logic --
+            // We need to pass the current particle angle, but check the swept area
+            // The swept area is between (this.angle - velocity + offset) and (this.angle + offset)
+            this.checkCollisions(pAngle, speedRatio);
+        }
+
+        // 4. Draw Targets (Entities)
+        this.drawTargets();
+
+        // 5. Visual Particles (Explosions)
+        this.effects.forEach((p, i) => {
+            p.update();
+            p.draw(this.ctx);
+            if(p.life <= 0) this.effects.splice(i, 1);
+        });
+
+        // 6. Floating Texts
+        this.texts.forEach((t, i) => {
+            t.update();
+            t.draw(this.ctx);
+            if(t.life <= 0) this.texts.splice(i, 1);
+        });
+
+        this.ctx.restore();
+
+        // UI Updates
+        this.updateUI();
+
+        requestAnimationFrame(this.animate);
+    }
+
+    drawTargets() {
+        this.ctx.textAlign = 'center';
+        this.ctx.font = '10px Arial';
+
+        const spawnChance = 0.01 + (this.upgrades.density.level * 0.005);
+        if(Math.random() < spawnChance) this.spawnTarget();
+
+        this.targets.forEach((t) => {
+            const tx = this.cx + Math.cos(t.angle) * this.trackRadius;
+            const ty = this.cy + Math.sin(t.angle) * this.trackRadius;
+            
+            // Draw Target
+            t.pulse += 0.1;
+            const pulseScale = 1 + Math.sin(t.pulse) * 0.1;
+            
+            this.ctx.shadowBlur = 10;
+            this.ctx.shadowColor = t.color;
+            this.ctx.fillStyle = '#000000';
+            this.ctx.strokeStyle = t.color;
+            this.ctx.lineWidth = 2;
+            
+            this.ctx.beginPath();
+            this.ctx.arc(tx, ty, t.radius * pulseScale, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.stroke();
+            
+            // Inner core
+            this.ctx.fillStyle = t.color;
+            this.ctx.beginPath();
+            this.ctx.arc(tx, ty, t.radius * 0.4, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            this.ctx.shadowBlur = 0;
+        });
+    }
+
+    checkCollisions(pAngle, speedRatio) {
+        // Normalize pAngle to 0-2PI
+        let currentAngle = pAngle % (Math.PI * 2);
+        if (currentAngle < 0) currentAngle += Math.PI * 2;
+
+        for (let i = this.targets.length - 1; i >= 0; i--) {
+            const t = this.targets[i];
+            
+            // Angular Distance Check
+            // We check if the target is within the arc traveled in this frame (velocity)
+            // Plus a small buffer for radius size (approx 0.1 rad)
+            
+            let angleDiff = Math.abs(currentAngle - t.angle);
+            // Handle wrap around distance (e.g. 0.1 vs 6.2)
+            if (angleDiff > Math.PI) angleDiff = (Math.PI * 2) - angleDiff;
+            
+            // Hit box size increases with speed to prevent tunneling
+            const hitThreshold = (t.radius / this.trackRadius) + (this.velocity * 1.5); 
+
+            if (angleDiff < hitThreshold) {
+                // COLLISION!
+                this.targets.splice(i, 1);
+
+                // Calculate reward based on speed
+                const speedMult = 1 + (speedRatio * 10); 
+                const totalValue = Math.ceil(t.value * speedMult);
+                
+                this.quarks += totalValue;
+
+                const tx = this.cx + Math.cos(t.angle) * this.trackRadius;
+                const ty = this.cy + Math.sin(t.angle) * this.trackRadius;
+
+                // Effects
+                this.spawnExplosion(tx, ty, t.color, 15, 5 + speedRatio * 10);
+                this.spawnText(`+${totalValue}`, tx, ty, 20, '#ffffff');
+                this.shake += 5 * speedRatio;
+
+                // Flash screen
+                if(speedRatio > 0.8) {
+                    this.ctx.fillStyle = 'rgba(255,255,255,0.1)';
+                    this.ctx.fillRect(0,0,this.canvas.width, this.canvas.height);
+                }
+            }
+        }
+    }
+}
+
+// Start Game
+const game = new Game();
+
+</script>
+</body>
+</html>
