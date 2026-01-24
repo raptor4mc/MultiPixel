@@ -114,6 +114,14 @@
                 <i class="fa-solid fa-terminal text-gray-200"></i>
                 <span class="text-xs font-semibold">Terminal</span>
             </div>
+            <div class="desktop-icon" ondblclick="openApp('Rap4WEB', 'Rap4WEB.html', 'bg-emerald-500', 'fa-globe')">
+                <i class="fa-solid fa-globe text-emerald-400"></i>
+                <span class="text-xs font-semibold">Rap4WEB</span>
+            </div>
+            <div class="desktop-icon" ondblclick="openApp('Games', 'games.html', 'bg-purple-500', 'fa-gamepad')">
+                <i class="fa-solid fa-gamepad text-purple-400"></i>
+                <span class="text-xs font-semibold">Play Games</span>
+            </div>
             <div class="desktop-icon" ondblclick="openSettings()">
                 <i class="fa-solid fa-gear text-gray-400"></i>
                 <span class="text-xs font-semibold">Settings</span>
@@ -189,6 +197,18 @@
                     </div>
                     <span class="text-xs font-medium">Terminal</span>
                 </button>
+                <button onclick="openApp('Rap4WEB', 'Rap4WEB.html', 'bg-emerald-500', 'fa-globe')" class="flex flex-col items-center gap-2 group">
+                    <div class="w-16 h-16 bg-emerald-500 rounded-2xl shadow-lg flex items-center justify-center text-white text-2xl group-hover:-translate-y-1 transition-transform">
+                        <i class="fa-solid fa-globe"></i>
+                    </div>
+                    <span class="text-xs font-medium">Rap4WEB</span>
+                </button>
+                <button onclick="openApp('Games', 'games.html', 'bg-purple-500', 'fa-gamepad')" class="flex flex-col items-center gap-2 group">
+                    <div class="w-16 h-16 bg-purple-500 rounded-2xl shadow-lg flex items-center justify-center text-white text-2xl group-hover:-translate-y-1 transition-transform">
+                        <i class="fa-solid fa-gamepad"></i>
+                    </div>
+                    <span class="text-xs font-medium">Games</span>
+                </button>
                 <button onclick="openSettings()" class="flex flex-col items-center gap-2 group">
                     <div class="w-16 h-16 bg-gray-400 rounded-2xl shadow-lg flex items-center justify-center text-white text-2xl group-hover:-translate-y-1 transition-transform">
                         <i class="fa-solid fa-gear"></i>
@@ -223,9 +243,11 @@
         function updateSystemInfo() {
             const now = new Date();
             const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
-            document.getElementById('clock').textContent = timeStr;
-            document.getElementById('top-clock').textContent = timeStr;
-            document.getElementById('cpu-load').textContent = `CPU: ${Math.floor(Math.random() * 10) + 2}%`;
+            const clockElements = [document.getElementById('clock'), document.getElementById('top-clock')];
+            clockElements.forEach(el => { if(el) el.textContent = timeStr; });
+            
+            const cpu = document.getElementById('cpu-load');
+            if(cpu) cpu.textContent = `CPU: ${Math.floor(Math.random() * 10) + 2}%`;
         }
         setInterval(updateSystemInfo, 1000);
         updateSystemInfo();
