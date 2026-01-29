@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zombie Outbreak: Pixel School</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background: #111; 
+            color: white; 
+            user-select: none; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        
+        canvas { 
+            display: block; 
+            image-rendering: pixelated; 
+            width: 100%;
+            height: 100%;
+            max-width: 1280px; 
+            aspect-ratio: 4/3;
+            background: #000;
+        }
+
+        #ui-top {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            pointer-events: none;
+            text-shadow: 2px 2px 0px #000;
+            z-index: 10;
+        }
+
+        #ui-bottom {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            pointer-events: none;
+            z-index: 10;
+            text-align: center;
+        }
+        
+        .hud-panel {
+            background: rgba(0, 0, 0, 0.85);
+            padding: 10px 20px;
+            border: 2px solid #555;
+            margin-bottom: 5px;
+        }
+
+        .controls-hint {
+            color: #888;
+            font-size: 0.9rem;
+            animation: pulseFade 3s infinite ease-in-out;
+            background: rgba(0,0,0,0.7);
+            padding: 5px 15px;
+            border-radius: 4px;
+        }
+
+        @keyframes pulseFade {
+            0%, 100% { opacity: 0.2; color: #444; }
+            50% { opacity: 1; color: #ccc; text-shadow: 0 0 10px #fff; }
+        }
+        
+        .stat-label { font-size: 0.7rem; color: #888; text-transform: uppercase; }
+        .stat-value { font-size: 1.2rem; font-weight: bold; color: #fff; }
+        
+        #overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 100;
+        }
+
+        .menu-card {
+            background: #222;
+            padding: 30px;
+            border: 4px solid #444;
+            text-align: center;
+        }
+
+        .color-row {
+            display: flex; gap: 10px; justify-content: center; margin: 15px 0;
+        }
+
+        .color-btn {
+            width: 40px; height: 40px; border: 3px solid #000; cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .color-btn:hover { transform: scale(1.1); }
+        .color-btn.active { border-color: #fff; transform: scale(1.2); }
+
+        button.start-btn {
+            background: #fff; color: #000; padding: 10px 30px; 
+            font-weight: bold; font-family: inherit; cursor: pointer;
+            margin-top: 20px; border: none;
+        }
+        button.start-btn:hover { background: #ccc; }
+
+        #hide-prompt {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            padding: 5px 15px;
+            border: 1px solid #fff;
+            display: none;
+            z-index: 20;
+        }
+        .c-green { color: #55ff55 !important; }
+    </style>
+</head>
+<body>
+
+<div id="overlay">
+    <div class="menu-card">
+        <h1 class="text-3xl mb-6">CHARACTER SETUP</h1>
+        
+        <p class="stat-label">Your Skin Tone</p>
+        <div class="color-row" id="player-colors">
+            <div class="color-btn active" style="background:#ffccaa" data-color="#ffccaa"></div>
+            <div class="color-btn" style="background:#e0ac69" data-color="#e0ac69"></div>
+            <div class="color-btn" style="background:#8d5524" data-color="#8d5524"></div>
+        </div>
+
+        <p class="stat-label mt-4">Zombie Skin Tone</p>
+        <div class="color-row" id="zombie-colors">
+            <div class="color-btn active" style="background:#27ae60" data-color="#27ae60"></div>
+            <div class="color-btn" style="background:#4a5d23" data-color="#4a5d23"></div>
+            <div class="color-btn" style="background:#1e8449" data-color="#1e8449"></div>
+        </div>
+
+        <button class="start-btn" onclick="startGame()">START GAME</button>
+    </div>
+</div>
+
+<div id="ui-top">
+    <div class="hud-panel">
+        <div class="stat-label">FLOOR</div>
+        <div class="stat-value" id="floor-display">1F</div>
+    </div>
+    <div class="hud-panel">
+        <div class="stat-label">TIME UNTIL RESPONSE</div>
+        <div class="stat-value" id="timer-display">5:00</div>
+    </div>
+    <div class="hud-panel">
+        <div class="stat-label">ZOMBIES REMAINING</div>
+        <div class="stat-value" id="zombie-display">30</div>
+    </div>
+    <div class="hud-panel" id="hide-status" style="display:none">
+        <div class="stat-value c-green">HIDDEN IN LOCKER</div>
+    </div>
+</div>
+
+<div id="hide-prompt">PRESS 'E' TO HIDE IN LOCKER</div>
+
+<div id="ui-bottom">
+    <div class="controls-hint">W,A,S,D TO MOVE • MOUSE TO AIM/SHOOT • E TO HIDE (LOCKERS)</div>
+</div>
+
+<canvas id="gameCanvas"></canvas>
+
+<script>
+/**
+ * ------------------------------------------------------------------
+ * CONFIGURATION
+ * ------------------------------------------------------------------
+ */
+const CONFIG = {
+    GAME_WIDTH: 640,
+    GAME_HEIGHT: 480,
+    TILE_SIZE: 32,
+    ZOMBIES_PER_FLOOR: 30,
+    TIME_LIMIT: 300,
+    FLOORS: 3,
+    PLAYER_SPEED: 3.2,
+    ZOMBIE_SPEED_BASE: 0.7,
+    BULLET_SPEED: 12
+};
+
+let userSkin = "#ffccaa";
+let zombieSkin = "#27ae60";
+
+function setupColorPickers() {
+    const pBtns = document.querySelectorAll('#player-colors .color-btn');
+    const zBtns = document.querySelectorAll('#zombie-colors .color-btn');
+    pBtns.forEach(b => b.onclick = () => {
+        pBtns.forEach(btn => btn.classList.remove('active'));
+        b.classList.add('active');
+        userSkin = b.dataset.color;
+    });
+    zBtns.forEach(b => b.onclick = () => {
+        zBtns.forEach(btn => btn.classList.remove('active'));
+        b.classList.add('active');
+        zombieSkin = b.dataset.color;
+    });
+}
+
+function startGame() {
+    document.getElementById('overlay').style.display = 'none';
+    game.init();
+}
+
+/**
+ * ------------------------------------------------------------------
+ * ASSETS & RENDERING
+ * ------------------------------------------------------------------
+ */
+const Assets = {
+    floorPattern: null,
+    wallPattern: null,
+    lockerPattern: null,
+    init() {
+        const c = document.createElement('canvas');
+        const x = c.getContext('2d');
+        
+        // Polished Tile Floor
+        c.width = 32; c.height = 32;
+        x.fillStyle = '#cbd5e1'; 
+        x.fillRect(0, 0, 32, 32);
+        x.strokeStyle = '#94a3b8';
+        x.strokeRect(0, 0, 32, 32);
+        this.floorPattern = x.createPattern(c, 'repeat');
+        
+        // Wall Texture
+        c.width = 32; c.height = 32;
+        x.fillStyle = '#475569'; 
+        x.fillRect(0, 0, 32, 32);
+        x.fillStyle = '#334155';
+        x.fillRect(0, 28, 32, 4);
+        this.wallPattern = x.createPattern(c, 'repeat');
+        
+        // Locker Texture
+        c.width = 32; c.height = 32;
+        x.fillStyle = '#1e293b'; 
+        x.fillRect(0, 0, 32, 32);
+        x.strokeStyle = '#64748b';
+        x.beginPath();
+        x.moveTo(8, 4); x.lineTo(24, 4);
+        x.moveTo(8, 8); x.lineTo(24, 8);
+        x.moveTo(8, 12); x.lineTo(24, 12);
+        x.stroke();
+        this.lockerPattern = x.createPattern(c, 'repeat');
+    }
+};
+
+class Vector2 {
+    constructor(x, y) { this.x = x; this.y = y; }
+}
+
+class Entity {
+    constructor(x, y, radius) {
+        this.pos = new Vector2(x, y);
+        this.vel = new Vector2(0, 0);
+        this.radius = radius;
+        this.angle = 0;
+    }
+}
+
+class Player extends Entity {
+    constructor() {
+        super(0, 0, 8);
+        this.isHidden = false;
+    }
+    update(keys) {
+        if(this.isHidden) {
+            this.vel = new Vector2(0, 0);
+            return;
+        }
+        let dx = 0, dy = 0;
+        if(keys['w']) dy = -1; if(keys['s']) dy = 1;
+        if(keys['a']) dx = -1; if(keys['d']) dx = 1;
+        if(dx !== 0 || dy !== 0) {
+            const len = Math.hypot(dx, dy);
+            dx /= len; dy /= len;
+        }
+        this.vel = new Vector2(dx * CONFIG.PLAYER_SPEED, dy * CONFIG.PLAYER_SPEED);
+    }
+}
+
+class Zombie extends Entity {
+    constructor(x, y) {
+        super(x, y, 8);
+        this.hp = 2;
+        this.speed = CONFIG.ZOMBIE_SPEED_BASE + Math.random() * 0.3;
+    }
+    update(target, targetIsHidden) {
+        const dist = Math.hypot(target.x - this.pos.x, target.y - this.pos.y);
+        if (dist < 200 && !targetIsHidden) {
+            this.angle = Math.atan2(target.y - this.pos.y, target.x - this.pos.x);
+            this.vel = new Vector2(Math.cos(this.angle)*this.speed, Math.sin(this.angle)*this.speed);
+        } else {
+            this.vel = new Vector2(0,0);
+        }
+    }
+}
+
+class Swat extends Entity {
+    constructor(x, y) {
+        super(x, y, 9);
+        this.speed = 1.1;
+    }
+    update(target, targetIsHidden) {
+        const dx = target.x - this.pos.x, dy = target.y - this.pos.y;
+        this.angle = Math.atan2(dy, dx);
+        if (!targetIsHidden) {
+            this.vel = new Vector2(Math.cos(this.angle)*this.speed, Math.sin(this.angle)*this.speed);
+        } else {
+            this.vel = new Vector2(Math.sin(Date.now()*0.002)*0.4, Math.cos(Date.now()*0.002)*0.4);
+        }
+    }
+}
+
+class Bullet extends Entity {
+    constructor(x, y, angle) {
+        super(x, y, 2);
+        this.vel = new Vector2(Math.cos(angle)*CONFIG.BULLET_SPEED, Math.sin(angle)*CONFIG.BULLET_SPEED);
+    }
+}
+
+class GameMap {
+    constructor(index) {
+        this.width = 50; 
+        this.height = 30;
+        this.grid = []; 
+        this.generate(index);
+        this.floorCanvas = document.createElement('canvas');
+        this.floorCanvas.width = this.width * CONFIG.TILE_SIZE;
+        this.floorCanvas.height = this.height * CONFIG.TILE_SIZE;
+        this.bake();
+    }
+
+    generate(index) {
+        // Initialize with solid walls (1)
+        for(let y=0; y<this.height; y++) {
+            let row = [];
+            for(let x=0; x<this.width; x++) row.push(1);
+            this.grid.push(row);
+        }
+
+        const midY = Math.floor(this.height/2);
+        
+        // Create a long central hallway
+        for(let x=2; x<this.width-2; x++) {
+            this.grid[midY][x] = 0;   // Floor
+            this.grid[midY-1][x] = 0; // Floor
+            this.grid[midY+1][x] = 0; // Floor
+            
+            // Add lockers in the hallway
+            if (x % 3 === 0) {
+                this.grid[midY-2][x] = 6;
+                this.grid[midY+2][x] = 6;
+            }
+        }
+
+        // Create Classrooms on both sides
+        const roomSpacing = 6;
+        for(let x=4; x < this.width - 6; x += roomSpacing) {
+            this.createRoom(x, midY - 7, 5, 5); // North rooms
+            this.createRoom(x, midY + 3, 5, 5); // South rooms
+            
+            // Doors
+            this.grid[midY-2][x+2] = 2; // North door
+            this.grid[midY+2][x+2] = 2; // South door
+        }
+
+        // Stairs
+        if (index < CONFIG.FLOORS - 1) this.grid[midY][this.width-4] = 3; 
+        if (index > 0) this.grid[midY][3] = 4;
+    }
+
+    createRoom(x, y, w, h) {
+        for(let ry=y; ry<y+h; ry++) {
+            for(let rx=x; rx<x+w; rx++) {
+                if(ry > 0 && ry < this.height-1 && rx > 0 && rx < this.width-1) {
+                    this.grid[ry][rx] = 0;
+                    // Scatter desks (5)
+                    if(Math.random() > 0.85) this.grid[ry][rx] = 5;
+                }
+            }
+        }
+    }
+
+    bake() {
+        const ctx = this.floorCanvas.getContext('2d');
+        const ts = CONFIG.TILE_SIZE;
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, this.floorCanvas.width, this.floorCanvas.height);
+        
+        for(let y=0; y<this.height; y++) {
+            for(let x=0; x<this.width; x++) {
+                let t = this.grid[y][x];
+                let tx = x*ts, ty = y*ts;
+                if (t === 0 || t === 2 || t === 3 || t === 4 || t === 5) {
+                    ctx.fillStyle = Assets.floorPattern;
+                    ctx.fillRect(tx, ty, ts, ts);
+                } else if (t === 1) {
+                    ctx.fillStyle = Assets.wallPattern;
+                    ctx.fillRect(tx, ty, ts, ts);
+                } else if (t === 6) {
+                    ctx.fillStyle = Assets.lockerPattern;
+                    ctx.fillRect(tx, ty, ts, ts);
+                }
+            }
+        }
+    }
+}
+
+class Game {
+    constructor() {
+        this.canvas = document.getElementById('gameCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.canvas.width = CONFIG.GAME_WIDTH;
+        this.canvas.height = CONFIG.GAME_HEIGHT;
+        this.ctx.imageSmoothingEnabled = false;
+        this.keys = {};
+        this.mouse = { x: 0, y: 0 };
+        this.state = 'MENU';
+        this.time = CONFIG.TIME_LIMIT;
+        this.floorIdx = 0;
+        this.maps = [];
+        this.zombies = [];
+        this.bullets = [];
+        this.swat = [];
+        this.swatTriggered = false;
+        this.camera = { x: 0, y: 0 };
+        this.player = new Player();
+    }
+
+    init() {
+        this.state = 'PLAYING';
+        Assets.init();
+        window.addEventListener('keydown', e => {
+            this.keys[e.key.toLowerCase()] = true;
+            if(e.key.toLowerCase() === 'e') this.toggleHide();
+        });
+        window.addEventListener('keyup', e => this.keys[e.key.toLowerCase()] = false);
+        window.addEventListener('mousemove', e => {
+            const rect = this.canvas.getBoundingClientRect();
+            this.mouse.x = (e.clientX - rect.left) * (this.canvas.width / rect.width);
+            this.mouse.y = (e.clientY - rect.top) * (this.canvas.height / rect.height);
+        });
+        window.addEventListener('mousedown', () => this.shoot());
+        for(let i=0; i<CONFIG.FLOORS; i++) this.maps.push(new GameMap(i));
+        this.loadFloor(0, 'start');
+        setInterval(() => this.tick(), 1000);
+        this.loop();
+    }
+
+    toggleHide() {
+        if (this.player.isHidden) {
+            this.player.isHidden = false;
+            document.getElementById('hide-status').style.display = 'none';
+        } else {
+            const map = this.maps[this.floorIdx];
+            const mx = Math.floor(this.player.pos.x/CONFIG.TILE_SIZE);
+            const my = Math.floor(this.player.pos.y/CONFIG.TILE_SIZE);
+            let nearLocker = false;
+            for(let ox=-1; ox<=1; ox++) for(let oy=-1; oy<=1; oy++) if(map.grid[my+oy]?.[mx+ox] === 6) nearLocker = true;
+            if(nearLocker) {
+                this.player.isHidden = true;
+                document.getElementById('hide-status').style.display = 'block';
+            }
+        }
+    }
+
+    loadFloor(idx, type) {
+        this.floorIdx = idx;
+        const map = this.maps[idx];
+        const ts = CONFIG.TILE_SIZE;
+        this.player.pos = (type === 'down' || type === 'start') ? new Vector2(ts*4, (map.height/2)*ts) : new Vector2((map.width-5)*ts, (map.height/2)*ts);
+        this.zombies = [];
+        
+        // Spawn 30 zombies strictly in classrooms
+        let count = 0;
+        while(count < CONFIG.ZOMBIES_PER_FLOOR) {
+            let zx = Math.floor(Math.random() * map.width);
+            let zy = Math.floor(Math.random() * map.height);
+            // Check if it's in a classroom (away from the central hallway)
+            const isClassroom = Math.abs(zy - Math.floor(map.height/2)) > 2;
+            if(map.grid[zy][zx] === 0 && isClassroom) {
+                this.zombies.push(new Zombie(zx*ts + ts/2, zy*ts + ts/2));
+                count++;
+            }
+        }
+        document.getElementById('floor-display').innerText = `${idx+1}F`;
+        document.getElementById('zombie-display').innerText = this.zombies.length;
+    }
+
+    tick() {
+        if(this.state === 'PLAYING' && this.time > 0) {
+            this.time--;
+            let m = Math.floor(this.time / 60), s = this.time % 60;
+            document.getElementById('timer-display').innerText = `${m}:${s<10?'0':''}${s}`;
+            if(this.time === 0 && !this.swatTriggered) this.triggerSWAT();
+        }
+    }
+
+    triggerSWAT() {
+        this.swatTriggered = true;
+        const ts = CONFIG.TILE_SIZE;
+        for(let i=0; i<6; i++) {
+            this.swat.push(new Swat(ts*2, (this.maps[0].height/2)*ts + (i-2.5)*30));
+        }
+    }
+
+    shoot() {
+        if(this.state !== 'PLAYING' || this.player.isHidden) return;
+        this.bullets.push(new Bullet(this.player.pos.x, this.player.pos.y, this.player.angle + (Math.random()*0.1-0.05)));
+    }
+
+    loop() {
+        this.update();
+        this.draw();
+        requestAnimationFrame(() => this.loop());
+    }
+
+    update() {
+        if(this.state !== 'PLAYING') return;
+        const map = this.maps[this.floorIdx];
+        this.player.update(this.keys);
+        if(!this.player.isHidden) this.resolveCollision(this.player, map);
+        
+        this.camera.x = Math.max(0, Math.min(this.player.pos.x - CONFIG.GAME_WIDTH/2, map.width*CONFIG.TILE_SIZE - CONFIG.GAME_WIDTH));
+        this.camera.y = Math.max(0, Math.min(this.player.pos.y - CONFIG.GAME_HEIGHT/2, map.height*CONFIG.TILE_SIZE - CONFIG.GAME_HEIGHT));
+        
+        if(!this.player.isHidden) {
+            this.player.angle = Math.atan2(this.mouse.y + this.camera.y - this.player.pos.y, this.mouse.x + this.camera.x - this.player.pos.x);
+        }
+
+        const mx = Math.floor(this.player.pos.x/CONFIG.TILE_SIZE);
+        const my = Math.floor(this.player.pos.y/CONFIG.TILE_SIZE);
+        let nearLocker = false;
+        for(let ox=-1; ox<=1; ox++) for(let oy=-1; oy<=1; oy++) if(map.grid[my+oy]?.[mx+ox] === 6) nearLocker = true;
+        document.getElementById('hide-prompt').style.display = (nearLocker && !this.player.isHidden) ? 'block' : 'none';
+
+        if(map.grid[my][mx] === 3 && this.floorIdx < CONFIG.FLOORS-1) this.loadFloor(this.floorIdx+1, 'down');
+        if(map.grid[my][mx] === 4 && this.floorIdx > 0) this.loadFloor(this.floorIdx-1, 'up');
+
+        this.zombies.forEach(z => { z.update(this.player.pos, this.player.isHidden); this.resolveCollision(z, map); });
+        
+        if(this.swatTriggered && this.floorIdx === 0) {
+            this.swat.forEach(s => {
+                s.update(this.player.pos, this.player.isHidden);
+                this.resolveCollision(s, map);
+                if(!this.player.isHidden && Math.hypot(s.pos.x - this.player.pos.x, s.pos.y - this.player.pos.y) < 18) {
+                    this.state = 'OVER';
+                    alert("A response team caught you!");
+                    location.reload();
+                }
+            });
+        }
+
+        for(let i=this.bullets.length-1; i>=0; i--) {
+            let b = this.bullets[i];
+            b.pos.x += b.vel.x; b.pos.y += b.vel.y;
+            if(this.isSolid(b.pos.x, b.pos.y)) { this.bullets.splice(i,1); continue; }
+            for(let j=this.zombies.length-1; j>=0; j--) {
+                let z = this.zombies[j];
+                if(Math.hypot(b.pos.x - z.pos.x, b.pos.y - z.pos.y) < z.radius + 6) {
+                    z.hp--;
+                    if(z.hp <= 0) { this.zombies.splice(j,1); document.getElementById('zombie-display').innerText = this.zombies.length; }
+                    this.bullets.splice(i,1); break;
+                }
+            }
+        }
+    }
+
+    resolveCollision(ent, map) {
+        const nx = ent.pos.x + ent.vel.x, ny = ent.pos.y + ent.vel.y;
+        if(!this.isSolid(nx + (ent.vel.x>0?ent.radius:-ent.radius), ent.pos.y)) ent.pos.x = nx;
+        if(!this.isSolid(ent.pos.x, ny + (ent.vel.y>0?ent.radius:-ent.radius))) ent.pos.y = ny;
+    }
+
+    isSolid(x, y) {
+        const map = this.maps[this.floorIdx];
+        const mx = Math.floor(x/CONFIG.TILE_SIZE), my = Math.floor(y/CONFIG.TILE_SIZE);
+        if(my < 0 || my >= map.height || mx < 0 || mx >= map.width) return true;
+        const t = map.grid[my][mx];
+        return t === 1 || t === 5 || t === 6;
+    }
+
+    draw() {
+        const ctx = this.ctx, ts = CONFIG.TILE_SIZE, map = this.maps[this.floorIdx];
+        ctx.fillStyle = '#000'; ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        if(!map) return;
+        ctx.save();
+        ctx.translate(-Math.floor(this.camera.x), -Math.floor(this.camera.y));
+        ctx.drawImage(map.floorCanvas, 0, 0);
+
+        for(let y=0; y<map.height; y++) {
+            for(let x=0; x<map.width; x++) {
+                let t = map.grid[y][x], tx = x*ts, ty = y*ts;
+                if (t === 2) { ctx.fillStyle = '#1e293b'; ctx.fillRect(tx, ty, ts, ts); ctx.strokeStyle="#fff"; ctx.strokeRect(tx+8,ty,ts-16,ts); }
+                else if (t === 3 || t === 4) { ctx.fillStyle = '#1e293b'; ctx.fillRect(tx, ty, ts, ts); ctx.strokeStyle="#fbbf24"; ctx.strokeRect(tx+2,ty+2,ts-4,ts-4); }
+                else if (t === 5) { ctx.fillStyle = '#78350f'; ctx.fillRect(tx+6, ty+6, ts-12, ts-12); }
+            }
+        }
+
+        this.zombies.forEach(z => {
+            ctx.save(); ctx.translate(z.pos.x, z.pos.y); ctx.rotate(z.angle);
+            ctx.fillStyle = zombieSkin; ctx.fillRect(-8, -8, 16, 16);
+            ctx.fillStyle = '#000'; ctx.fillRect(4, -5, 3, 3); ctx.fillRect(4, 2, 3, 3);
+            ctx.restore();
+        });
+
+        if(this.swatTriggered && this.floorIdx === 0) {
+            this.swat.forEach(s => {
+                ctx.save(); ctx.translate(s.pos.x, s.pos.y); ctx.rotate(s.angle);
+                ctx.fillStyle = '#0f172a'; ctx.fillRect(-9, -9, 18, 18);
+                ctx.fillStyle = '#eab308'; ctx.fillRect(5, -2, 4, 4);
+                ctx.restore();
+            });
+        }
+
+        ctx.fillStyle = '#fbbf24';
+        this.bullets.forEach(b => ctx.fillRect(b.pos.x-1, b.pos.y-1, 3, 3));
+
+        if(!this.player.isHidden) {
+            ctx.save(); ctx.translate(this.player.pos.x, this.player.pos.y); ctx.rotate(this.player.angle);
+            ctx.fillStyle = '#2563eb'; ctx.fillRect(-7, -7, 14, 14); 
+            ctx.fillStyle = userSkin; ctx.fillRect(0, -3, 6, 6);
+            ctx.fillStyle = '#000'; ctx.fillRect(8, -2, 8, 4);
+            ctx.restore();
+        }
+        ctx.restore();
+    }
+}
+
+const game = new Game();
+setupColorPickers();
+</script>
+</body>
+</html>
