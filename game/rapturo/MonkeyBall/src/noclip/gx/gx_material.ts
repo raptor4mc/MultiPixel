@@ -1,0 +1,1631 @@
+
+// GX materials.
+
+import * as GX from './gx_enum.js';
+
+import { colorCopy, colorFromRGBA, TransparentBlack, colorNewCopy } from '../Color.js';
+import { GfxFormat } from '../gfx/platform/GfxPlatformFormat.js';
+import { vec3, ReadonlyVec3, ReadonlyMat4 } from 'gl-matrix';
+import { assert } from '../util.js';
+import { IsDepthReversed } from '../gfx/helpers/ReversedDepthHelpers.js';
+import { MathConstants, transformVec3Mat4w1, transformVec3Mat4w0 } from '../MathHelpers.js';
+import { VertexAttributeInput } from './gx_displaylist.js';
+import { DeviceProgram } from '../Program.js';
+import { GfxShaderLibrary, glslGenerateFloat } from '../gfx/helpers/GfxShaderLibrary.js';
+
+// TODO(jstpierre): Move somewhere better...
+export const EFB_WIDTH = 640;
+export const EFB_HEIGHT = 528;
+
+export namespace GXShaderLibrary {
+
+export const TevOverflow = `
+float TevOverflow(float a) { return float(int(a * 255.0) & 255) / 255.0; }
+vec3 TevOverflow(vec3 a) { return vec3(TevOverflow(a.r), TevOverflow(a.g), TevOverflow(a.b)); }
+vec4 TevOverflow(vec4 a) { return vec4(TevOverflow(a.r), TevOverflow(a.g), TevOverflow(a.b), TevOverflow(a.a)); }
+`;
+
+export const GXIntensity = `
+float GXIntensity(vec3 t_Color) {
+    // https://github.com/dolphin-emu/dolphin/blob/4cd48e609c507e65b95bca5afb416b59eaf7f683/Source/Core/VideoCommon/TextureConverterShaderGen.cpp#L237-L241
+    return dot(t_Color, vec3(0.257, 0.504, 0.098)) + 16.0/255.0;
+}
+`;
+
+export function generateBlurFunction(functionName: string, tapCount: number, radiusStr: string, intensityPerTapStr: string, angleOffset: number = 0.0): string {
+    let S = `
+vec3 ${functionName}(PD_SAMPLER_2D(t_Texture), in vec2 t_TexCoord, in vec2 t_Aspect) {
+    vec3 c = vec3(0.0);
+`;
+
+    for (let i = 0; i < tapCount; i++) {
+        const theta = angleOffset + (MathConstants.TAU * (i / tapCount));
+        const x = Math.cos(theta), y = -Math.sin(theta);
+
+        S += `
+    c += (texture(PU_SAMPLER_2D(t_Texture), t_TexCoord + t_Aspect * vec2(${glslGenerateFloat(x)} * ${radiusStr}, ${glslGenerateFloat(y)} * ${radiusStr})).rgb * ${intensityPerTapStr});`;
+    }
+
+    S += `
+    return c;
+}
+`;
+    return S;
+}
+
+}
+
+// #region Material definition.
+export interface GXMaterial {
+    // Debugging & ID
+    name: string;
+
+    // Polygon state
+    cullMode: GX.CullMode;
+
+    // Vertex state
+    lightChannels: LightChannelControl[];
+    texGens: TexGen[];
+
+    // TEV state
+    tevStages: TevStage[];
+    // Indirect TEV state
+    indTexStages: IndTexStage[];
+
+    // Raster / blend state.
+    alphaTest: AlphaTest;
+    ropInfo: RopInfo;
+
+    // Optimization and other state.
+    usePnMtxIdx?: boolean;
+    useTexMtxIdx?: boolean[];
+    hasPostTexMtxBlock?: boolean;
+    hasLightsBlock?: boolean;
+    hasFogBlock?: boolean;
+    hasDynamicAlphaTest?: boolean;
+    userData?: any;
+}
+
+export class Light {
+    public Position = vec3.create();
+    public Direction = vec3.create();
+    public DistAtten = vec3.create();
+    public CosAtten = vec3.create();
+    public Color = colorNewCopy(TransparentBlack);
+
+    constructor() {
+        this.reset();
+    }
+
+    public reset(): void {
+        vec3.zero(this.Position);
+        vec3.set(this.Direction, 0, 0, -1);
+        vec3.set(this.DistAtten, 1, 0, 0);
+        vec3.set(this.CosAtten, 1, 0, 0);
+        colorFromRGBA(this.Color, 0, 0, 0, 1);
+    }
+
+    public copy(o: Light): void {
+        vec3.copy(this.Position, o.Position);
+        vec3.copy(this.Direction, o.Direction);
+        vec3.copy(this.DistAtten, o.DistAtten);
+        vec3.copy(this.CosAtten, o.CosAtten);
+        colorCopy(this.Color, o.Color);
+    }
+}
+
+export class FogBlock {
+    public Color = colorNewCopy(TransparentBlack);
+    public A: number = 0;
+    public B: number = 0;
+    public C: number = 0;
+    public AdjTable: Uint16Array = new Uint16Array(10);
+    public AdjCenter: number = 0;
+
+    public reset(): void {
+        colorFromRGBA(this.Color, 0, 0, 0, 0);
+        this.A = 0;
+        this.B = 0;
+        this.C = 0;
+        this.AdjTable.fill(0);
+        this.AdjCenter = 0;
+    }
+
+    public copy(o: FogBlock): void {
+        colorCopy(this.Color, o.Color);
+        this.A = o.A;
+        this.B = o.B;
+        this.C = o.C;
+        this.AdjTable.set(o.AdjTable);
+        this.AdjCenter = o.AdjCenter;
+    }
+}
+
+export interface ColorChannelControl {
+    lightingEnabled: boolean;
+    matColorSource: GX.ColorSrc;
+    ambColorSource: GX.ColorSrc;
+    litMask: number;
+    diffuseFunction: GX.DiffuseFunction;
+    attenuationFunction: GX.AttenuationFunction;
+}
+
+export interface LightChannelControl {
+    alphaChannel: ColorChannelControl;
+    colorChannel: ColorChannelControl;
+}
+
+export interface TexGen {
+    type: GX.TexGenType;
+    source: GX.TexGenSrc;
+    matrix: GX.TexGenMatrix;
+    normalize: boolean;
+    postMatrix: GX.PostTexGenMatrix;
+}
+
+export interface IndTexStage {
+    texCoordId: GX.TexCoordID;
+    texture: GX.TexMapID;
+    scaleS: GX.IndTexScale;
+    scaleT: GX.IndTexScale;
+}
+
+export type SwapTable = readonly [GX.TevColorChan, GX.TevColorChan, GX.TevColorChan, GX.TevColorChan];
+
+export const TevDefaultSwapTables: SwapTable[] = [
+    [GX.TevColorChan.R, GX.TevColorChan.G, GX.TevColorChan.B, GX.TevColorChan.A],
+    [GX.TevColorChan.R, GX.TevColorChan.R, GX.TevColorChan.R, GX.TevColorChan.A],
+    [GX.TevColorChan.G, GX.TevColorChan.G, GX.TevColorChan.G, GX.TevColorChan.A],
+    [GX.TevColorChan.B, GX.TevColorChan.B, GX.TevColorChan.B, GX.TevColorChan.A],
+]
+
+export interface TevStage {
+    colorInA: GX.CC;
+    colorInB: GX.CC;
+    colorInC: GX.CC;
+    colorInD: GX.CC;
+    colorOp: GX.TevOp;
+    colorBias: GX.TevBias;
+    colorScale: GX.TevScale;
+    colorClamp: boolean;
+    colorRegId: GX.Register;
+
+    alphaInA: GX.CA;
+    alphaInB: GX.CA;
+    alphaInC: GX.CA;
+    alphaInD: GX.CA;
+    alphaOp: GX.TevOp;
+    alphaBias: GX.TevBias;
+    alphaScale: GX.TevScale;
+    alphaClamp: boolean;
+    alphaRegId: GX.Register;
+
+    // SetTevOrder
+    texCoordId: GX.TexCoordID;
+    texMap: GX.TexMapID;
+    channelId: GX.RasColorChannelID;
+
+    konstColorSel: GX.KonstColorSel;
+    konstAlphaSel: GX.KonstAlphaSel;
+
+    // SetTevSwapMode / SetTevSwapModeTable
+    // TODO(jstpierre): Make these non-optional at some point?
+    rasSwapTable?: SwapTable;
+    texSwapTable?: SwapTable;
+
+    // SetTevIndirect
+    indTexStage: GX.IndTexStageID;
+    indTexFormat: GX.IndTexFormat;
+    indTexBiasSel: GX.IndTexBiasSel;
+    indTexAlphaSel: GX.IndTexAlphaSel;
+    indTexMatrix: GX.IndTexMtxID;
+    indTexWrapS: GX.IndTexWrap;
+    indTexWrapT: GX.IndTexWrap;
+    indTexAddPrev: boolean;
+    indTexUseOrigLOD: boolean;
+}
+
+export interface AlphaTest {
+    op: GX.AlphaOp;
+    compareA: GX.CompareType;
+    referenceA: number;
+    compareB: GX.CompareType;
+    referenceB: number;
+}
+
+export interface RopInfo {
+    fogType: GX.FogType;
+    fogAdjEnabled: boolean;
+    depthTest: boolean;
+    depthFunc: GX.CompareType;
+    depthWrite: boolean;
+    blendMode: GX.BlendMode;
+    blendSrcFactor: GX.BlendFactor;
+    blendDstFactor: GX.BlendFactor;
+    blendLogicOp: GX.LogicOp;
+    dstAlpha?: number;
+    colorUpdate: boolean;
+    alphaUpdate: boolean;
+}
+// #endregion
+
+// #region Material shader generation.
+interface VertexAttributeGenDef {
+    attrInput: VertexAttributeInput;
+    format: GfxFormat;
+    name: string;
+}
+
+const vtxAttributeGenDefs: VertexAttributeGenDef[] = [
+    { attrInput: VertexAttributeInput.POS,           name: "Position",      format: GfxFormat.F32_RGBA },
+    { attrInput: VertexAttributeInput.TEX0123MTXIDX, name: "TexMtx0123Idx", format: GfxFormat.F32_RGBA },
+    { attrInput: VertexAttributeInput.TEX4567MTXIDX, name: "TexMtx4567Idx", format: GfxFormat.F32_RGBA },
+    { attrInput: VertexAttributeInput.NRM,           name: "Normal",        format: GfxFormat.F32_RGB },
+    { attrInput: VertexAttributeInput.BINRM,         name: "Binormal",      format: GfxFormat.F32_RGB },
+    { attrInput: VertexAttributeInput.TANGENT,       name: "Tangent",       format: GfxFormat.F32_RGB },
+    { attrInput: VertexAttributeInput.CLR0,          name: "Color0",        format: GfxFormat.F32_RGBA },
+    { attrInput: VertexAttributeInput.CLR1,          name: "Color1",        format: GfxFormat.F32_RGBA },
+    { attrInput: VertexAttributeInput.TEX01,         name: "Tex01",         format: GfxFormat.F32_RGBA },
+    { attrInput: VertexAttributeInput.TEX23,         name: "Tex23",         format: GfxFormat.F32_RGBA },
+    { attrInput: VertexAttributeInput.TEX45,         name: "Tex45",         format: GfxFormat.F32_RGBA },
+    { attrInput: VertexAttributeInput.TEX67,         name: "Tex67",         format: GfxFormat.F32_RGBA },
+];
+
+export function getVertexInputLocation(attrInput: VertexAttributeInput): number {
+    return vtxAttributeGenDefs.findIndex((genDef) => genDef.attrInput === attrInput);
+}
+
+export function getVertexInputGenDef(attrInput: VertexAttributeInput): VertexAttributeGenDef {
+    return vtxAttributeGenDefs.find((genDef) => genDef.attrInput === attrInput)!;
+}
+
+export interface LightingFudgeParams {
+    vtx: string;
+    amb: string;
+    mat: string;
+    ambSource: string;
+    matSource: string;
+}
+
+type LightingFudgeGenerator = (p: LightingFudgeParams) => string;
+
+export interface GXMaterialHacks {
+    lightingFudge?: LightingFudgeGenerator;
+    disableTextures?: boolean;
+    disableVertexColors?: boolean;
+    disableLighting?: boolean;
+    extraVertexGlobal?: string;
+    extraVertexMain?: string;
+}
+
+function colorChannelsEqual(a: ColorChannelControl, b: ColorChannelControl): boolean {
+    if (a.lightingEnabled !== b.lightingEnabled) return false;
+    if (a.litMask !== b.litMask) return false;
+    if (a.ambColorSource !== b.ambColorSource) return false;
+    if (a.matColorSource !== b.matColorSource) return false;
+    if (a.attenuationFunction !== b.attenuationFunction) return false;
+    if (a.diffuseFunction !== b.diffuseFunction) return false;
+    return true;
+}
+
+export function materialHasPostTexMtxBlock(material: { hasPostTexMtxBlock?: boolean }): boolean {
+    return material.hasPostTexMtxBlock !== undefined ? material.hasPostTexMtxBlock : true;
+}
+
+export function materialHasLightsBlock(material: { hasLightsBlock?: boolean }): boolean {
+    return material.hasLightsBlock !== undefined ? material.hasLightsBlock : true;
+}
+
+export function materialHasFogBlock(material: { hasFogBlock?: boolean }): boolean {
+    return material.hasFogBlock !== undefined ? material.hasFogBlock : false;
+}
+
+export function materialUsePnMtxIdx(material: { usePnMtxIdx?: boolean }): boolean {
+    return material.usePnMtxIdx !== undefined ? material.usePnMtxIdx : true;
+}
+
+export function materialUseTexMtxIdx(material: { useTexMtxIdx?: boolean[] }, i: number): boolean {
+    // Dynamic TexMtxIdx is off by default.
+    return material.useTexMtxIdx !== undefined ? material.useTexMtxIdx[i] : false;
+}
+
+export function materialHasDynamicAlphaTest(material: { hasDynamicAlphaTest?: boolean }): boolean {
+    return material.hasDynamicAlphaTest !== undefined ? material.hasDynamicAlphaTest : false;
+}
+
+function generateBindingsDefinition(material: { hasPostTexMtxBlock?: boolean, hasLightsBlock?: boolean, hasFogBlock?: boolean, usePnMtxIdx?: boolean, hasDynamicAlphaTest?: boolean }): string {
+    return `
+${GfxShaderLibrary.MatrixLibrary}
+
+// Expected to be constant across the entire scene.
+layout(std140) uniform ub_SceneParams {
+    Mat4x4 u_Projection;
+    vec4 u_Misc0;
+};
+
+#define u_SceneTextureLODBias u_Misc0[0]
+#define u_SceneTimeFrames u_Misc0[1]
+
+struct Light {
+    vec4 Color;
+    vec4 Position;
+    vec4 Direction;
+    vec4 DistAtten;
+    vec4 CosAtten;
+};
+
+struct FogBlock {
+    // A, B, C, Center
+    vec4 Param;
+    // 10 items
+    vec4 AdjTable[3];
+    // Fog color is RGB
+    vec4 Color;
+};
+
+// Expected to change with each material.
+layout(std140) uniform ub_MaterialParams {
+    vec4 u_ColorMatReg[2];
+    vec4 u_ColorAmbReg[2];
+    vec4 u_KonstColor[4];
+    vec4 u_Color[4];
+    Mat3x4 u_TexMtx[10];
+    vec4 u_TextureSizes[4];
+    vec4 u_TextureBiases[2];
+    Mat2x4 u_IndTexMtx[3];
+
+    // Optional parameters.
+${materialHasPostTexMtxBlock(material) ? `
+    Mat3x4 u_PostTexMtx[20];
+` : ``}
+${materialHasLightsBlock(material) ? `
+    Light u_LightParams[8];
+` : ``}
+${materialHasFogBlock(material) ? `
+    FogBlock u_FogBlock;
+` : ``}
+${materialHasDynamicAlphaTest(material) ? `
+    vec4 u_DynamicAlphaParams;
+` : ``}
+};
+
+// Expected to change with each shape draw.
+layout(std140) uniform ub_DrawParams {
+${materialUsePnMtxIdx(material) ? `
+    Mat3x4 u_PosMtx[10];
+` : `
+    Mat3x4 u_PosMtx[1];
+`}
+};
+
+uniform sampler2D u_Texture0;
+uniform sampler2D u_Texture1;
+uniform sampler2D u_Texture2;
+uniform sampler2D u_Texture3;
+uniform sampler2D u_Texture4;
+uniform sampler2D u_Texture5;
+uniform sampler2D u_Texture6;
+uniform sampler2D u_Texture7;
+`;
+}
+
+export function getMaterialParamsBlockSize(material: GXMaterial): number {
+    let size = 4*2 + 4*2 + 4*4 + 4*4 + 4*3*10 + 4*4 + 4*2 + 4*2*3;
+    if (materialHasPostTexMtxBlock(material))
+        size += 4*3*20;
+    if (materialHasLightsBlock(material))
+        size += 4*5*8;
+    if (materialHasFogBlock(material))
+        size += 4*5;
+    if (materialHasDynamicAlphaTest(material))
+        size += 4*1;
+
+    return size;
+}
+
+export function getDrawParamsBlockSize(material: GXMaterial): number {
+    let size = 0;
+
+    if (materialUsePnMtxIdx(material))
+        size += 4*3 * 10;
+    else
+        size += 4*3 * 1;
+
+    return size;
+}
+
+export class GX_Program extends DeviceProgram {
+    public static ub_SceneParams = 0;
+    public static ub_MaterialParams = 1;
+    public static ub_DrawParams = 2;
+
+    public override name: string;
+
+    constructor(protected material: GXMaterial, private hacks: GXMaterialHacks | null = null) {
+        super();
+        this.name = material.name;
+        this.generateShaders();
+    }
+
+    private generateFloat(v: number): string {
+        return glslGenerateFloat(v);
+    }
+
+    // Color Channels
+    private generateMaterialSource(chan: ColorChannelControl, i: number) {
+        if (this.hacks !== null && this.hacks.disableVertexColors && chan.matColorSource === GX.ColorSrc.VTX)
+            return `vec4(1.0, 1.0, 1.0, 1.0)`;
+
+        switch (chan.matColorSource) {
+            case GX.ColorSrc.VTX: return `a_Color${i}`;
+            case GX.ColorSrc.REG: return `u_ColorMatReg[${i}]`;
+        }
+    }
+
+    private generateAmbientSource(chan: ColorChannelControl, i: number) {
+        if (this.hacks !== null && this.hacks.disableVertexColors && chan.ambColorSource === GX.ColorSrc.VTX)
+            return `vec4(1.0, 1.0, 1.0, 1.0)`;
+
+        switch (chan.ambColorSource) {
+            case GX.ColorSrc.VTX: return `a_Color${i}`;
+            case GX.ColorSrc.REG: return `u_ColorAmbReg[${i}]`;
+        }
+    }
+
+    private generateLightDiffFn(chan: ColorChannelControl, lightName: string) {
+        const NdotL = `dot(t_Normal, t_LightDeltaDir)`;
+
+        let diffFn = chan.diffuseFunction;
+        if (chan.attenuationFunction === GX.AttenuationFunction.SPEC)
+            diffFn = GX.DiffuseFunction.NONE;
+
+        switch (diffFn) {
+        case GX.DiffuseFunction.NONE: return `1.0`;
+        case GX.DiffuseFunction.SIGN: return `${NdotL}`;
+        case GX.DiffuseFunction.CLAMP: return `max(${NdotL}, 0.0)`;
+        }
+    }
+
+    private generateLightAttnFn(chan: ColorChannelControl, lightName: string) {
+        if (chan.attenuationFunction === GX.AttenuationFunction.NONE) {
+            return `
+    t_Attenuation = 1.0;`;
+        } else if (chan.attenuationFunction === GX.AttenuationFunction.SPOT) {
+            const attn = `max(0.0, dot(t_LightDeltaDir, ${lightName}.Direction.xyz))`;
+            const cosAttn = `max(0.0, ApplyAttenuation(${lightName}.CosAtten.xyz, ${attn}))`;
+            const distAttn = `dot(${lightName}.DistAtten.xyz, vec3(1.0, t_LightDeltaDist, t_LightDeltaDist2))`;
+            return `
+    t_Attenuation = max(0.0, ${cosAttn} / ${distAttn});`;
+        } else if (chan.attenuationFunction === GX.AttenuationFunction.SPEC) {
+            const attn = `(dot(t_Normal, t_LightDeltaDir) >= 0.0) ? max(0.0, dot(t_Normal, ${lightName}.Direction.xyz)) : 0.0`;
+            const cosAttn = `ApplyAttenuation(${lightName}.CosAtten.xyz, t_Attenuation)`;
+            const normalize = (chan.diffuseFunction !== GX.DiffuseFunction.NONE) ? `normalize` : ``;
+            const distAttn = `max(0.0, ApplyAttenuation(${normalize}(${lightName}.DistAtten.xyz), t_Attenuation))`;
+            return `
+    t_Attenuation = ${attn};
+    t_Attenuation = max(0.0, ${cosAttn} / ${distAttn});`;
+        } else {
+            throw "whoops";
+        }
+    }
+
+    private generateColorChannel(chan: ColorChannelControl, outputName: string, i: number) {
+        const matSource = this.generateMaterialSource(chan, i);
+        const ambSource = this.generateAmbientSource(chan, i);
+
+        let lightingEnabled = chan.lightingEnabled;
+        if (this.hacks !== null && this.hacks.disableLighting)
+            lightingEnabled = false;
+
+        // HACK.
+        if (lightingEnabled && this.hacks !== null && this.hacks.lightingFudge) {
+            const vtx = `a_Color${i}`;
+            const amb = `u_ColorAmbReg[${i}]`;
+            const mat = `u_ColorMatReg[${i}]`;
+            const fudged = this.hacks.lightingFudge({ vtx, amb, mat, ambSource, matSource });
+            return `${outputName} = vec4(${fudged}); // Fudge!`;
+        }
+
+        let generateLightAccum = ``;
+        if (lightingEnabled) {
+            generateLightAccum = `
+    t_LightAccum = ${ambSource};`;
+
+            if (chan.litMask !== 0)
+                assert(materialHasLightsBlock(this.material));
+
+            for (let j = 0; j < 8; j++) {
+                if (!(chan.litMask & (1 << j)))
+                    continue;
+
+                const lightName = `u_LightParams[${j}]`;
+                generateLightAccum += `
+    t_LightDelta = ${lightName}.Position.xyz - v_Position.xyz;
+    t_LightDeltaDist2 = dot(t_LightDelta, t_LightDelta);
+    t_LightDeltaDist = sqrt(t_LightDeltaDist2);
+    t_LightDeltaDir = t_LightDelta / t_LightDeltaDist;
+${this.generateLightAttnFn(chan, lightName)}
+    t_LightAccum += ${this.generateLightDiffFn(chan, lightName)} * t_Attenuation * ${lightName}.Color;
+`;
+            }
+        } else {
+            // Without lighting, everything is full-bright.
+            generateLightAccum += `
+    t_LightAccum = vec4(1.0);`;
+        }
+
+        return `${generateLightAccum}
+    ${outputName} = ${matSource} * clamp(t_LightAccum, 0.0, 1.0);`.trim();
+    }
+
+    private generateLightChannel(lightChannel: LightChannelControl, outputName: string, i: number) {
+        if (colorChannelsEqual(lightChannel.colorChannel, lightChannel.alphaChannel)) {
+            return `
+    ${this.generateColorChannel(lightChannel.colorChannel, outputName, i)}`;
+        } else {
+            return `
+    ${this.generateColorChannel(lightChannel.colorChannel, `t_ColorChanTemp`, i)}
+    ${outputName}.rgb = t_ColorChanTemp.rgb;
+
+    ${this.generateColorChannel(lightChannel.alphaChannel, `t_ColorChanTemp`, i)}
+    ${outputName}.a = t_ColorChanTemp.a;`;
+        }
+    }
+
+    protected generatePosition(): string {
+        return `vec3 t_Position = ${this.generateMul(`a_Position`, true, false)};`;
+    }
+
+    protected generateLightChannels(): string {
+        return this.material.lightChannels.map((lightChannel, i) => {
+            return this.generateLightChannel(lightChannel, `v_Color${i}`, i);
+        }).join('\n');
+    }
+
+    // Output is a vec3, src is a vec4.
+    private generateMulPntMatrixStatic(pnt: GX.TexGenMatrix, src: string, nrm: boolean = false): string {
+        if (pnt === GX.TexGenMatrix.IDENTITY) {
+            return `${src}.xyz`;
+        } else if (pnt >= GX.TexGenMatrix.TEXMTX0) {
+            const texMtxIdx = (pnt - GX.TexGenMatrix.TEXMTX0) / 3;
+            return nrm ? `MulNormalMatrix(UnpackMatrix(u_TexMtx[${texMtxIdx}]), ${src})` : `(UnpackMatrix(u_TexMtx[${texMtxIdx}]) * ${src})`;
+        } else if (pnt >= GX.TexGenMatrix.PNMTX0) {
+            const pnMtxIdx = (pnt - GX.TexGenMatrix.PNMTX0) / 3;
+            return nrm ? `MulNormalMatrix(UnpackMatrix(u_PosMtx[${pnMtxIdx}]), ${src})` : `(UnpackMatrix(u_PosMtx[${pnMtxIdx}]) * ${src})`;
+        } else {
+            throw "whoops";
+        }
+    }
+
+    // Output is a vec3, src is a vec4.
+    private generateMulPntMatrixDynamic(attrStr: string, src: string, nrm: boolean = false): string {
+        return nrm ? `MulNormalMatrix(GetPosTexMatrix(${attrStr}), ${src})` : `(GetPosTexMatrix(${attrStr}) * ${src})`;
+    }
+
+    private generateTexMtxIdxAttr(index: GX.TexCoordID): string {
+        if (index === GX.TexCoordID.TEXCOORD0) return `(a_TexMtx0123Idx.x * 256.0)`;
+        if (index === GX.TexCoordID.TEXCOORD1) return `(a_TexMtx0123Idx.y * 256.0)`;
+        if (index === GX.TexCoordID.TEXCOORD2) return `(a_TexMtx0123Idx.z * 256.0)`;
+        if (index === GX.TexCoordID.TEXCOORD3) return `(a_TexMtx0123Idx.w * 256.0)`;
+        if (index === GX.TexCoordID.TEXCOORD4) return `(a_TexMtx4567Idx.x * 256.0)`;
+        if (index === GX.TexCoordID.TEXCOORD5) return `(a_TexMtx4567Idx.y * 256.0)`;
+        if (index === GX.TexCoordID.TEXCOORD6) return `(a_TexMtx4567Idx.z * 256.0)`;
+        if (index === GX.TexCoordID.TEXCOORD7) return `(a_TexMtx4567Idx.w * 256.0)`;
+        throw "whoops";
+    }
+
+    // TexGen
+
+    // Output is a vec4.
+    private generateTexGenSource(src: GX.TexGenSrc) {
+        switch (src) {
+        case GX.TexGenSrc.POS:       return `vec4(a_Position.xyz, 1.0)`;
+        case GX.TexGenSrc.NRM:       return `vec4(a_Normal.xyz, 1.0)`;
+        case GX.TexGenSrc.BINRM:     return `vec4(a_Binormal.xyz, 1.0)`;
+        case GX.TexGenSrc.TANGENT:   return `vec4(a_Tangent.xyz, 1.0)`;
+        case GX.TexGenSrc.COLOR0:    return `v_Color0`;
+        case GX.TexGenSrc.COLOR1:    return `v_Color1`;
+        case GX.TexGenSrc.TEX0:      return `vec4(a_Tex01.xy, 1.0, 1.0)`;
+        case GX.TexGenSrc.TEX1:      return `vec4(a_Tex01.zw, 1.0, 1.0)`;
+        case GX.TexGenSrc.TEX2:      return `vec4(a_Tex23.xy, 1.0, 1.0)`;
+        case GX.TexGenSrc.TEX3:      return `vec4(a_Tex23.zw, 1.0, 1.0)`;
+        case GX.TexGenSrc.TEX4:      return `vec4(a_Tex45.xy, 1.0, 1.0)`;
+        case GX.TexGenSrc.TEX5:      return `vec4(a_Tex45.zw, 1.0, 1.0)`;
+        case GX.TexGenSrc.TEX6:      return `vec4(a_Tex67.xy, 1.0, 1.0)`;
+        case GX.TexGenSrc.TEX7:      return `vec4(a_Tex67.zw, 1.0, 1.0)`;
+        // Use a previously generated texcoordgen.
+        case GX.TexGenSrc.TEXCOORD0: return `vec4(t_TexCoord0, 1.0)`;
+        case GX.TexGenSrc.TEXCOORD1: return `vec4(t_TexCoord1, 1.0)`;
+        case GX.TexGenSrc.TEXCOORD2: return `vec4(t_TexCoord2, 1.0)`;
+        case GX.TexGenSrc.TEXCOORD3: return `vec4(t_TexCoord3, 1.0)`;
+        case GX.TexGenSrc.TEXCOORD4: return `vec4(t_TexCoord4, 1.0)`;
+        case GX.TexGenSrc.TEXCOORD5: return `vec4(t_TexCoord5, 1.0)`;
+        case GX.TexGenSrc.TEXCOORD6: return `vec4(t_TexCoord6, 1.0)`;
+        default:
+            throw new Error("whoops");
+        }
+    }
+
+    // Output is a vec3, src is a vec4.
+    private generatePostTexGenMatrixMult(texCoordGen: TexGen, src: string): string {
+        if (texCoordGen.postMatrix === GX.PostTexGenMatrix.PTIDENTITY) {
+            return `${src}.xyz`;
+        } else if (texCoordGen.postMatrix >= GX.PostTexGenMatrix.PTTEXMTX0) {
+            const texMtxIdx = (texCoordGen.postMatrix - GX.PostTexGenMatrix.PTTEXMTX0) / 3;
+            return `(UnpackMatrix(u_PostTexMtx[${texMtxIdx}]) * ${src})`;
+        } else {
+            throw "whoops";
+        }
+    }
+
+    // Output is a vec3, src is a vec3.
+    protected generateTexGenMatrixMult(texCoordGenIndex: number, src: string) {
+        if (materialUseTexMtxIdx(this.material, texCoordGenIndex)) {
+            const attrStr = this.generateTexMtxIdxAttr(texCoordGenIndex);
+            return this.generateMulPntMatrixDynamic(attrStr, src);
+        } else {
+            return this.generateMulPntMatrixStatic(this.material.texGens[texCoordGenIndex].matrix, src);
+        }
+    }
+
+    // Output is a vec3, src is a vec4.
+    private generateTexGenBump(texCoordGenIndex: number, src: string) {
+        const texCoordGen = this.material.texGens[texCoordGenIndex];
+
+        assert(texCoordGen.type >= GX.TexGenType.BUMP0 && texCoordGen.type <= GX.TexGenType.BUMP7);
+        const lightIdx = (texCoordGen.type - GX.TexGenType.BUMP0);
+        const lightDir = `normalize(u_LightParams[${lightIdx}].Position.xyz - v_Position.xyz)`;
+        const t = this.generateMul(`a_Tangent`, false, false);
+        const b = this.generateMul(`a_Binormal`, false, false);
+        return `${src}.xyz + vec3(dot(${lightDir}, ${t}.xyz), dot(${lightDir}, ${b}.xyz), 0.0)`;
+    }
+
+    // Output is a vec3, src is a vec4.
+    private generateTexGenType(texCoordGenIndex: number) {
+        const texCoordGen = this.material.texGens[texCoordGenIndex];
+        const src = this.generateTexGenSource(texCoordGen.source);
+
+        if (texCoordGen.type === GX.TexGenType.SRTG)
+            return `vec3(${src}.xy, 1.0)`;
+        else if (texCoordGen.type === GX.TexGenType.MTX2x4)
+            return `vec3(${this.generateTexGenMatrixMult(texCoordGenIndex, src)}.xy, 1.0)`;
+        else if (texCoordGen.type === GX.TexGenType.MTX3x4)
+            return `${this.generateTexGenMatrixMult(texCoordGenIndex, src)}`;
+        else
+            return `${this.generateTexGenBump(texCoordGenIndex, src)}`;
+    }
+
+    // Output is a vec3.
+    private generateTexGenNrm(texCoordGenIndex: number) {
+        const texCoordGen = this.material.texGens[texCoordGenIndex];
+        const src = this.generateTexGenType(texCoordGenIndex);
+
+        if (texCoordGen.normalize)
+            return `normalize(${src})`;
+        else
+            return src;
+    }
+
+    // Output is a vec3.
+    private generateTexGenPost(texCoordGenIndex: number) {
+        const texCoordGen = this.material.texGens[texCoordGenIndex];
+        const src = this.generateTexGenNrm(texCoordGenIndex);
+
+        if (texCoordGen.postMatrix === GX.PostTexGenMatrix.PTIDENTITY) {
+            return src;
+        } else {
+            return this.generatePostTexGenMatrixMult(texCoordGen, `vec4(${src}, 1.0)`);
+        }
+    }
+
+    private generateTexGen(i: number) {
+        const tg = this.material.texGens[i];
+
+        let suffix: string;
+        if (tg.type === GX.TexGenType.MTX2x4 || tg.type === GX.TexGenType.SRTG)
+            suffix = `.xy`;
+        else
+            suffix = `.xyz`;
+
+        return `
+    // TexGen ${i} Type: ${tg.type} Source: ${tg.source} Matrix: ${tg.matrix}
+    vec3 t_TexCoord${i} = ${this.generateTexGenPost(i)};
+    v_TexCoord${i} = t_TexCoord${i}${suffix};`;
+    }
+
+    private generateTexGens(): string {
+        return this.material.texGens.map((tg, i) => {
+            return this.generateTexGen(i);
+        }).join('');
+    }
+
+    protected generateColorVaryings(): string {
+        return `
+varying vec4 v_Color0;
+varying vec4 v_Color1;
+`;
+    }
+
+    private generateTexCoordVaryings(): string {
+        return this.material.texGens.map((tg, i) => {
+            if (tg.type === GX.TexGenType.MTX2x4 || tg.type === GX.TexGenType.SRTG)
+                return `varying vec2 v_TexCoord${i};\n`;
+            else
+                return `varying highp vec3 v_TexCoord${i};\n`;
+        }).join('');
+    }
+
+    private generateTexCoordGetters(): string {
+        return this.material.texGens.map((tg, i) => {
+            if (tg.type === GX.TexGenType.MTX2x4 || tg.type === GX.TexGenType.SRTG)
+                return `vec2 ReadTexCoord${i}() { return v_TexCoord${i}.xy; }\n`;
+            else
+                return `vec2 ReadTexCoord${i}() { return v_TexCoord${i}.xy / v_TexCoord${i}.z; }\n`;
+        }).join('');
+    }
+
+    // IndTex
+    private generateIndTexStageScaleN(scale: GX.IndTexScale): string {
+        switch (scale) {
+        case GX.IndTexScale._1: return `1.0`;
+        case GX.IndTexScale._2: return `1.0/2.0`;
+        case GX.IndTexScale._4: return `1.0/4.0`;
+        case GX.IndTexScale._8: return `1.0/8.0`;
+        case GX.IndTexScale._16: return `1.0/16.0`;
+        case GX.IndTexScale._32: return `1.0/32.0`;
+        case GX.IndTexScale._64: return `1.0/64.0`;
+        case GX.IndTexScale._128: return `1.0/128.0`;
+        case GX.IndTexScale._256: return `1.0/256.0`;
+        default: throw "whoops";
+        }
+    }
+
+    private generateIndTexStageScale(stage: IndTexStage): string {
+        const baseCoord = `ReadTexCoord${stage.texCoordId}()`;
+        if (stage.scaleS === GX.IndTexScale._1 && stage.scaleT === GX.IndTexScale._1)
+            return baseCoord;
+        else
+            return `${baseCoord} * vec2(${this.generateIndTexStageScaleN(stage.scaleS)}, ${this.generateIndTexStageScaleN(stage.scaleT)})`;
+    }
+
+    protected generateTextureSample(index: number, coord: string): string {
+        return `texture(SAMPLER_2D(u_Texture${index}), ${coord}, TextureLODBias(${index}))`;
+    }
+
+    private generateIndTexStage(indTexStageIndex: number): string {
+        const stage = this.material.indTexStages[indTexStageIndex];
+        return `
+    // Indirect ${indTexStageIndex}
+    vec3 t_IndTexCoord${indTexStageIndex} = 255.0 * ${this.generateTextureSample(stage.texture, this.generateIndTexStageScale(stage))}.abg;`;
+    }
+
+    protected generateIndTexStages(): string {
+        return this.material.indTexStages.map((stage, i) => {
+            if (stage.texCoordId >= this.material.texGens.length)
+                return '';
+            return this.generateIndTexStage(i);
+        }).join('');
+    }
+
+    // TEV
+    private generateKonstColorSel(konstColor: GX.KonstColorSel): string {
+        switch (konstColor) {
+        case GX.KonstColorSel.KCSEL_1:    return 'vec3(8.0/8.0)';
+        case GX.KonstColorSel.KCSEL_7_8:  return 'vec3(7.0/8.0)';
+        case GX.KonstColorSel.KCSEL_6_8:  return 'vec3(6.0/8.0)';
+        case GX.KonstColorSel.KCSEL_5_8:  return 'vec3(5.0/8.0)';
+        case GX.KonstColorSel.KCSEL_4_8:  return 'vec3(4.0/8.0)';
+        case GX.KonstColorSel.KCSEL_3_8:  return 'vec3(3.0/8.0)';
+        case GX.KonstColorSel.KCSEL_2_8:  return 'vec3(2.0/8.0)';
+        case GX.KonstColorSel.KCSEL_1_8:  return 'vec3(1.0/8.0)';
+        case GX.KonstColorSel.KCSEL_K0:   return 's_kColor0.rgb';
+        case GX.KonstColorSel.KCSEL_K0_R: return 's_kColor0.rrr';
+        case GX.KonstColorSel.KCSEL_K0_G: return 's_kColor0.ggg';
+        case GX.KonstColorSel.KCSEL_K0_B: return 's_kColor0.bbb';
+        case GX.KonstColorSel.KCSEL_K0_A: return 's_kColor0.aaa';
+        case GX.KonstColorSel.KCSEL_K1:   return 's_kColor1.rgb';
+        case GX.KonstColorSel.KCSEL_K1_R: return 's_kColor1.rrr';
+        case GX.KonstColorSel.KCSEL_K1_G: return 's_kColor1.ggg';
+        case GX.KonstColorSel.KCSEL_K1_B: return 's_kColor1.bbb';
+        case GX.KonstColorSel.KCSEL_K1_A: return 's_kColor1.aaa';
+        case GX.KonstColorSel.KCSEL_K2:   return 's_kColor2.rgb';
+        case GX.KonstColorSel.KCSEL_K2_R: return 's_kColor2.rrr';
+        case GX.KonstColorSel.KCSEL_K2_G: return 's_kColor2.ggg';
+        case GX.KonstColorSel.KCSEL_K2_B: return 's_kColor2.bbb';
+        case GX.KonstColorSel.KCSEL_K2_A: return 's_kColor2.aaa';
+        case GX.KonstColorSel.KCSEL_K3:   return 's_kColor3.rgb';
+        case GX.KonstColorSel.KCSEL_K3_R: return 's_kColor3.rrr';
+        case GX.KonstColorSel.KCSEL_K3_G: return 's_kColor3.ggg';
+        case GX.KonstColorSel.KCSEL_K3_B: return 's_kColor3.bbb';
+        case GX.KonstColorSel.KCSEL_K3_A: return 's_kColor3.aaa';
+        }
+    }
+
+    private generateKonstAlphaSel(konstAlpha: GX.KonstAlphaSel): string {
+        switch (konstAlpha) {
+        case GX.KonstAlphaSel.KASEL_1:    return '(8.0/8.0)';
+        case GX.KonstAlphaSel.KASEL_7_8:  return '(7.0/8.0)';
+        case GX.KonstAlphaSel.KASEL_6_8:  return '(6.0/8.0)';
+        case GX.KonstAlphaSel.KASEL_5_8:  return '(5.0/8.0)';
+        case GX.KonstAlphaSel.KASEL_4_8:  return '(4.0/8.0)';
+        case GX.KonstAlphaSel.KASEL_3_8:  return '(3.0/8.0)';
+        case GX.KonstAlphaSel.KASEL_2_8:  return '(2.0/8.0)';
+        case GX.KonstAlphaSel.KASEL_1_8:  return '(1.0/8.0)';
+        case GX.KonstAlphaSel.KASEL_K0_R: return 's_kColor0.r';
+        case GX.KonstAlphaSel.KASEL_K0_G: return 's_kColor0.g';
+        case GX.KonstAlphaSel.KASEL_K0_B: return 's_kColor0.b';
+        case GX.KonstAlphaSel.KASEL_K0_A: return 's_kColor0.a';
+        case GX.KonstAlphaSel.KASEL_K1_R: return 's_kColor1.r';
+        case GX.KonstAlphaSel.KASEL_K1_G: return 's_kColor1.g';
+        case GX.KonstAlphaSel.KASEL_K1_B: return 's_kColor1.b';
+        case GX.KonstAlphaSel.KASEL_K1_A: return 's_kColor1.a';
+        case GX.KonstAlphaSel.KASEL_K2_R: return 's_kColor2.r';
+        case GX.KonstAlphaSel.KASEL_K2_G: return 's_kColor2.g';
+        case GX.KonstAlphaSel.KASEL_K2_B: return 's_kColor2.b';
+        case GX.KonstAlphaSel.KASEL_K2_A: return 's_kColor2.a';
+        case GX.KonstAlphaSel.KASEL_K3_R: return 's_kColor3.r';
+        case GX.KonstAlphaSel.KASEL_K3_G: return 's_kColor3.g';
+        case GX.KonstAlphaSel.KASEL_K3_B: return 's_kColor3.b';
+        case GX.KonstAlphaSel.KASEL_K3_A: return 's_kColor3.a';
+        }
+    }
+
+    private generateIndTexCoordBase(stage: TevStage) {
+        return `(t_IndTexCoord${stage.indTexStage})`;
+    }
+
+    private generateAlphaBumpSelChannel(stage: TevStage) {
+        const baseCoord = this.generateIndTexCoordBase(stage);
+        switch (stage.indTexAlphaSel) {
+        case GX.IndTexAlphaSel.S: return `${baseCoord}.x`;
+        case GX.IndTexAlphaSel.T: return `${baseCoord}.y`;
+        case GX.IndTexAlphaSel.U: return `${baseCoord}.z`;
+        default:
+            throw "whoops";
+        }
+    }
+
+    private generateAlphaBumpSel(stage: TevStage) {
+        const baseCoord = this.generateAlphaBumpSelChannel(stage);
+        switch (stage.indTexFormat) {
+        case GX.IndTexFormat._8: return `TevMask(${baseCoord}, 0xF8)`;
+        case GX.IndTexFormat._5: return `TevMask(${baseCoord}, 0xE0)`;
+        case GX.IndTexFormat._4: return `TevMask(${baseCoord}, 0xF0)`;
+        case GX.IndTexFormat._3: return `TevMask(${baseCoord}, 0xF8)`;
+        default:
+            throw "whoops";
+        }
+    }
+
+    private generateRas(stage: TevStage) {
+        switch (stage.channelId) {
+        case GX.RasColorChannelID.COLOR0A0:     return `v_Color0`;
+        case GX.RasColorChannelID.COLOR1A1:     return `v_Color1`;
+        case GX.RasColorChannelID.ALPHA_BUMP:   return `vec4(${this.generateAlphaBumpSel(stage)})`;
+        case GX.RasColorChannelID.ALPHA_BUMP_N: return `vec4(${this.generateAlphaBumpSel(stage)} * (255.0/248.0))`;
+        case GX.RasColorChannelID.COLOR_ZERO:   return `vec4(0, 0, 0, 0)`;
+        default:
+            throw new Error(`whoops ${stage.channelId}`);
+        }
+    }
+
+    private stageUsesSimpleCoords(stage: TevStage): boolean {
+        // This is a bit of a hack. If there's no indirect stage, we use simple normalized texture coordinates;
+        // this is for game renderers where injecting the texture size might be difficult.
+        return stage.indTexMatrix === GX.IndTexMtxID.OFF && !stage.indTexAddPrev;
+    }
+
+    private generateTexAccess(stage: TevStage) {
+        // Skyward Sword is amazing sometimes. I hope you're happy...
+        // assert(stage.texMap !== GX.TexMapID.TEXMAP_NULL);
+        if (stage.texMap === GX.TexMapID.TEXMAP_NULL)
+            return 'vec4(1.0, 1.0, 1.0, 1.0)';
+
+        // If we disable textures, then return sampled white.
+        if (this.hacks !== null && this.hacks.disableTextures)
+            return 'vec4(1.0, 1.0, 1.0, 1.0)';
+
+        const texScale = this.stageUsesSimpleCoords(stage) ? `` : ` * TextureInvScale(${stage.texMap})`;
+        return this.generateTextureSample(stage.texMap, `t_TexCoord${texScale}`);
+    }
+
+    private generateComponentSwizzle(swapTable: SwapTable | undefined, channel: GX.TevColorChan): string {
+        const suffixes = ['r', 'g', 'b', 'a'];
+        if (swapTable)
+            channel = swapTable[channel];
+        return suffixes[channel];
+    }
+
+    private generateColorSwizzle(swapTable: SwapTable | undefined, colorIn: GX.CC): string {
+        const swapR = this.generateComponentSwizzle(swapTable, GX.TevColorChan.R);
+        const swapG = this.generateComponentSwizzle(swapTable, GX.TevColorChan.G);
+        const swapB = this.generateComponentSwizzle(swapTable, GX.TevColorChan.B);
+        const swapA = this.generateComponentSwizzle(swapTable, GX.TevColorChan.A);
+
+        switch (colorIn) {
+        case GX.CC.TEXC:
+        case GX.CC.RASC:
+            return `${swapR}${swapG}${swapB}`;
+        case GX.CC.TEXA:
+        case GX.CC.RASA:
+            return `${swapA}${swapA}${swapA}`;
+        default:
+            throw "whoops";
+        }
+    }
+
+    private generateColorIn(stage: TevStage, colorIn: GX.CC) {
+        switch (colorIn) {
+        case GX.CC.CPREV: return `t_ColorPrev.rgb`;
+        case GX.CC.APREV: return `t_ColorPrev.aaa`;
+        case GX.CC.C0:    return `t_Color0.rgb`;
+        case GX.CC.A0:    return `t_Color0.aaa`;
+        case GX.CC.C1:    return `t_Color1.rgb`;
+        case GX.CC.A1:    return `t_Color1.aaa`;
+        case GX.CC.C2:    return `t_Color2.rgb`;
+        case GX.CC.A2:    return `t_Color2.aaa`;
+        case GX.CC.TEXC:  return `t_TexSample.${this.generateColorSwizzle(stage.texSwapTable, colorIn)}`;
+        case GX.CC.TEXA:  return `t_TexSample.${this.generateColorSwizzle(stage.texSwapTable, colorIn)}`;
+        case GX.CC.RASC:  return `saturate(${this.generateRas(stage)}.${this.generateColorSwizzle(stage.rasSwapTable, colorIn)})`;
+        case GX.CC.RASA:  return `saturate(${this.generateRas(stage)}.${this.generateColorSwizzle(stage.rasSwapTable, colorIn)})`;
+        case GX.CC.ONE:   return `vec3(1)`;
+        case GX.CC.HALF:  return `vec3(1.0/2.0)`;
+        case GX.CC.KONST: return `${this.generateKonstColorSel(stage.konstColorSel)}`;
+        case GX.CC.ZERO:  return `vec3(0)`;
+        }
+    }
+
+    private generateAlphaIn(stage: TevStage, alphaIn: GX.CA) {
+        switch (alphaIn) {
+        case GX.CA.APREV: return `t_ColorPrev.a`;
+        case GX.CA.A0:    return `t_Color0.a`;
+        case GX.CA.A1:    return `t_Color1.a`;
+        case GX.CA.A2:    return `t_Color2.a`;
+        case GX.CA.TEXA:  return `t_TexSample.${this.generateComponentSwizzle(stage.texSwapTable, GX.TevColorChan.A)}`;
+        case GX.CA.RASA:  return `saturate(${this.generateRas(stage)}.${this.generateComponentSwizzle(stage.rasSwapTable, GX.TevColorChan.A)})`;
+        case GX.CA.KONST: return `${this.generateKonstAlphaSel(stage.konstAlphaSel)}`;
+        case GX.CA.ZERO:  return `0.0`;
+        default:
+            throw "whoops";
+        }
+    }
+
+    private generateTevInputs(stage: TevStage) {
+        return `
+    t_TevA = TevOverflow(vec4(${this.generateColorIn(stage, stage.colorInA)}, ${this.generateAlphaIn(stage, stage.alphaInA)}));
+    t_TevB = TevOverflow(vec4(${this.generateColorIn(stage, stage.colorInB)}, ${this.generateAlphaIn(stage, stage.alphaInB)}));
+    t_TevC = TevOverflow(vec4(${this.generateColorIn(stage, stage.colorInC)}, ${this.generateAlphaIn(stage, stage.alphaInC)}));
+    t_TevD = vec4(${this.generateColorIn(stage, stage.colorInD)}, ${this.generateAlphaIn(stage, stage.alphaInD)});
+`.trim();
+    }
+
+    private generateTevRegister(regId: GX.Register) {
+        switch (regId) {
+        case GX.Register.PREV: return `t_ColorPrev`;
+        case GX.Register.REG0: return `t_Color0`;
+        case GX.Register.REG1: return `t_Color1`;
+        case GX.Register.REG2: return `t_Color2`;
+        }
+    }
+
+    private generateTevOpBiasScaleClamp(value: string, bias: GX.TevBias, scale: GX.TevScale) {
+        let v = value;
+
+        if (bias === GX.TevBias.ADDHALF)
+            v = `TevBias(${v}, 0.5)`;
+        else if (bias === GX.TevBias.SUBHALF)
+            v = `TevBias(${v}, -0.5)`;
+
+        if (scale === GX.TevScale.SCALE_2)
+            v = `(${v}) * 2.0`;
+        else if (scale === GX.TevScale.SCALE_4)
+            v = `(${v}) * 4.0`;
+        else if (scale === GX.TevScale.DIVIDE_2)
+            v = `(${v}) * 0.5`;
+
+        return v;
+    }
+
+    private generateTevOp(op: GX.TevOp, bias: GX.TevBias, scale: GX.TevScale, a: string, b: string, c: string, d: string, zero: string) {
+        switch (op) {
+        case GX.TevOp.ADD:
+        case GX.TevOp.SUB:
+            const neg = (op === GX.TevOp.SUB) ? '-' : '';
+            const v = `${neg}mix(${a}, ${b}, ${c}) + ${d}`;
+            return this.generateTevOpBiasScaleClamp(v, bias, scale);
+        case GX.TevOp.COMP_R8_GT:     return `((t_TevA.r >  t_TevB.r) ? ${c} : ${zero}) + ${d}`;
+        case GX.TevOp.COMP_R8_EQ:     return `((t_TevA.r == t_TevB.r) ? ${c} : ${zero}) + ${d}`;
+        case GX.TevOp.COMP_GR16_GT:   return `((TevPack16(t_TevA.rg) >  TevPack16(t_TevB.rg)) ? ${c} : ${zero}) + ${d}`;
+        case GX.TevOp.COMP_GR16_EQ:   return `((TevPack16(t_TevA.rg) == TevPack16(t_TevB.rg)) ? ${c} : ${zero}) + ${d}`;
+        case GX.TevOp.COMP_BGR24_GT:  return `((TevPack24(t_TevA.rgb) >  TevPack24(t_TevB.rgb)) ? ${c} : ${zero}) + ${d}`;
+        case GX.TevOp.COMP_BGR24_EQ:  return `((TevPack24(t_TevA.rgb) == TevPack24(t_TevB.rgb)) ? ${c} : ${zero}) + ${d}`;
+        case GX.TevOp.COMP_RGB8_GT:   return `(TevPerCompGT(${a}, ${b}) * ${c}) + ${d}`;
+        case GX.TevOp.COMP_RGB8_EQ:   return `(TevPerCompEQ(${a}, ${b}) * ${c}) + ${d}`;
+        default:
+            debugger;
+            throw new Error("whoops");
+        }
+    }
+
+    private generateTevOpValue(op: GX.TevOp, bias: GX.TevBias, scale: GX.TevScale, clamp: boolean, a: string, b: string, c: string, d: string, zero: string) {
+        const expr = this.generateTevOp(op, bias, scale, a, b, c, d, zero);
+
+        if (clamp)
+            return `saturate(${expr})`;
+        else
+            return `clamp(${expr}, -4.0, 4.0)`;
+    }
+
+    private generateColorOp(stage: TevStage) {
+        const a = `t_TevA.rgb`, b = `t_TevB.rgb`, c = `t_TevC.rgb`, d = `t_TevD.rgb`, zero = `vec3(0)`;
+        const value = this.generateTevOpValue(stage.colorOp, stage.colorBias, stage.colorScale, stage.colorClamp, a, b, c, d, zero);
+        return `${this.generateTevRegister(stage.colorRegId)}.rgb = ${value};`;
+    }
+
+    private generateAlphaOp(stage: TevStage) {
+        const a = `t_TevA.a`, b = `t_TevB.a`, c = `t_TevC.a`, d = `t_TevD.a`, zero = '0.0';
+        const value = this.generateTevOpValue(stage.alphaOp, stage.alphaBias, stage.alphaScale, stage.alphaClamp, a, b, c, d, zero);
+        return `${this.generateTevRegister(stage.alphaRegId)}.a = ${value};`;
+    }
+
+    private generateTevTexCoordWrapN(texCoord: string, wrap: GX.IndTexWrap): string {
+        switch (wrap) {
+        case GX.IndTexWrap.OFF:  return texCoord;
+        case GX.IndTexWrap._0:   return '0.0';
+        case GX.IndTexWrap._256: return `mod(${texCoord}, 256.0)`;
+        case GX.IndTexWrap._128: return `mod(${texCoord}, 128.0)`;
+        case GX.IndTexWrap._64:  return `mod(${texCoord}, 64.0)`;
+        case GX.IndTexWrap._32:  return `mod(${texCoord}, 32.0)`;
+        case GX.IndTexWrap._16:  return `mod(${texCoord}, 16.0)`;
+        }
+    }
+
+    private generateTevTexCoordWrap(stage: TevStage): string {
+        if (stage.texCoordId === GX.TexCoordID.TEXCOORD_NULL || stage.texMap === GX.TexMapID.TEXMAP_NULL)
+            return ``;
+
+        const lastTexGenId = this.material.texGens.length - 1;
+        let texGenId = stage.texCoordId;
+
+        if (texGenId >= lastTexGenId)
+            texGenId = lastTexGenId;
+        if (texGenId < 0)
+            return `vec2(0.0, 0.0)`;
+
+        const texScale = this.stageUsesSimpleCoords(stage) ? `` : ` * TextureScale(${stage.texMap})`;
+        const baseCoord = `ReadTexCoord${texGenId}()${texScale}`;
+        if (stage.indTexWrapS === GX.IndTexWrap.OFF && stage.indTexWrapT === GX.IndTexWrap.OFF)
+            return baseCoord;
+        else
+            return `vec2(${this.generateTevTexCoordWrapN(`${baseCoord}.x`, stage.indTexWrapS)}, ${this.generateTevTexCoordWrapN(`${baseCoord}.y`, stage.indTexWrapT)})`;
+    }
+
+    private generateTevTexCoordIndTexCoordBias(stage: TevStage): string {
+        const bias = (stage.indTexFormat === GX.IndTexFormat._8) ? '-128.0' : `1.0`;
+
+        switch (stage.indTexBiasSel) {
+        case GX.IndTexBiasSel.NONE: return ``;
+        case GX.IndTexBiasSel.S:    return ` + vec3(${bias}, 0.0, 0.0)`;
+        case GX.IndTexBiasSel.ST:   return ` + vec3(${bias}, ${bias}, 0.0)`;
+        case GX.IndTexBiasSel.SU:   return ` + vec3(${bias}, 0.0, ${bias})`;
+        case GX.IndTexBiasSel.T:    return ` + vec3(0.0, ${bias}, 0.0)`;
+        case GX.IndTexBiasSel.TU:   return ` + vec3(0.0, ${bias}, ${bias})`;
+        case GX.IndTexBiasSel.U:    return ` + vec3(0.0, 0.0, ${bias})`;
+        case GX.IndTexBiasSel.STU:  return ` + vec3(${bias})`;
+        }
+    }
+
+    private generateTevTexCoordIndTexCoord(stage: TevStage): string {
+        const baseCoord = this.generateIndTexCoordBase(stage);
+        switch (stage.indTexFormat) {
+        case GX.IndTexFormat._8: return baseCoord;
+        default:
+        case GX.IndTexFormat._5: throw new Error("whoops");
+        }
+    }
+
+    private generateTevTexCoordIndirectMtx(stage: TevStage): string {
+        const indTexCoord = `(${this.generateTevTexCoordIndTexCoord(stage)}${this.generateTevTexCoordIndTexCoordBias(stage)})`;
+        const indTexMtxIdx = ((stage.indTexMatrix) & 0x03) - 1;
+
+        switch (stage.indTexMatrix) {
+        case GX.IndTexMtxID._0:
+        case GX.IndTexMtxID._1:
+        case GX.IndTexMtxID._2:
+            return `UnpackMatrix(u_IndTexMtx[${indTexMtxIdx}]) * vec4(${indTexCoord}, 0.0)`;
+        case GX.IndTexMtxID.S0:
+        case GX.IndTexMtxID.S1:
+        case GX.IndTexMtxID.S2:
+            return `(u_IndTexMtx[${indTexMtxIdx}].mx.w * ReadTexCoord${stage.texCoordId}() * ${indTexCoord}.xx)`;
+        case GX.IndTexMtxID.T0:
+        case GX.IndTexMtxID.T1:
+        case GX.IndTexMtxID.T2:
+            return `(u_IndTexMtx[${indTexMtxIdx}].mx.w * ReadTexCoord${stage.texCoordId}() * ${indTexCoord}.yy)`;
+        default:
+            throw "whoops";
+        }
+    }
+
+    private generateTevTexCoordIndirectTranslation(stage: TevStage): string {
+        if (stage.indTexMatrix !== GX.IndTexMtxID.OFF && stage.indTexStage < this.material.indTexStages.length)
+            return `${this.generateTevTexCoordIndirectMtx(stage)}`;
+        else
+            return ``;
+    }
+
+    private generateTevTexCoordIndirect(stage: TevStage): string {
+        const baseCoord = this.generateTevTexCoordWrap(stage);
+        const indCoord = this.generateTevTexCoordIndirectTranslation(stage);
+
+        if (baseCoord !== `` && indCoord !== ``)
+            return `${baseCoord} + ${indCoord}`;
+        else if (baseCoord !== ``)
+            return baseCoord;
+        else
+            return indCoord;
+    }
+
+    private generateTevTexCoord(stage: TevStage): string {
+        const finalCoord = this.generateTevTexCoordIndirect(stage);
+        if (finalCoord !== ``) {
+            if (stage.indTexAddPrev) {
+                return `t_TexCoord += ${finalCoord};`;
+            } else {
+                return `t_TexCoord = ${finalCoord};`;
+            }
+        } else {
+            return ``;
+        }
+    }
+
+    private generateTevStage(tevStageIndex: number): string {
+        const stage = this.material.tevStages[tevStageIndex];
+
+        return `
+    // TEV Stage ${tevStageIndex}
+    ${this.generateTevTexCoord(stage)}
+    // Color Combine
+    // colorIn: ${stage.colorInA} ${stage.colorInB} ${stage.colorInC} ${stage.colorInD}  colorOp: ${stage.colorOp} colorBias: ${stage.colorBias} colorScale: ${stage.colorScale} colorClamp: ${stage.colorClamp} colorRegId: ${stage.colorRegId}
+    // alphaIn: ${stage.alphaInA} ${stage.alphaInB} ${stage.alphaInC} ${stage.alphaInD}  alphaOp: ${stage.alphaOp} alphaBias: ${stage.alphaBias} alphaScale: ${stage.alphaScale} alphaClamp: ${stage.alphaClamp} alphaRegId: ${stage.alphaRegId}
+    // texCoordId: ${stage.texCoordId} texMap: ${stage.texMap} channelId: ${stage.channelId}
+    t_TexSample = ${this.generateTexAccess(stage)};
+    ${this.generateTevInputs(stage)}
+    ${this.generateColorOp(stage)}
+    ${this.generateAlphaOp(stage)}`;
+    }
+
+    private generateTevStages() {
+        return this.material.tevStages.map((s, i) => this.generateTevStage(i)).join(`\n`);
+    }
+
+    private generateTevStagesLastMinuteFixup() {
+        const tevStages = this.material.tevStages;
+        // Despite having a destination register, the output of the last stage
+        // is what gets output from the color combinations...
+        const lastTevStage = tevStages[tevStages.length - 1];
+        const colorReg = this.generateTevRegister(lastTevStage.colorRegId);
+        const alphaReg = this.generateTevRegister(lastTevStage.alphaRegId);
+        if (colorReg === alphaReg) {
+            return `
+    vec4 t_TevOutput = ${colorReg};`;
+        } else {
+            return `
+    vec4 t_TevOutput = vec4(${colorReg}.rgb, ${alphaReg}.a);`;
+        }
+    }
+
+    private generateAlphaTestCompare(compare: GX.CompareType, ref: string) {
+        switch (compare) {
+        case GX.CompareType.NEVER:   return `false`;
+        case GX.CompareType.LESS:    return `t_PixelOut.a <  ${ref}`;
+        case GX.CompareType.EQUAL:   return `t_PixelOut.a == ${ref}`;
+        case GX.CompareType.LEQUAL:  return `t_PixelOut.a <= ${ref}`;
+        case GX.CompareType.GREATER: return `t_PixelOut.a >  ${ref}`;
+        case GX.CompareType.NEQUAL:  return `t_PixelOut.a != ${ref}`;
+        case GX.CompareType.GEQUAL:  return `t_PixelOut.a >= ${ref}`;
+        case GX.CompareType.ALWAYS:  return `true`;
+        }
+    }
+
+    private generateAlphaTestOp(op: GX.AlphaOp) {
+        switch (op) {
+        case GX.AlphaOp.AND:  return `t_AlphaTestA && t_AlphaTestB`;
+        case GX.AlphaOp.OR:   return `t_AlphaTestA || t_AlphaTestB`;
+        case GX.AlphaOp.XOR:  return `t_AlphaTestA != t_AlphaTestB`;
+        case GX.AlphaOp.XNOR: return `t_AlphaTestA == t_AlphaTestB`;
+        }
+    }
+
+    private generateAlphaTest() {
+        const alphaTest = this.material.alphaTest;
+
+        // Don't even emit an alpha test if we don't need it, to prevent the driver from trying to
+        // incorrectly set late Z.
+        if (alphaTest.op === GX.AlphaOp.OR && (alphaTest.compareA === GX.CompareType.ALWAYS || alphaTest.compareB === GX.CompareType.ALWAYS))
+            return '';
+
+        const referenceA = materialHasDynamicAlphaTest(this.material) ? `u_DynamicAlphaParams.x` : this.generateFloat(alphaTest.referenceA);
+        const referenceB = materialHasDynamicAlphaTest(this.material) ? `u_DynamicAlphaParams.y` : this.generateFloat(alphaTest.referenceB);
+
+        return `
+    bool t_AlphaTestA = ${this.generateAlphaTestCompare(alphaTest.compareA, referenceA)};
+    bool t_AlphaTestB = ${this.generateAlphaTestCompare(alphaTest.compareB, referenceB)};
+    if (!(${this.generateAlphaTestOp(alphaTest.op)}))
+        discard;`;
+    }
+
+    private generateFogZCoord() {
+        const isDepthReversed = IsDepthReversed;
+        if (isDepthReversed)
+            return `(1.0 - gl_FragCoord.z)`;
+        else
+            return `gl_FragCoord.z`;
+    }
+
+    private generateFogBase() {
+        // We allow switching between orthographic & perspective at runtime for the benefit of camera controls.
+        // const ropInfo = this.material.ropInfo;
+        // const proj = !!(ropInfo.fogType >>> 3);
+        // const isProjection = (proj === 0);
+        const isProjection = `(u_FogBlock.Param.y != 0.0)`;
+
+        const A = `u_FogBlock.Param.x`;
+        const B = `u_FogBlock.Param.y`;
+        const z = this.generateFogZCoord();
+
+        return `(${isProjection}) ? (${A} / (${B} - ${z})) : (${A} * ${z})`;
+    }
+
+    private generateFogAdj(base: string) {
+        if (this.material.ropInfo.fogAdjEnabled) {
+            // TODO(jstpierre): Fog adj
+            return ``;
+        } else {
+            return ``;
+        }
+    }
+
+    private generateFogFunc(base: string) {
+        const fogType = (this.material.ropInfo.fogType & 0x07);
+        if (fogType === GX.FogType.PERSP_LIN) {
+            return base;
+        } else if (fogType === GX.FogType.PERSP_EXP) {
+            return `1.0 - exp2(-8.0 * ${base});`;
+        } else if (fogType === GX.FogType.PERSP_EXP2) {
+            return `1.0 - exp2(-8.0 * ${base} * ${base});`;
+        } else if (fogType === GX.FogType.ORTHO_REVEXP) {
+            return `1.0 - exp2(-8.0 * (1.0 - ${base}));`;
+        } else if (fogType === GX.FogType.ORTHO_REVEXP2) {
+            return `1.0 - exp2(-8.0 * (1.0 - ${base}) * (1.0 - ${base}));`;
+        } else {
+            throw "whoops";
+        }
+    }
+
+    private generateFog() {
+        const ropInfo = this.material.ropInfo;
+        if (ropInfo.fogType === GX.FogType.NONE)
+            return "";
+
+        const C = `u_FogBlock.Param.z`;
+
+        return `
+    float t_FogBase = ${this.generateFogBase()};
+${this.generateFogAdj(`t_FogBase`)}
+    float t_FogZ = saturate(t_FogBase - ${C});
+    float t_Fog = ${this.generateFogFunc(`t_FogZ`)};
+    t_PixelOut.rgb = mix(t_PixelOut.rgb, u_FogBlock.Color.rgb, t_Fog);
+`;
+    }
+
+    private generateDstAlpha() {
+        const ropInfo = this.material.ropInfo;
+        if (ropInfo.dstAlpha === undefined)
+            return "";
+
+        return `
+    t_PixelOut.a = ${this.generateFloat(ropInfo.dstAlpha)};
+`;
+    }
+
+    private generateAttributeStorageType(fmt: GfxFormat): string {
+        switch (fmt) {
+        case GfxFormat.F32_R:    return 'float';
+        case GfxFormat.F32_RG:   return 'vec2';
+        case GfxFormat.F32_RGB:  return 'vec3';
+        case GfxFormat.F32_RGBA: return 'vec4';
+        default: throw "whoops";
+        }
+    }
+
+    private usesColorChannel(c: ColorChannelControl): boolean {
+        return c.matColorSource === GX.ColorSrc.VTX || c.ambColorSource === GX.ColorSrc.VTX;
+    }
+
+    private usesLightChannel(c: LightChannelControl | undefined): boolean {
+        if (c === undefined)
+            return false;
+        return this.usesColorChannel(c.colorChannel) || this.usesColorChannel(c.alphaChannel);
+    }
+
+    private usesNormalColorChannel(c: ColorChannelControl): boolean {
+        if (!c.lightingEnabled || c.litMask === 0)
+            return false;
+        if (c.diffuseFunction !== GX.DiffuseFunction.NONE)
+            return true;
+        if (c.attenuationFunction === GX.AttenuationFunction.SPEC)
+            return true;
+        return false;
+    }
+
+    private usesNormal(): boolean {
+        return this.material.lightChannels.some((c) => {
+            return this.usesNormalColorChannel(c.colorChannel) || this.usesNormalColorChannel(c.alphaChannel);
+        });
+    }
+
+    private usesTexGenInput(s: GX.TexGenSrc): boolean {
+        return this.material.texGens.some((g) => {
+            return g.source === s;
+        });
+    }
+
+    private usesBump(): boolean {
+        return this.material.texGens.some((g) => {
+            return g.type >= GX.TexGenType.BUMP0 && g.type <= GX.TexGenType.BUMP7;
+        });
+    }
+
+    private usesAttrib(a: VertexAttributeGenDef): boolean {
+        switch (a.attrInput) {
+        case VertexAttributeInput.POS: return true;
+        case VertexAttributeInput.TEX0123MTXIDX: return materialUseTexMtxIdx(this.material, 0) || materialUseTexMtxIdx(this.material, 1) || materialUseTexMtxIdx(this.material, 2) || materialUseTexMtxIdx(this.material, 3);
+        case VertexAttributeInput.TEX4567MTXIDX: return materialUseTexMtxIdx(this.material, 4) || materialUseTexMtxIdx(this.material, 5) || materialUseTexMtxIdx(this.material, 6) || materialUseTexMtxIdx(this.material, 7);
+        case VertexAttributeInput.NRM: return this.usesNormal() || this.usesTexGenInput(GX.TexGenSrc.NRM);
+        case VertexAttributeInput.TANGENT: return this.usesTexGenInput(GX.TexGenSrc.TANGENT) || this.usesBump();
+        case VertexAttributeInput.BINRM: return this.usesTexGenInput(GX.TexGenSrc.BINRM) || this.usesBump();
+        case VertexAttributeInput.CLR0: return this.usesLightChannel(this.material.lightChannels[0]);
+        case VertexAttributeInput.CLR1: return this.usesLightChannel(this.material.lightChannels[1]);
+        case VertexAttributeInput.TEX01: return this.usesTexGenInput(GX.TexGenSrc.TEX0) || this.usesTexGenInput(GX.TexGenSrc.TEX1);
+        case VertexAttributeInput.TEX23: return this.usesTexGenInput(GX.TexGenSrc.TEX2) || this.usesTexGenInput(GX.TexGenSrc.TEX3);
+        case VertexAttributeInput.TEX45: return this.usesTexGenInput(GX.TexGenSrc.TEX4) || this.usesTexGenInput(GX.TexGenSrc.TEX5);
+        case VertexAttributeInput.TEX67: return this.usesTexGenInput(GX.TexGenSrc.TEX6) || this.usesTexGenInput(GX.TexGenSrc.TEX7);
+        default: return false;
+        }
+    }
+
+    private generateVertAttributeDefs() {
+        return vtxAttributeGenDefs.map((a, i) => {
+            if (!this.usesAttrib(a))
+                return ``;
+            return `layout(location = ${i}) in ${this.generateAttributeStorageType(a.format)} a_${a.name};`;
+        }).join('\n');
+    }
+
+    protected generateMul(attr: string, pos: boolean, nrm: boolean): string {
+        const src = nrm ? attr : `vec4(${attr}.xyz, ${pos ? `1.0` : `0.0`})`;
+        const gen = materialUsePnMtxIdx(this.material) ?
+            this.generateMulPntMatrixDynamic(`a_Position.w`, src, nrm) :
+            this.generateMulPntMatrixStatic(GX.TexGenMatrix.PNMTX0, src, nrm);
+        return pos ? gen : `normalize(${gen}.xyz)`;
+    }
+
+    private generateShaders(): void {
+        const bindingsDefinition = generateBindingsDefinition(this.material);
+
+        const both = `
+// ${this.material.name}
+precision highp float;
+${bindingsDefinition}
+${GfxShaderLibrary.saturate}
+${GXShaderLibrary.TevOverflow}
+
+varying vec3 v_Position;
+${this.generateColorVaryings()}
+${this.generateTexCoordVaryings()}
+`;
+
+        this.vert = `
+${both}
+${this.generateVertAttributeDefs()}
+
+mat4x3 GetPosTexMatrix(float t_MtxIdxFloat) {
+    uint t_MtxIdx = uint(t_MtxIdxFloat);
+    if (t_MtxIdx == 20u)
+        return mat4x3(1.0);
+    else if (t_MtxIdx >= 10u)
+        return UnpackMatrix(u_TexMtx[(t_MtxIdx - 10u)]);
+    else
+        return UnpackMatrix(u_PosMtx[t_MtxIdx]);
+}
+
+${GfxShaderLibrary.MulNormalMatrix}
+
+float ApplyAttenuation(vec3 t_Coeff, float t_Value) {
+    return dot(t_Coeff, vec3(1.0, t_Value, t_Value*t_Value));
+}
+
+${this.generateExtraVertexGlobal()}
+
+void main() {
+    ${this.generatePosition()}
+    v_Position = t_Position;
+    vec3 t_Normal = ${this.usesNormal() ? this.generateMul(`a_Normal`, false, true) : `vec3(0.0)`};
+
+    vec4 t_LightAccum;
+    vec3 t_LightDelta, t_LightDeltaDir;
+    float t_LightDeltaDist2, t_LightDeltaDist, t_Attenuation;
+    vec4 t_ColorChanTemp;
+${this.generateExtraVertexMain()}
+${this.generateLightChannels()}
+${this.generateTexGens()}
+    gl_Position = UnpackMatrix(u_Projection) * vec4(t_Position, 1.0);
+}
+`;
+
+        this.frag = `
+${both}
+${this.generateTexCoordGetters()}
+
+float TextureLODBias(int index) {
+    vec4 elem = u_TextureBiases[index / 4]; // 01
+    int sub = index % 4; // 0123
+    return u_SceneTextureLODBias + elem[sub];
+}
+vec2 TextureScale(int index) {
+    vec4 elem = u_TextureSizes[index / 2];
+    int sub = 2 * (index % 2);
+    return vec2(elem[sub + 0], elem[sub + 1]);
+}
+vec2 TextureInvScale(int index) { return 1.0 / TextureScale(index); }
+
+vec3 TevBias(vec3 a, float b) { return a + vec3(b); }
+float TevBias(float a, float b) { return a + b; }
+float TevPack16(vec2 a) { return dot(a, vec2(1.0, 256.0)); }
+float TevPack24(vec3 a) { return dot(a, vec3(1.0, 256.0, 256.0 * 256.0)); }
+float TevPerCompGT(float a, float b) { return float(a >  b); }
+float TevPerCompEQ(float a, float b) { return float(a == b); }
+vec3 TevPerCompGT(vec3 a, vec3 b) { return vec3(greaterThan(a, b)); }
+vec3 TevPerCompEQ(vec3 a, vec3 b) { return vec3(equal(a, b)); }
+float TevMask(float n, int mask) { return float(int((n * 255.0)) & mask) / 255.0; }
+
+${this.generateExtraPixelGlobal()}
+
+vec4 MainColor() {
+    vec4 s_kColor0   = u_KonstColor[0];
+    vec4 s_kColor1   = u_KonstColor[1];
+    vec4 s_kColor2   = u_KonstColor[2];
+    vec4 s_kColor3   = u_KonstColor[3];
+
+    vec4 t_ColorPrev = u_Color[0];
+    vec4 t_Color0    = u_Color[1];
+    vec4 t_Color1    = u_Color[2];
+    vec4 t_Color2    = u_Color[3];
+
+${this.generateIndTexStages()}
+
+    vec2 t_TexCoord = vec2(0.0);
+    vec4 t_TexSample = vec4(0.0);
+    vec4 t_TevA, t_TevB, t_TevC, t_TevD;
+${this.generateTevStages()}
+
+${this.generateTevStagesLastMinuteFixup()}
+    vec4 t_PixelOut = TevOverflow(t_TevOutput);
+${this.generateAlphaTest()}
+${this.generateFog()}
+${this.generateDstAlpha()}
+
+    return t_PixelOut;
+}
+
+layout(location = 0) out vec4 o_OutColor0;
+
+void main() {
+    o_OutColor0 = MainColor();
+${this.generateExtraPixelMain()}
+}
+`;
+    }
+
+    public generateExtraVertexGlobal() { return this.hacks?.extraVertexGlobal ?? ""; }
+    public generateExtraVertexMain() { return this.hacks?.extraVertexMain ?? ""; }
+    public generateExtraPixelGlobal() { return ""; }
+    public generateExtraPixelMain() { return ""; }
+    public generateExtraPixelMainColor() { return ""; }
+}
+// #endregion
+
+export function getRasColorChannelID(v: GX.ColorChannelID): GX.RasColorChannelID {
+    switch (v) {
+    case GX.ColorChannelID.COLOR0:
+    case GX.ColorChannelID.ALPHA0:
+    case GX.ColorChannelID.COLOR0A0:
+        return GX.RasColorChannelID.COLOR0A0;
+    case GX.ColorChannelID.COLOR1:
+    case GX.ColorChannelID.ALPHA1:
+    case GX.ColorChannelID.COLOR1A1:
+        return GX.RasColorChannelID.COLOR1A1;
+    case GX.ColorChannelID.ALPHA_BUMP:
+        return GX.RasColorChannelID.ALPHA_BUMP;
+    case GX.ColorChannelID.ALPHA_BUMP_N:
+        return GX.RasColorChannelID.ALPHA_BUMP_N;
+    case GX.ColorChannelID.COLOR_ZERO:
+    case GX.ColorChannelID.COLOR_NULL:
+        return GX.RasColorChannelID.COLOR_ZERO;
+    default:
+        throw "whoops";
+    }
+}
+
+export function lightSetWorldPosition(light: Light, viewMatrix: ReadonlyMat4, v: ReadonlyVec3): void {
+    transformVec3Mat4w1(light.Position, viewMatrix, v);
+}
+
+export function lightSetWorldDirection(light: Light, viewMatrix: ReadonlyMat4, v: ReadonlyVec3): void {
+    transformVec3Mat4w0(light.Direction, viewMatrix, v);
+    vec3.normalize(light.Direction, v);
+}
+
+export function lightSetFromWorldLight(dst: Light, viewMatrix: ReadonlyMat4, worldLight: Light): void {
+    lightSetWorldPosition(dst, viewMatrix, worldLight.Position);
+    lightSetWorldDirection(dst, viewMatrix, worldLight.Direction);
+    vec3.copy(dst.DistAtten, worldLight.DistAtten);
+    vec3.copy(dst.CosAtten, worldLight.CosAtten);
+    colorCopy(dst.Color, worldLight.Color);
+}
+
+export function lightSetSpot(light: Light, cutoff: number, spotFunc: GX.SpotFunction): void {
+    if (cutoff <= 0 || cutoff >= 90)
+        spotFunc = GX.SpotFunction.OFF;
+
+    const cr = Math.cos(cutoff * MathConstants.DEG_TO_RAD);
+    if (spotFunc === GX.SpotFunction.FLAT) {
+        vec3.set(light.CosAtten, -1000.0 * cr, 1000.0, 0.0);
+    } else if (spotFunc === GX.SpotFunction.COS) {
+        vec3.set(light.CosAtten, -cr / (1.0 - cr), 1.0 / (1.0 - cr), 0.0);
+    } else if (spotFunc === GX.SpotFunction.COS2) {
+        vec3.set(light.CosAtten, 0.0, -cr / (1.0 - cr), 1.0 / (1.0 - cr));
+    } else if (spotFunc === GX.SpotFunction.SHARP) {
+        const d = (1.0 - cr) * (1.0 - cr);
+        vec3.set(light.CosAtten, cr * (cr - 2.0) / d, 2.0 / d, -1.0 / d);
+    } else if (spotFunc === GX.SpotFunction.RING1) {
+        const d = (1.0 - cr) * (1.0 - cr);
+        vec3.set(light.CosAtten, -4.0 * cr / d, 4.0 * (1.0 + cr) / d, -4.0 / d);
+    } else if (spotFunc === GX.SpotFunction.RING2) {
+        const d = (1.0 - cr) * (1.0 - cr);
+        vec3.set(light.CosAtten, 1.0 - 2.0 * cr * cr / d, 4.0 * cr / d, -2.0 / d);
+    } else if (spotFunc === GX.SpotFunction.OFF) {
+        vec3.set(light.CosAtten, 1.0, 0.0, 0.0);
+    }
+}
+
+export function lightSetDistAttn(light: Light, refDist: number, refBrightness: number, distFunc: GX.DistAttnFunction): void {
+    if (refDist < 0 || refBrightness <= 0 || refBrightness >= 1)
+        distFunc = GX.DistAttnFunction.OFF;
+
+    if (distFunc === GX.DistAttnFunction.GENTLE)
+        vec3.set(light.DistAtten, 1.0, (1.0 - refBrightness) / (refBrightness * refDist), 0.0);
+    else if (distFunc === GX.DistAttnFunction.MEDIUM)
+        vec3.set(light.DistAtten, 1.0, 0.5 * (1.0 - refBrightness) / (refBrightness * refDist), 0.5 * (1.0 - refBrightness) / (refBrightness * refDist * refDist));
+    else if (distFunc === GX.DistAttnFunction.STEEP)
+        vec3.set(light.DistAtten, 1.0, 0.0, (1.0 - refBrightness) / (refBrightness * refDist * refDist));
+    else if (distFunc === GX.DistAttnFunction.OFF)
+        vec3.set(light.DistAtten, 1.0, 0.0, 0.0);
+}
+
+export function fogBlockSet(fog: FogBlock, type: GX.FogType, startZ: number, endZ: number, nearZ: number, farZ: number): void {
+    const proj = !!(type >>> 3);
+
+    assert(Number.isFinite(farZ));
+
+    if (proj) {
+        // Orthographic
+        fog.A = (farZ - nearZ) / (endZ - startZ);
+        fog.B = 0.0;
+        fog.C = (startZ - nearZ) / (endZ - startZ);
+    } else {
+        fog.A = (farZ * nearZ) / ((farZ - nearZ) * (endZ - startZ));
+        fog.B = (farZ) / (farZ - nearZ);
+        fog.C = (startZ) / (endZ - startZ);
+    }
+}
