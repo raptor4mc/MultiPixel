@@ -1,0 +1,787 @@
+
+import { mat4, vec3, quat, ReadonlyVec3, ReadonlyMat4 } from "gl-matrix";
+
+// Misc bits of 3D math.
+
+// Basic scalar constants.
+export enum MathConstants {
+    DEG_TO_RAD = 0.017453292519943295, // Math.PI / 180,
+    RAD_TO_DEG = 57.29577951308232, // 180 / Math.PI,
+    TAU = 6.283185307179586, // Math.PI * 2
+    EPSILON = 0.000001,
+}
+
+// Basis vectors.
+export const Vec3Zero: ReadonlyVec3  = vec3.fromValues(0, 0, 0);
+export const Vec3One: ReadonlyVec3   = vec3.fromValues(1, 1, 1);
+export const Vec3UnitX: ReadonlyVec3 = vec3.fromValues(1, 0, 0);
+export const Vec3UnitY: ReadonlyVec3 = vec3.fromValues(0, 1, 0);
+export const Vec3UnitZ: ReadonlyVec3 = vec3.fromValues(0, 0, 1);
+export const Vec3NegX: ReadonlyVec3  = vec3.fromValues(-1, 0, 0);
+export const Vec3NegY: ReadonlyVec3  = vec3.fromValues(0, -1, 0);
+export const Vec3NegZ: ReadonlyVec3  = vec3.fromValues(0, 0, -1);
+export const Mat4Identity: ReadonlyMat4 = mat4.fromValues(
+    1, 0, 0, 0,
+    0, 1, 0, 0,
+    0, 0, 1, 0,
+    0, 0, 0, 1,
+);
+
+/**
+ * Computes a model matrix {@param dst} from given SRT parameters. Rotation is assumed
+ * to be in radians. Rotations are applied in X*Y*Z*input order.
+ * 
+ * This is roughly equivalent to {@link mat4.fromTranslationRotationScale}, but no intermediate
+ * conversion to quaternions is necessary.
+ */
+export function computeModelMatrixSRT(dst: mat4, scaleX: number, scaleY: number, scaleZ: number, rotationX: number, rotationY: number, rotationZ: number, translationX: number, translationY: number, translationZ: number): void {
+    const sinX = Math.sin(rotationX), cosX = Math.cos(rotationX);
+    const sinY = Math.sin(rotationY), cosY = Math.cos(rotationY);
+    const sinZ = Math.sin(rotationZ), cosZ = Math.cos(rotationZ);
+
+    dst[0] =  scaleX * (cosY * cosZ);
+    dst[1] =  scaleX * (sinZ * cosY);
+    dst[2] =  scaleX * (-sinY);
+    dst[3] =  0.0;
+
+    dst[4] =  scaleY * (sinX * cosZ * sinY - cosX * sinZ);
+    dst[5] =  scaleY * (sinX * sinZ * sinY + cosX * cosZ);
+    dst[6] =  scaleY * (sinX * cosY);
+    dst[7] =  0.0;
+
+    dst[8] =  scaleZ * (cosX * cosZ * sinY + sinX * sinZ);
+    dst[9] =  scaleZ * (cosX * sinZ * sinY - sinX * cosZ);
+    dst[10] = scaleZ * (cosY * cosX);
+    dst[11] = 0.0;
+
+    dst[12] = translationX;
+    dst[13] = translationY;
+    dst[14] = translationZ;
+    dst[15] = 1.0;
+}
+
+/**
+ * Computes a model matrix {@param dst} from given scale parameters.
+ * 
+ * This is equivalent to {@link computeModelMatrixSRT} with the rotation parameters set to 0 and the translation set to 0.
+ */
+export function computeModelMatrixS(dst: mat4, scaleX: number, scaleY: number = scaleX, scaleZ: number = scaleX): void {
+    dst[0] =  scaleX;
+    dst[1] =  0.0;
+    dst[2] =  0.0;
+    dst[3] =  0.0;
+
+    dst[4] =  0.0;
+    dst[5] =  scaleY;
+    dst[6] =  0.0;
+    dst[7] =  0.0;
+
+    dst[8] =  0.0;
+    dst[9] =  0.0;
+    dst[10] = scaleZ;
+    dst[11] = 0.0;
+
+    dst[12] = 0.0;
+    dst[13] = 0.0;
+    dst[14] = 0.0;
+    dst[15] = 1.0;
+}
+
+/**
+ * Computes a model matrix {@param dst} from given rotation parameters. Rotation is assumed
+ * to be in radians. Rotations are applied in X*Y*Z*input order.
+ * 
+ * This is equivalent to {@link computeModelMatrixSRT} with the scale parameters set to 1 and the translation set to 0.
+ */
+export function computeModelMatrixR(dst: mat4, rotationX: number, rotationY: number, rotationZ: number): void {
+    const sinX = Math.sin(rotationX), cosX = Math.cos(rotationX);
+    const sinY = Math.sin(rotationY), cosY = Math.cos(rotationY);
+    const sinZ = Math.sin(rotationZ), cosZ = Math.cos(rotationZ);
+
+    dst[0] =  (cosY * cosZ);
+    dst[1] =  (cosY * sinZ);
+    dst[2] =  (-sinY);
+    dst[3] =  0.0;
+
+    dst[4] =  (sinX * cosZ * sinY - cosX * sinZ);
+    dst[5] =  (sinX * sinZ * sinY + cosX * cosZ);
+    dst[6] =  (sinX * cosY);
+    dst[7] =  0.0;
+
+    dst[8] =  (cosX * cosZ * sinY + sinX * sinZ);
+    dst[9] =  (cosX * sinZ * sinY - sinX * cosZ);
+    dst[10] = (cosY * cosX);
+    dst[11] = 0.0;
+
+    dst[12] = 0.0;
+    dst[13] = 0.0;
+    dst[14] = 0.0;
+    dst[15] = 1.0;
+}
+
+/**
+ * Computes a model matrix {@param dst} from given translation parameters.
+ * 
+ * This is equivalent to {@link computeModelMatrixSRT} with the rotation parameters set to 0, and the scale set to 1.
+ */
+export function computeModelMatrixT(dst: mat4, translationX: number, translationY: number, translationZ: number): void {
+    dst[0] =  1.0;
+    dst[1] =  0.0;
+    dst[2] =  0.0;
+    dst[3] =  0.0;
+
+    dst[4] =  0.0;
+    dst[5] =  1.0;
+    dst[6] =  0.0;
+    dst[7] =  0.0;
+
+    dst[8] =  0.0;
+    dst[9] =  0.0;
+    dst[10] = 1.0;
+    dst[11] = 0.0;
+
+    dst[12] = translationX;
+    dst[13] = translationY;
+    dst[14] = translationZ;
+    dst[15] = 1.0;
+}
+
+/**
+ * Scale a given matrix {@param m} by the given scalar factors {@param scaleX}, {@param scaleY}, {@param scaleZ},
+ * placing the resulting matrix into {@param dst}.
+ *
+ * This is equivalent to mat4.scale(dst, m, [scaleX, scaleY, scaleZ]) but generates zero GC garbage.
+ */
+export function scaleMatrix(dst: mat4, m: ReadonlyMat4, scaleX: number, scaleY: number = scaleX, scaleZ: number = scaleX): void {
+    // Scale column vectors.
+    dst[0] = m[0] * scaleX;
+    dst[1] = m[1] * scaleX;
+    dst[2] = m[2] * scaleX;
+    dst[3] = m[3] * scaleX;
+
+    dst[4] = m[4] * scaleY;
+    dst[5] = m[5] * scaleY;
+    dst[6] = m[6] * scaleY;
+    dst[7] = m[7] * scaleY;
+
+    dst[8] = m[8] * scaleZ;
+    dst[9] = m[9] * scaleZ;
+    dst[10] = m[10] * scaleZ;
+    dst[11] = m[11] * scaleZ;
+
+    dst[12] = m[12];
+    dst[13] = m[13];
+    dst[14] = m[14];
+    dst[15] = m[15];
+}
+
+/**
+ * Computes a normal matrix into {@param dst} from model-view matrix {@param m}.
+ * 
+ * If the model matrix is uniformly scaled, or you do not care about artifacts
+ * resulting from incorrect normal vectors, then pass true to {@param isUniformScale}.
+ * This skips a potentially expensive computation with inverting and transposing
+ * the resulting matrix.
+ *
+ * To determine whether the model matrix is uniformly scaled, the helper function
+ * {@function matrixHasUniformScale} is provided.
+ */
+export function computeNormalMatrix(dst: mat4, m: ReadonlyMat4, isUniformScale?: boolean): void {
+    if (isUniformScale === undefined)
+        isUniformScale = matrixHasUniformScale(m);
+
+    if (dst !== m)
+        mat4.copy(dst, m);
+    dst[12] = 0;
+    dst[13] = 0;
+    dst[14] = 0;
+
+    if (!isUniformScale) {
+        mat4.invert(dst, dst);
+        mat4.transpose(dst, dst);
+    }
+}
+
+/**
+ * Transforms the vector {@param v} by the 4x3 matrix {@param m}, assuming that the implied W component is 1.
+ * This is similar to {@see vec3.transformMat4}, except a bit faster as it assumes an affine matrix.
+ *
+ * Note that this assumes an affine (4x3) matrix, the projective components are simply ignored.
+ * If you require projective coordinates, use {@see vec3.transformMat4}, which handles projective
+ * matrices just fine, including the divide by W.
+ */
+export function transformVec3Mat4w1(dst: vec3, m: ReadonlyMat4, v: ReadonlyVec3): void {
+    const x = v[0], y = v[1], z = v[2];
+    dst[0] = m[0] * x + m[4] * y + m[8]  * z + m[12];
+    dst[1] = m[1] * x + m[5] * y + m[9]  * z + m[13];
+    dst[2] = m[2] * x + m[6] * y + m[10] * z + m[14];
+}
+
+/**
+ * Transforms the vector {@param v} by the 4x3 matrix {@param m}, assuming that the implied W component is 0.
+ * This is similar to {@see vec3.transformMat4}, except that translation is ignored, as a consequence of assuming
+ * the W component is 0.
+ *
+ * Note that this assumes an affine (4x3) matrix, the projective components are simply ignored.
+ * If you require projective coordinates, use {@see vec3.transformMat4}, which handles projective
+ * matrices just fine, including the divide by W.
+ */
+export function transformVec3Mat4w0(dst: vec3, m: ReadonlyMat4, v: ReadonlyVec3): void {
+    const x = v[0], y = v[1], z = v[2];
+    dst[0] = m[0] * x + m[4] * y + m[8] * z;
+    dst[1] = m[1] * x + m[5] * y + m[9] * z;
+    dst[2] = m[2] * x + m[6] * y + m[10] * z;
+}
+
+const scratchVec3a = vec3.create(), scratchVec3b = vec3.create(), scratchVec3c = vec3.create(), scratchVec3d = vec3.create(), scratchVec3e = vec3.create();
+
+export function compareEpsilon(a: number, b: number) {
+    return Math.abs(a-b) <= MathConstants.EPSILON*Math.max(1, Math.abs(a), Math.abs(b));
+}
+
+/**
+ * Returns whether matrix {@param m} has a uniform scale.
+ */
+export function matrixHasUniformScale(m: ReadonlyMat4): boolean {
+    const sx = (m[0]*m[0] + m[4]*m[4] + m[8]*m[8]);
+    const sy = (m[1]*m[1] + m[5]*m[5] + m[9]*m[9]);
+    const sz = (m[2]*m[2] + m[6]*m[6] + m[10]*m[10]);
+    return compareEpsilon(sx, sy) && compareEpsilon(sx, sz);
+}
+
+export function texEnvMtx(dst: mat4, scaleS: number, scaleT: number, transS: number, transT: number) {
+    dst[0] = scaleS;
+    dst[4] = 0.0;
+    dst[8] = 0.0;
+    dst[12] = transS;
+
+    dst[1] = 0.0;
+    dst[5] = -scaleT;
+    dst[9] = 0.0;
+    dst[13] = transT;
+
+    dst[2] = 0.0;
+    dst[6] = 0.0;
+    dst[10] = 0.0;
+    dst[14] = 1.0;
+
+    // Fill with junk to try and signal when something has gone horribly wrong. This should go unused,
+    // since this is supposed to generate a mat4x3 matrix.
+    dst[3] = 9999.0;
+    dst[7] = 9999.0;
+    dst[11] = 9999.0;
+    dst[15] = 9999.0;
+}
+
+export function computeMatrixWithoutScale(dst: mat4, m: ReadonlyMat4): void {
+    const mx = 1 / Math.hypot(m[0], m[4], m[8]);
+    const my = 1 / Math.hypot(m[1], m[5], m[9]);
+    const mz = 1 / Math.hypot(m[2], m[6], m[10]);
+    dst[0] = m[0] * mx;
+    dst[4] = m[4] * mx;
+    dst[8] = m[8] * mx;
+    dst[1] = m[1] * my;
+    dst[5] = m[5] * my;
+    dst[9] = m[9] * my;
+    dst[2] = m[2] * mz;
+    dst[6] = m[6] * mz;
+    dst[10] = m[10] * mz;
+    dst[12] = m[12];
+    dst[13] = m[13];
+    dst[14] = m[14];
+}
+
+export function computeMatrixWithoutTranslation(dst: mat4, m: ReadonlyMat4): void {
+    mat4.copy(dst, m);
+    dst[12] = 0;
+    dst[13] = 0;
+    dst[14] = 0;
+}
+
+export function clamp(v: number, min: number, max: number): number {
+    return Math.max(min, Math.min(v, max));
+}
+
+export function saturate(v: number): number {
+    return clamp(v, 0.0, 1.0);
+}
+
+export function clampRange(v: number, lim: number): number {
+    return clamp(v, -lim, lim);
+}
+
+export function lerp(a: number, b: number, t: number): number {
+    return a + (b - a) * t;
+}
+
+export function invlerp(a: number, b: number, v: number): number {
+    return (v - a) / (b - a);
+}
+
+export function smoothstep(t: number): number {
+    return t*t*(3 - t*2);
+}
+
+// https://gist.github.com/shaunlebron/8832585
+export function lerpAngle(v0: number, v1: number, t: number, maxAngle: number = MathConstants.TAU): number {
+    const da = (v1 - v0) % maxAngle;
+    const dist = (2*da) % maxAngle - da;
+    return v0 + dist * t;
+}
+
+export function angleDist(v0: number, v1: number, maxAngle: number = MathConstants.TAU): number {
+    const da = (v1 - v0) % maxAngle;
+    return (2*da) % maxAngle - da;
+}
+
+// Similar to mat4.frustum, except it can handle infinite far planes.
+export function projectionMatrixForFrustum(m: mat4, left: number, right: number, bottom: number, top: number, near: number, far: number) {
+    const rl = 1 / (right - left);
+    const tb = 1 / (top - bottom);
+    m[0] = near * 2 * rl;
+    m[1] = 0;
+    m[2] = 0;
+    m[3] = 0;
+    m[4] = 0;
+    m[5] = near * 2 * tb;
+    m[6] = 0;
+    m[7] = 0;
+    m[8] = (right + left) * rl;
+    m[9] = (top + bottom) * tb;
+    m[11] = -1;
+    m[12] = 0;
+    m[13] = 0;
+    m[15] = 0;
+
+    if (far !== Infinity) {
+        const nf = 1 / (near - far);
+        m[10] = (far + near) * nf;
+        m[14] = far * near * 2 * nf;
+    } else {
+        m[10] = -1;
+        m[14] = -2 * near;
+    }
+}
+
+export function projectionMatrixForCuboid(m: mat4, left: number, right: number, bottom: number, top: number, near: number, far: number) {
+    const rl = 1 / (right - left);
+    const tb = 1 / (top - bottom);
+    const nf = 1 / (near - far);
+    m[0] = 2 * rl;
+    m[1] = 0;
+    m[2] = 0;
+    m[3] = 0;
+    m[4] = 0;
+    m[5] = 2 * tb;
+    m[6] = 0;
+    m[7] = 0;
+    m[8] = 0;
+    m[9] = 0;
+    m[10] = 2 * nf;
+    m[11] = 0;
+    m[12] = -(right + left) * rl;
+    m[13] = -(top + bottom) * tb;
+    m[14] = (far + near) * nf;
+    m[15] = 1;
+}
+
+export function calcEulerAngleRotationFromSRTMatrix(dst: vec3, m: ReadonlyMat4): void {
+    // "Euler Angle Conversion", Ken Shoemake, Graphics Gems IV. http://www.gregslabaugh.net/publications/euler.pdf
+
+    if (compareEpsilon(m[2], 1.0)) {
+        dst[0] = Math.atan2(-m[4], -m[8]);
+        dst[1] = -Math.PI / 2;
+        dst[2] = 0.0;
+    } else if (compareEpsilon(m[2], -1.0)) {
+        dst[0] = Math.atan2(m[4], m[8]);
+        dst[1] = Math.PI / 2;
+        dst[2] = 0.0;
+    } else {
+        dst[0] = Math.atan2(m[6], m[10]);
+        dst[1] = -Math.asin(m[2]);
+        dst[2] = Math.atan2(m[1], m[0]);
+    }
+}
+
+export function calcUnitSphericalCoordinates(dst: vec3, azimuthal: number, polar: number): void {
+    // https://en.wikipedia.org/wiki/Spherical_coordinate_system
+    // https://en.wikipedia.org/wiki/List_of_common_coordinate_transformations#From_spherical_coordinates
+    // Wikipedia uses the convention of Z-up, we use Y-up here.
+
+    const sinP = Math.sin(polar);
+    dst[0] = sinP * Math.cos(azimuthal);
+    dst[1] = Math.cos(polar);
+    dst[2] = sinP * Math.sin(azimuthal);
+}
+
+export function range(start: number, count: number): number[] {
+    const L: number[] = [];
+    for (let i = start; i < start + count; i++)
+        L.push(i);
+    return L;
+}
+
+export function normToLength(dst: vec3, len: number): void {
+    const vlen = vec3.length(dst);
+    if (vlen > 0) {
+        const inv = len / vlen;
+        dst[0] = dst[0] * inv;
+        dst[1] = dst[1] * inv;
+        dst[2] = dst[2] * inv;
+    }
+}
+
+export function normToLengthAndAdd(dst: vec3, a: ReadonlyVec3, len: number): void {
+    const vlen = vec3.length(a);
+    if (vlen > 0) {
+        const inv = len / vlen;
+        dst[0] += a[0] * inv;
+        dst[1] += a[1] * inv;
+        dst[2] += a[2] * inv;
+    }
+}
+
+export function isNearZero(v: number, min: number): boolean {
+    return v > -min && v < min;
+}
+
+export function isNearZeroVec3(v: ReadonlyVec3, min: number): boolean {
+    return (
+        v[0] > -min && v[0] < min &&
+        v[1] > -min && v[1] < min &&
+        v[2] > -min && v[2] < min
+    );
+}
+
+export function quatFromEulerRadians(dst: quat, x: number, y: number, z: number): void {
+    const sx = Math.sin(0.5 * x), cx = Math.cos(0.5 * x);
+    const sy = Math.sin(0.5 * y), cy = Math.cos(0.5 * y);
+    const sz = Math.sin(0.5 * z), cz = Math.cos(0.5 * z);
+    dst[0] = sx * cy * cz - cx * sy * sz;
+    dst[1] = cx * sy * cz + sx * cy * sz;
+    dst[2] = cx * cy * sz - sx * sy * cz;
+    dst[3] = cx * cy * cz + sx * sy * sz;
+}
+
+export function getMatrixAxisX(dst: vec3, m: ReadonlyMat4): void {
+    vec3.set(dst, m[0], m[1], m[2]);
+}
+
+export function getMatrixAxisY(dst: vec3, m: ReadonlyMat4): void {
+    vec3.set(dst, m[4], m[5], m[6]);
+}
+
+export function getMatrixAxisZ(dst: vec3, m: ReadonlyMat4): void {
+    vec3.set(dst, m[8], m[9], m[10]);
+}
+
+export function getMatrixAxis(dstX: vec3 | null, dstY: vec3 | null, dstZ: vec3 | null, m: ReadonlyMat4): void {
+    if (dstX !== null)
+        vec3.set(dstX, m[0], m[1], m[2]);
+    if (dstY !== null)
+        vec3.set(dstY, m[4], m[5], m[6]);
+    if (dstZ !== null)
+        vec3.set(dstZ, m[8], m[9], m[10]);
+}
+
+export function setMatrixAxis(m: mat4, axisX: ReadonlyVec3 | null, axisY: ReadonlyVec3 | null, axisZ: ReadonlyVec3 | null): void {
+    if (axisX !== null) {
+        m[0] = axisX[0];
+        m[1] = axisX[1];
+        m[2] = axisX[2];
+    }
+
+    if (axisY !== null) {
+        m[4] = axisY[0];
+        m[5] = axisY[1];
+        m[6] = axisY[2];
+    }
+
+    if (axisZ !== null) {
+        m[8] = axisZ[0];
+        m[9] = axisZ[1];
+        m[10] = axisZ[2];
+    }
+}
+
+export function getMatrixTranslation(dst: vec3, m: ReadonlyMat4): void {
+    vec3.set(dst, m[12], m[13], m[14]);
+}
+
+export function setMatrixTranslation(dst: mat4, v: ReadonlyVec3): void {
+    dst[12] = v[0];
+    dst[13] = v[1];
+    dst[14] = v[2];
+}
+
+const baseBuffer = new ArrayBuffer(4);
+const asFloat32 = new Float32Array(baseBuffer);
+const asUint32 = new Uint32Array(baseBuffer);
+export function bitsAsFloat32(x: number): number {
+    asUint32[0] = (x >>> 0) & 0xFFFFFFFF;
+    return asFloat32[0];
+}
+
+export function float32AsBits(x: number): number {
+    asFloat32[0] = x;
+    return asUint32[0];
+}
+
+/**
+ * Reflects a given vector {@param src} around {@param normal}.
+ */
+export function reflectVec3(dst: vec3, source: ReadonlyVec3, normal: ReadonlyVec3): void {
+    const dot = -2.0 * vec3.dot(source, normal);
+    vec3.scaleAndAdd(dst, source, normal, dot);
+}
+
+export function vec3SetAll(dst: vec3, v: number): void {
+    vec3.set(dst, v, v, v);
+}
+
+export function vec3FromBasis2(dst: vec3, pt: ReadonlyVec3, b0: ReadonlyVec3, s0: number, b1: ReadonlyVec3, s1: number): void {
+    dst[0] = pt[0] + b0[0] * s0 + b1[0] * s1;
+    dst[1] = pt[1] + b0[1] * s0 + b1[1] * s1;
+    dst[2] = pt[2] + b0[2] * s0 + b1[2] * s1;
+}
+
+export function vec3FromBasis3(dst: vec3, pt: ReadonlyVec3, b0: ReadonlyVec3, s0: number, b1: ReadonlyVec3, s1: number, b2: ReadonlyVec3, s2: number): void {
+    dst[0] = pt[0] + b0[0] * s0 + b1[0] * s1 + b2[0] * s2;
+    dst[1] = pt[1] + b0[1] * s0 + b1[1] * s1 + b2[1] * s2;
+    dst[2] = pt[2] + b0[2] * s0 + b1[2] * s1 + b2[2] * s2;
+}
+
+export enum CalcBillboardFlags {
+    // The up vector for computing roll should come from the input matrix.
+    UseRollLocal = 0 << 0,
+    // The up vector for computing roll should be global world up 0, 1, 0.
+    UseRollGlobal = 1 << 0,
+
+    // Z, X, Y priority (normal billboard mode)
+    PriorityZ      = 0 << 1,
+    // Z, X, Y, Z priority ("Y billboard" mode)
+    PriorityY      = 1 << 1,
+
+    // The Z+ vector should be projected onto a plane (Z+ = 0, 0, 1)
+    UseZPlane      = 0 << 2,
+    // The Z+ vector should be projected onto a sphere (Z+ = -Translation), aka "persp" mode
+    UseZSphere     = 1 << 2,
+}
+
+export function calcBillboardMatrix(dst: mat4, m: ReadonlyMat4, flags: CalcBillboardFlags, axisY: ReadonlyVec3 | null = null): void {
+    // Extract scale.
+    const mx = Math.hypot(m[0], m[1], m[2]);
+    const my = Math.hypot(m[4], m[5], m[6]);
+    const mz = Math.hypot(m[8], m[9], m[10]);
+
+    // General calculation:
+    //
+    //   UnitX = { 1, 0, 0 }, UnitY = { 0, 1, 0 }, UnitZ = { 0, 0, 1 }
+    //   MatrixX = { m[0], m[1], m[2] }
+    //   MatrixY = axisY || { m[4], m[5], m[6] }
+    //   MatrixZ = { m[8], m[9], m[10] }
+    //
+    // Pick InputZ:
+    //   UseZPlane: UnitZ
+    //   UseZSphere: { -m[12], -m[13], -m[14] }
+    //
+    // Pick InputYRoll:
+    //   UseRollLocal: MatrixY
+    //   UseRollGlobal: UnitY
+    //
+    // Calculate:
+    //   Z = InputZ
+    //   X = InputYRoll ^ Z
+    // PriorityZ:
+    //   Y = Z ^ X
+    // PriorityY:
+    //   Y = MatrixY
+    //   Z = X ^ Y
+
+    // Special cases for speed.
+    if (flags === (CalcBillboardFlags.UseRollGlobal | CalcBillboardFlags.PriorityZ | CalcBillboardFlags.UseZPlane)) {
+        // InputZ = { 0, 0, 1 }, InputRollY = { 0, 1, 0 }
+        // Z = InputZ         = { 0, 0, 1 }
+        // X = InputRollY ^ Z = { 0, 1, 0 } ^ { 0, 0, 1 } = { 1, 0, 0 }
+        // Y = Z ^ X          = { 0, 0, 1 } ^ { 1, 0, 0 } = { 0, 1, 0 }
+
+        dst[0] = mx;
+        dst[1] = 0;
+        dst[2] = 0;
+
+        dst[4] = 0;
+        dst[5] = my;
+        dst[6] = 0;
+
+        dst[8] = 0;
+        dst[9] = 0;
+        dst[10] = mz;
+    } else if (flags === (CalcBillboardFlags.UseRollGlobal | CalcBillboardFlags.PriorityY | CalcBillboardFlags.UseZPlane)) {
+        // InputZ = { 0, 0, 1 }, InputRollY = { 0, 1, 0 }
+        // Z = InputZ         = { 0, 0, 1 }
+        // X = InputRollY ^ Z = { 0, 1, 0 } ^ { 0, 0, 1 } = { 1, 0, 0 }
+        // Z = X ^ Y          = { 0, -Y[2], Y[1] }
+
+        vec3.set(scratchVec3a, 0.0, -m[6], m[5]);
+        vec3.normalize(scratchVec3a, scratchVec3a);
+
+        dst[0] = mx;
+        dst[1] = 0;
+        dst[2] = 0;
+
+        dst[4] = m[4];
+        dst[5] = m[5];
+        dst[6] = m[6];
+
+        dst[8] = 0;
+        dst[9] = scratchVec3a[1] * mz;
+        dst[10] = scratchVec3a[2] * mz;
+    } else if (flags === (CalcBillboardFlags.UseRollLocal | CalcBillboardFlags.PriorityZ | CalcBillboardFlags.UseZPlane)) {
+        // InputZ = { 0, 0, 1 }, InputRollY = { m[4], m[5], m[6] }
+        // Z = InputZ         = { 0, 0, 1 }
+        // X = InputRollY ^ Z = { Y[1], -Y[0], 0 }
+        // Y = Z ^ X          = { Y[0],  Y[1], 0 }
+
+        vec3.set(scratchVec3a, m[4], m[5], 0);
+        vec3.normalize(scratchVec3a, scratchVec3a);
+
+        dst[0] = mx * scratchVec3a[1];
+        dst[1] = mx * -scratchVec3a[0];
+        dst[2] = 0;
+
+        dst[4] = my * scratchVec3a[0];
+        dst[5] = my * scratchVec3a[1];
+        dst[6] = 0;
+
+        dst[8] = 0;
+        dst[9] = 0;
+        dst[10] = mz;
+    } else {
+        // Generic code.
+
+        // Pick InputZ:
+        //   UseZPlane: GlobalZ
+        //   UseZSphere: { -m[12], -m[13], -m[14] }
+        const InputZ = scratchVec3a;
+        if (!!(flags & CalcBillboardFlags.UseZSphere)) {
+            vec3.set(InputZ, -m[12], -m[13], -m[14]);
+            vec3.normalize(InputZ, InputZ);
+        } else {
+            vec3.set(InputZ, 0, 0, 1);
+        }
+
+        // Pick InputYRoll:
+        //   UseRollLocal: MatrixY
+        //   UseRollGlobal: GlobalY
+        const InputYRoll = scratchVec3b;
+        if (!!(flags & CalcBillboardFlags.UseRollGlobal))
+            vec3.set(InputYRoll, 0, 1, 0);
+        else if (axisY !== null)
+            vec3.copy(InputYRoll, axisY);
+        else
+            vec3.set(InputYRoll, m[4] / my, m[5] / my, m[6] / my);
+
+        // Calculate:
+        //   Z = InputZ
+        //   X = InputYRoll ^ Z
+        const Z = InputZ;
+        const X = InputYRoll;
+        vec3.cross(X, InputYRoll, Z);
+        vec3.normalize(X, X);
+
+        const Y = scratchVec3c;
+        if (!!(flags & CalcBillboardFlags.PriorityY)) {
+            // PriorityY:
+            //   Y = MatrixY
+            //   Z = X ^ Y
+            if (axisY !== null)
+                vec3.copy(Y, axisY);
+            else
+                vec3.set(Y, m[4] / my, m[5] / my, m[6] / my);
+            vec3.cross(Z, X, Y);
+            vec3.normalize(Z, Z);
+        } else {
+            // PriorityZ:
+            //   Y = Z ^ X
+            vec3.cross(Y, Z, X);
+            vec3.normalize(Y, Y);
+        }
+
+        dst[0] = mx * X[0];
+        dst[1] = mx * X[1];
+        dst[2] = mx * X[2];
+
+        dst[4] = my * Y[0];
+        dst[5] = my * Y[1];
+        dst[6] = my * Y[2];
+
+        dst[8] = mz * Z[0];
+        dst[9] = mz * Z[1];
+        dst[10] = mz * Z[2];
+    }
+
+    dst[12] = m[12];
+    dst[13] = m[13];
+    dst[14] = m[14];
+
+    dst[3] = 0.0;
+    dst[7] = 0.0;
+    dst[11] = 0.0;
+    dst[15] = 1.0;
+}
+
+export function randomRangeFloat(a: number, b = -a): number {
+    return lerp(a, b, Math.random());
+}
+
+export function randomRangeInt(min: number, max: number): number {
+    return randomRangeFloat(min, max) | 0;
+}
+
+export function randomRangeVec3(dst: vec3, range: number): void {
+    vec3.set(dst, randomRangeFloat(range), randomRangeFloat(range), randomRangeFloat(range));
+}
+
+/**
+ * Calculates where the line/ray defined by points ({@param p}, {@param q})
+ * intersects the triangle ({@param a}, {@param b}, {@param c}), optionally setting the
+ * barycentric coordinates of intersection {@param barycentricOut}. Returns distance "t"
+ * along the line.
+ * 
+ * From Christer Ericson's Realtime Collision Detection.
+ */
+export function rayTriangleIntersect(barycentricOut: vec3 | null, p: ReadonlyVec3, dir: ReadonlyVec3, a: ReadonlyVec3, b: ReadonlyVec3, c: ReadonlyVec3): number {
+    const ab = vec3.sub(scratchVec3a, b, a);
+    const ac = vec3.sub(scratchVec3b, c, a);
+    // Compute triangle normal
+    const n = vec3.cross(scratchVec3c, ab, ac);
+
+    const d = -vec3.dot(dir, n);
+    if (d <= 0.0)
+        return 0.0;
+
+    const ap = vec3.sub(scratchVec3e, p, a);
+    let t = vec3.dot(ap, n);
+    if (t < 0.0)
+        return 0.0;
+
+    // Compute bary
+    const e = vec3.cross(scratchVec3c, ap, dir);
+    let v = vec3.dot(ac, e);
+    if (v < 0.0 || v > d)
+        return 0.0;
+
+    let w = -vec3.dot(ab, e);
+    if (w < 0.0 || v + w > d)
+        return 0.0;
+
+    const denom = 1.0 / d;
+    t *= denom;
+    if (barycentricOut !== null) {
+        v *= denom;
+        w *= denom;
+        const u = 1.0 - (v + w);
+        vec3.set(barycentricOut, u, v, w);
+    }
+    return t;
+}
