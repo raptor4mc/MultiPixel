@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Device Stress Test</title>
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <canvas id="simulation"></canvas>
+
+    <div id="ui-layer">
+        <div id="control-panel">
+            <div class="stats-row">
+                <div class="stat-group">
+                    <div class="stat-item">
+                        <span class="stat-label">Entity Count</span>
+                        <span class="stat-value" id="count-display">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">FPS</span>
+                        <span class="stat-value" id="fps-display">60</span>
+                    </div>
+                </div>
+                <button class="clear-btn" id="btn-clear">Clear All</button>
+            </div>
+
+            <div class="controls-row">
+                <button class="spawn-btn" data-amount="1">+1</button>
+                <button class="spawn-btn" data-amount="5">+5</button>
+                <button class="spawn-btn" data-amount="10">+10</button>
+                <button class="spawn-btn" data-amount="100">+100</button>
+                <button class="spawn-btn" data-amount="1000">+1k</button>
+                <button class="spawn-btn" data-amount="10000">+10k</button>
+                <button class="spawn-btn" data-amount="1000000" style="border-color:#ef4444;">+1 MILL</button>
+            </div>
+        </div>
+
+        <div id="warning-toast">
+            <strong>Warning:</strong> High entity count detected. Performance may degrade.
+        </div>
+    </div>
+
+    <!-- JS -->
+    <script src="script.js"></script>
+</body>
+</html>
