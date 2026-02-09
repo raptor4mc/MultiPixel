@@ -1,0 +1,1744 @@
+        // --- 1. CONFIGURATION ---
+        const CHUNK_SIZE = 16;
+        const CHUNK_HEIGHT = 96; 
+        const WORLD_RADIUS = 13; // 27x27 chunks wide
+        const BLOCK_SIZE = 1;
+        const SEA_LEVEL = 18; 
+        const BASE_LAND_Y = 20; 
+        const ISLAND_RADIUS = 30; 
+        
+        // --- CAVE CONSTANTS ---
+        const CAVE_SCALE = 0.05;
+        const CAVE_THRESHOLD = 0.7; // Raw noise > 0.7 to become a cave
+        const CAVE_MIN_Y = 5;
+        const CAVE_MAX_Y_OFFSET = 4; // Keep caves at least this many blocks below the surface height (h)
+        
+      
+        const PLAYER_HEIGHT = 1.8 * BLOCK_SIZE; 
+        const PLAYER_RADIUS = 0.3; 
+        const GRAVITY = -0.012;
+        const JUMP_POWER = 0.17;
+        
+        // --- DAY/NIGHT CYCLE CONFIG ---
+        const DAY_CYCLE_DURATION = 60 * 1000; // 60 seconds for a full cycle (1 minute real time)
+        let gameTime = Math.PI / 2; // Start at Math.PI / 2 (High Noon)
+        let lastTime = 0; // For delta time calculation
+        let ambientLight, dirLight; // Made global for modification in animate loop
+
+       
+        const INV_COLS = 9;
+        const INV_ROWS = 3;
+        const HOTBAR_SLOTS = 9;
+        const TOTAL_INV_SIZE = (INV_ROWS * INV_COLS) + HOTBAR_SLOTS; // 27 + 9 = 36 slots
+
+        // --- GITHUB PAGES CONFIGURATION (IMPORTANT FOR ASSET PATHS) ---
+        const REPO_BASE_PREFIX = '/MultiPixel'; 
+        
+        // Function to safely construct asset paths for GitHub Pages/Local
+        const getAssetPath = (subPath) => {
+            const ASSET_BASE_DIR = 'game/singleplayer/assets';
+            if (REPO_BASE_PREFIX) {
+                // Returns '/repo-name/game/singleplayer/assets/textures/...' (Root-relative)
+                return `${REPO_BASE_PREFIX}/${ASSET_BASE_DIR}/${subPath}`;
+            }
+            // Returns 'game/singleplayer/assets/textures/...' (Local-relative)
+            return `${ASSET_BASE_DIR}/${subPath}`;
+        };
+
+
+        // ASSET MAPPING: Using specified filepaths directly, as requested
+        const ASSET_FILEPATHS = {
+            DIRT: getAssetPath('textures/dirt_block.png'),
+            STONE: getAssetPath('textures/stone_block.png'),
+            LEAVES: getAssetPath('textures/leaf_oak.png'), 
+            SAND: getAssetPath('textures/sand_block.png'), 
+            HEART: getAssetPath('ui/heart_full.png'), 
+            OAK_PLANK: getAssetPath('textures/oak_planks.png'),
+            CRAFTING_TABLE_SIDE: getAssetPath('textures/crafting_table_side.png'), // Added texture path
+            STICK: getAssetPath('textures/stick.png'),
+        };
+
+
+        // Simplified block definitions: Type and properties
+        const blockMaterials = {
+            0: { name: 'Air', id: 0, textured: false }, 
+            1: { name: 'Grass', id: 1, textured: true, textureKey: 'DIRT' }, 
+            2: { name: 'Dirt', id: 2, textured: true, textureKey: 'DIRT' }, 
+            3: { name: 'Stone', id: 3, textured: true, textureKey: 'STONE' }, 
+            4: { name: 'Water', id: 4, color: 0x1976D2, transparent: true, opacity: 0.7, textured: false },
+            5: { name: 'Wood Log', id: 5, color: 0x8B4513, textured: false }, 
+            6: { name: 'Leaves', id: 6, textured: true, textureKey: 'LEAVES', transparent: true, opacity: 0.8 },
+            7: { name: 'Sand', id: 7, textured: true, textureKey: 'SAND' },
+            8: { name: 'Oak Planks', id: 8, textured: true, textureKey: 'OAK_PLANK' },
+            // UPDATED BLOCK MATERIALS
+            9: { name: 'Crafting Table', id: 9, textured: true, textureKey: 'CRAFTING_TABLE_SIDE' }, 
+            10: { name: 'Stick', id: 10, textured: false, textureKey: 'STICK' },
+            11: { name: 'Wooden Pickaxe', id: 11, textured: false, color: 0x8D6E63 },
+            12: { name: 'Stone Pickaxe', id: 12, textured: false, color: 0x7F8C8D },
+        };
+        
+      
+        const SOLID_BLOCKS = [1, 2, 3, 5, 6, 7, 8, 9]; 
+        const LIQUID_BLOCKS = [4];
+        const AIR_BLOCK = 0; 
+        
+        // Three.js specific materials created after textures are loaded
+        let materials = {};
+        
+        // --- 2. GAME STATE & THREE.JS SETUP ---
+
+      
+        const player = {
+            velocity: new THREE.Vector3(),
+            direction: new THREE.Vector3(),
+            moveSpeed: 0.12,
+            rotationSpeed: 0.002,
+            isJumping: false,
+            canMove: false,
+            keys: {},
+            health: 20,
+            maxHealth: 20,
+            fallStartY: 0, 
+            inAir: false
+        };
+
+      
+        let inventory = new Array(TOTAL_INV_SIZE).fill(null);
+        let selectedHotbarIndex = 0; // 0-8
+        let isInventoryOpen = false;
+        
+        // --- NEW CRAFTING STATE VARIABLES ---
+        let isCraftingTableOpen = false;
+        let craftingInput = new Array(4).fill(null); // 2x2 Grid
+        let craftingTableInput = new Array(9).fill(null); // 3x3 Grid
+        let craftingOutput = null; 
+        let heldItem = null; 
+        let heldItemSourceIndex = -1; 
+        let heldItemSourceType = null; 
+     
+
+      
+        let scene, camera, renderer, simplex, raycaster;
+        const chunks = new Map();
+        const worldGroup = new THREE.Group();
+        let yawObject, pitchObject; 
+        
+        // Calculate the world boundary coordinates
+        const WORLD_MAX_COORD = (WORLD_RADIUS + 0.5) * CHUNK_SIZE;
+        const WORLD_MIN_COORD = -(WORLD_RADIUS + 0.5) * CHUNK_SIZE;
+        
+        // --- 3. CORE UTILITIES ---
+
+        function isSolid(type) { return SOLID_BLOCKS.includes(type); }
+       
+        function isLiquid(type) { return LIQUID_BLOCKS.includes(type); }
+        
+        async function loadAssets() {
+            const loader = new THREE.TextureLoader();
+            const texturePromises = [];
+
+            // 1. Load textures specified in ASSET_FILEPATHS using the literal relative paths
+            for (const key in ASSET_FILEPATHS) {
+                // Skip UI assets which are loaded via <img> tags
+                if (key === 'HEART') continue; 
+
+                const path = ASSET_FILEPATHS[key];
+                
+                const promise = new Promise((resolve, reject) => {
+                    loader.load(
+                        path, // <-- DIRECTLY using the calculated path
+                        (texture) => {
+                            texture.magFilter = THREE.NearestFilter; // Sharp pixel look
+                            texture.minFilter = THREE.NearestFilter;
+                            materials[key] = new THREE.MeshStandardMaterial({
+                                map: texture,
+                                side: key === 'LEAVES' ? THREE.DoubleSide : THREE.FrontSide,
+                                transparent: blockMaterials[getMaterialIdByTextureKey(key)].transparent || false,
+                                opacity: blockMaterials[getMaterialIdByTextureKey(key)].opacity || 1.0,
+                            });
+                            resolve();
+                        },
+                        undefined,
+                        (err) => {
+                            // This error is expected since the files don't exist in the runtime environment
+                            console.error(`Error loading texture from specified path: ${path}. Block will use solid color fallback.`, err);
+                            // Still resolve so the game can continue
+                            resolve(); 
+                        }
+                    );
+                });
+                texturePromises.push(promise);
+            }
+            
+            // 2. Create fallback materials for non-textured/missing blocks (Wood, Water, and fallbacks)
+            materials.WOOD = new THREE.MeshStandardMaterial({ color: blockMaterials[5].color, roughness: 0.9 });
+            materials.WATER = new THREE.MeshStandardMaterial({ 
+                color: blockMaterials[4].color, 
+                transparent: true, 
+                opacity: blockMaterials[4].opacity,
+                side: THREE.DoubleSide,
+                roughness: 0.1
+            });
+            // Fallback material for textured blocks if loading failed
+            materials.DIRT_FALLBACK = new THREE.MeshStandardMaterial({ color: 0x594334, roughness: 0.9 });
+            materials.STONE_FALLBACK = new THREE.MeshStandardMaterial({ color: 0x7F8C8D, roughness: 0.9 });
+            materials.LEAVES_FALLBACK = new THREE.MeshStandardMaterial({ color: 0x27AE60, transparent: true, opacity: 0.8, side: THREE.DoubleSide });
+            materials.SAND_FALLBACK = new THREE.MeshStandardMaterial({ color: 0xf5deb3, roughness: 0.9 }); 
+            materials.CRAFTING_TABLE_SIDE_FALLBACK = new THREE.MeshStandardMaterial({ color: 0x8D6E63, roughness: 0.9 }); // Fallback for crafting table
+            
+            // Material for blocks using vertex colors
+            materials.COLORED_OPAQUE = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 });
+
+
+            await Promise.all(texturePromises);
+            console.log("Assets loading attempted with specified relative paths.");
+        }
+        
+        function getMaterialIdByTextureKey(key) {
+            for (const id in blockMaterials) {
+                if (blockMaterials[id].textureKey === key) return parseInt(id);
+            }
+            return -1;
+        }
+
+        // --- 4. INITIALIZATION ---
+
+        async function init() {
+            
+            await loadAssets(); // Load all textures and materials first!
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87ceeb); // FIX: Initialize background color
+            // Sky/Fog color set by updateSkyAndSun()
+            scene.fog = new THREE.Fog(0x87ceeb, 20, 120); 
+
+            if (typeof SimplexNoise !== 'undefined') {
+                simplex = new SimplexNoise();
+            } else {
+                console.error("SimplexNoise library failed to load.");
+                return;
+            }
+            
+            raycaster = new THREE.Raycaster();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            
+            yawObject = new THREE.Object3D();
+            pitchObject = new THREE.Object3D();
+            pitchObject.position.y = 1.6; 
+            
+            pitchObject.add(camera);
+            yawObject.add(pitchObject);
+            scene.add(yawObject);
+
+            // Lighting (Made global: ambientLight, dirLight)
+            ambientLight = new THREE.AmbientLight(0x606060, 1.2); 
+            scene.add(ambientLight);
+            dirLight = new THREE.DirectionalLight(0xffffff, 1.5); 
+            dirLight.position.set(50, 100, 50);
+            scene.add(dirLight);
+            scene.add(worldGroup);
+
+    
+            generateWorld();
+            setupPointerLockControls();
+            setupKeyboardControls();
+            setupBlockInteraction();
+            setInitialPlayerPosition();
+            
+          
+            renderHearts();
+            updateHotbarUI();
+            
+           // Renderer setup
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            document.body.appendChild(renderer.domElement);
+            
+            window.addEventListener('resize', onWindowResize);
+            document.addEventListener('contextmenu', e => e.preventDefault()); 
+            
+           
+            document.addEventListener('wheel', (e) => {
+                if(isInventoryOpen) return;
+                if (e.deltaY > 0) {
+                    selectedHotbarIndex = (selectedHotbarIndex + 1) % HOTBAR_SLOTS;
+                } else {
+                    selectedHotbarIndex = (selectedHotbarIndex - 1 + HOTBAR_SLOTS) % HOTBAR_SLOTS;
+                }
+                updateHotbarUI();
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                const heldDiv = document.getElementById('held-item-cursor');
+                if (isInventoryOpen && heldDiv) {
+                    heldDiv.style.left = `${e.clientX + 10}px`;
+                    heldDiv.style.top = `${e.clientY + 10}px`;
+                }
+            });
+            
+            // Dummy items for testing inventory fix
+            addToInventory(1, 1); // Grass
+            addToInventory(2, 64); // Dirt
+            addToInventory(3, 12); // Stone
+            addToInventory(5, 5); // Wood Log (for crafting)
+            addToInventory(6, 1); // Leaves
+            addToInventory(7, 32); // Sand
+            
+            // Set initial sky state
+            updateSkyAndSun(); 
+            
+            animate(0);
+        }
+        
+        // --- Day/Night Cycle Logic ---
+        function updateSkyAndSun() {
+            // Use cosine for smooth transition, clamped to ensure minimum light at night
+            const sunFactor = Math.cos(gameTime); 
+            const sunIntensity = Math.max(0.2, sunFactor); 
+            const ambientIntensity = Math.max(0.4, sunFactor * 0.5 + 0.7); 
+
+            // Sky Color Interpolation (Day: 87ceeb, Night: 1a1a2e)
+            const dayColor = new THREE.Color(0x87ceeb); // Light Blue
+            const twilightColor = new THREE.Color(0x9a7d90); // Purple/Gray for dawn/dusk
+            const nightColor = new THREE.Color(0x1a1a2e); // Deep Blue/Black
+
+            let skyColor;
+            if (sunFactor > 0.1) {
+                // Day to Twilight transition
+                const t = Math.min(1, Math.max(0, (sunFactor - 0.1) / 0.9));
+                skyColor = dayColor.clone().lerp(twilightColor, 1 - t);
+            } else {
+                // Twilight to Night transition
+                const t = Math.min(1, Math.max(0, (-sunFactor + 0.1) / 0.8));
+                skyColor = twilightColor.clone().lerp(nightColor, t);
+            }
+            
+            scene.background.copy(skyColor); // This line is now safe because scene.background is initialized
+            scene.fog.color.copy(skyColor);
+
+            // Directional Light (Sun)
+            dirLight.intensity = sunIntensity * 1.5;
+            // Position the sun based on the angle (y and z determine angle)
+            dirLight.position.x = Math.sin(gameTime) * 100;
+            dirLight.position.y = Math.cos(gameTime) * 100;
+            dirLight.position.z = Math.sin(gameTime) * 50;
+
+            // Ambient Light (Overall brightness)
+            ambientLight.intensity = ambientIntensity * 0.8;
+            
+            // Update HUD text
+            let timeOfDay;
+            if (sunFactor > 0.8) timeOfDay = "Day";
+            else if (sunFactor > 0.3) timeOfDay = "Morning/Evening";
+            else if (sunFactor > -0.2) timeOfDay = "Twilight";
+            else timeOfDay = "Night";
+
+            document.getElementById('time-of-day').textContent = timeOfDay;
+        }
+
+     
+        function addToInventory(blockId, amount = 1) {
+         
+            for (let i = 0; i < TOTAL_INV_SIZE; i++) {
+                if (inventory[i] && inventory[i].id === blockId && inventory[i].count < 64) {
+                    const capacity = 64 - inventory[i].count;
+                    const transfer = Math.min(amount, capacity);
+                    inventory[i].count += transfer;
+                    amount -= transfer;
+                    if (amount === 0) {
+                        updateHotbarUI();
+                        if(isInventoryOpen) renderInventoryScreen();
+                        showGameMessage(`+${transfer} ${blockMaterials[blockId].name}`);
+                        return true;
+                    }
+                }
+            }
+          
+            for (let i = 0; i < TOTAL_INV_SIZE; i++) {
+                if (inventory[i] === null) {
+                    inventory[i] = { id: blockId, count: amount };
+                    updateHotbarUI();
+                    if(isInventoryOpen) renderInventoryScreen();
+                    showGameMessage(`+${amount} ${blockMaterials[blockId].name}`);
+                    return true;
+                }
+            }
+            showGameMessage("Inventory Full!");
+            return false;
+        }
+
+        function consumeSelectedItem() {
+            const item = inventory[selectedHotbarIndex];
+            if (item) {
+                item.count--;
+                if (item.count <= 0) {
+                    inventory[selectedHotbarIndex] = null;
+                }
+                updateHotbarUI();
+                if(isInventoryOpen) renderInventoryScreen();
+                return true;
+            }
+            return false;
+        }
+
+        function showGameMessage(msg) {
+            const el = document.getElementById('game-message');
+            el.textContent = msg;
+            el.style.opacity = 1;
+            setTimeout(() => { el.style.opacity = 0; }, 2000);
+        }
+
+     
+        function renderHearts() {
+            const container = document.getElementById('health-container');
+            container.innerHTML = '';
+            const hearts = Math.ceil(player.health / 2);
+            // --- USING DIRECT PATH FOR UI HEART ---
+            const heartPath = ASSET_FILEPATHS.HEART; 
+            
+            for(let i=0; i<hearts; i++) {
+                const heartImg = document.createElement('img');
+                heartImg.src = heartPath;
+                heartImg.className = 'heart-icon';
+                heartImg.alt = 'Full Heart';
+                container.appendChild(heartImg);
+            }
+        }
+
+        function updateHotbarUI() {
+            const hotbar = document.getElementById('hotbar');
+            hotbar.innerHTML = '';
+            
+          
+            for(let i=0; i<HOTBAR_SLOTS; i++) {
+                const slot = document.createElement('div');
+                slot.className = `inv-slot w-10 h-10 md:w-12 md:h-12 transition-transform ${i === selectedHotbarIndex ? 'selected' : ''}`;
+                
+                const item = inventory[i];
+                if (item) {
+                    const mat = blockMaterials[item.id];
+                    let imgPath = '';
+                    let colorStyle = '';
+
+                    if (mat.textured) {
+                        // --- USING DIRECT PATH FOR HOTBAR ICON ---
+                        imgPath = ASSET_FILEPATHS[mat.textureKey];
+                    } else {
+                        const colorHex = mat.color ? mat.color.toString(16).padStart(6, '0') : '7F8C8D';
+                        colorStyle = `background-color: #${colorHex};`;
+                    }
+                    
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'w-full h-full p-1'; 
+
+                    if (imgPath) {
+                        itemDiv.innerHTML = `<img src="${imgPath}" alt="${mat.name}" class="texture-icon w-full h-full">`;
+                    } else {
+                        itemDiv.style.cssText = `width: 80%; height: 80%; ${colorStyle} border: 1px solid rgba(0,0,0,0.1);`;
+                    }
+                    
+                    slot.appendChild(itemDiv);
+
+                    const countSpan = document.createElement('span');
+                    countSpan.className = 'item-count';
+                    countSpan.textContent = item.count;
+                    slot.appendChild(countSpan);
+                }
+                slot.addEventListener('click', () => {
+                     // Check if not in inventory screen, then select
+                    if (!isInventoryOpen) {
+                        selectedHotbarIndex = i;
+                        updateHotbarUI();
+                    }
+                });
+                hotbar.appendChild(slot);
+            }
+        }
+
+        // --- CRAFTING SYSTEM LOGIC ---
+        
+        // Shape: Array of rows. 0 = empty, ID = required block.
+        // Recipes are agnostic of grid size; the matcher finds the pattern within the grid.
+        window.CRAFTING_RECIPES = [
+            // 1. Oak Planks (1 Log -> 4 Planks)
+            {
+                name: "Oak Planks",
+                output: { id: 8, count: 4 },
+                shape: [
+                    [5] 
+                ]
+            },
+            // 2. Crafting Table (4 Planks -> 1 Crafting Table)
+            {
+                name: "Crafting Table",
+                output: { id: 9, count: 1 }, 
+                shape: [
+                    [8, 8],
+                    [8, 8]
+                ]
+            },
+            // 3. Stick (2 Planks vertical -> 4 Sticks)
+            {
+                name: "Stick",
+                output: { id: 10, count: 4 },
+                shape: [
+                    [8],
+                    [8]
+                ]
+            },
+            // 4. Wooden Pickaxe (3 Planks, 2 Sticks -> 1 Pickaxe)
+            // REQUIRES 3x3 Grid
+            {
+                name: "Wooden Pickaxe",
+                output: { id: 11, count: 1 },
+                shape: [
+                    [8, 8, 8],
+                    [0, 10, 0],
+                    [0, 10, 0]
+                ]
+            },
+            // 5. Stone Pickaxe (3 Stone, 2 Sticks)
+            {
+                name: "Stone Pickaxe",
+                output: { id: 12, count: 1 },
+                shape: [
+                    [3, 3, 3],
+                    [0, 10, 0],
+                    [0, 10, 0]
+                ]
+            }
+        ];
+
+        window.checkCraftingRecipe = function(inputSlots, gridWidth) {
+            // 1. Convert input slots to a 2D matrix of IDs
+            const grid = [];
+            let hasItems = false;
+            
+            for (let r = 0; r < gridWidth; r++) {
+                const row = [];
+                for (let c = 0; c < gridWidth; c++) {
+                    const item = inputSlots[r * gridWidth + c];
+                    row.push(item ? item.id : 0);
+                    if (item) hasItems = true;
+                }
+                grid.push(row);
+            }
+
+            if (!hasItems) return null;
+
+            // 2. Find the bounds of the actual items in the grid (Crop the empty space)
+            let minR = gridWidth, maxR = -1, minC = gridWidth, maxC = -1;
+
+            for (let r = 0; r < gridWidth; r++) {
+                for (let c = 0; c < gridWidth; c++) {
+                    if (grid[r][c] !== 0) {
+                        if (r < minR) minR = r;
+                        if (r > maxR) maxR = r;
+                        if (c < minC) minC = c;
+                        if (c > maxC) maxC = c;
+                    }
+                }
+            }
+
+            const patternHeight = maxR - minR + 1;
+            const patternWidth = maxC - minC + 1;
+
+            // 3. Match against recipes
+            for (const recipe of window.CRAFTING_RECIPES) {
+                const shape = recipe.shape;
+                const recipeH = shape.length;
+                const recipeW = shape[0].length;
+
+                // If dimensions don't match exactly, skip
+                if (patternHeight !== recipeH || patternWidth !== recipeW) continue;
+
+                let match = true;
+                // Check every block in the cropped area
+                for (let r = 0; r < recipeH; r++) {
+                    for (let c = 0; c < recipeW; c++) {
+                        const requiredId = shape[r][c];
+                        // Get the actual ID from the grid, offset by minR/minC
+                        const actualId = grid[minR + r][minC + c];
+
+                        if (requiredId !== 0 && requiredId !== actualId) {
+                            match = false;
+                            break;
+                        }
+                        // Also ensure that if the recipe has air (0), the grid also has air/nothing there
+                        if (requiredId === 0 && actualId !== 0) {
+                            match = false;
+                            break;
+                        }
+                    }
+                    if (!match) break;
+                }
+
+                if (match) {
+                    // Check if we have enough items (assuming 1 per craft for now)
+                    // We need to find the minimum count of all ingredients used
+                    let minCount = 64;
+                    
+                    for (let r = 0; r < gridWidth; r++) {
+                        for (let c = 0; c < gridWidth; c++) {
+                            const item = inputSlots[r * gridWidth + c];
+                            // If this slot is part of the pattern (not empty in grid)
+                            if (item && grid[r][c] !== 0) {
+                                minCount = Math.min(minCount, item.count);
+                            }
+                        }
+                    }
+
+                    return {
+                        id: recipe.output.id,
+                        count: recipe.output.count * minCount,
+                        requiredCountPerCraft: 1, // Standard recipe uses 1 of each input
+                        recipeOutputPerCraft: recipe.output.count,
+                        // We return the crop offset so we know where to consume items from
+                        offset: { r: minR, c: minC, h: recipeH, w: recipeW, shape: shape }
+                    };
+                }
+            }
+
+            return null;
+        };
+
+        window.consumeCraftingInputForOne = function(inputSlots, recipeResult, gridWidth) {
+            if (!recipeResult || !recipeResult.offset) return false;
+
+            const { r: minR, c: minC, h, w, shape } = recipeResult.offset;
+
+            for (let r = 0; r < h; r++) {
+                for (let c = 0; c < w; c++) {
+                    const requiredId = shape[r][c];
+                    if (requiredId !== 0) {
+                        // Calculate actual index in the flat inputSlots array
+                        const slotIndex = (minR + r) * gridWidth + (minC + c);
+                        const item = inputSlots[slotIndex];
+                        
+                        if (item) {
+                            item.count--;
+                            if (item.count <= 0) {
+                                inputSlots[slotIndex] = null;
+                            }
+                        }
+                    }
+                }
+            }
+            return true;
+        };
+
+
+        // Helper function for inventory item management
+        function manageSlot(targetItem, targetSlotArray, targetIndex) {
+            
+            if (!heldItem) {
+                // --- PICK UP ---
+                if (targetItem) {
+                    heldItem = targetItem;
+                    targetSlotArray[targetIndex] = null;
+                    heldItemSourceIndex = targetIndex;
+                    heldItemSourceType = targetIndex < HOTBAR_SLOTS ? 'hotbar' : 
+                                         (targetSlotArray === inventory ? 'inv' : 
+                                         (targetSlotArray === craftingInput ? 'craft' : 'craft-table'));
+                }
+            } else {
+                // --- PLACE / SWAP / COMBINE ---
+                if (!targetItem) {
+                    // 1. PLACE HELD ITEM
+                    targetSlotArray[targetIndex] = heldItem;
+                    heldItem = null;
+                    heldItemSourceIndex = -1;
+                    heldItemSourceType = null;
+                } else if (targetItem.id === heldItem.id && targetItem.count < 64) {
+                    // 2. COMBINE (Stacking)
+                    const capacity = 64 - targetItem.count;
+                    const transfer = Math.min(heldItem.count, capacity);
+                    
+                    targetItem.count += transfer;
+                    heldItem.count -= transfer;
+                    
+                    if (heldItem.count <= 0) {
+                        heldItem = null;
+                        heldItemSourceIndex = -1;
+                        heldItemSourceType = null;
+                    }
+                } else {
+                    // 3. SWAP
+                    const temp = targetItem;
+                    targetSlotArray[targetIndex] = heldItem;
+                    heldItem = temp;
+                }
+            }
+        }
+
+
+        function handleInventoryClick(slotIndex, slotType = 'inv') {
+            if (!isInventoryOpen) return;
+            
+            let slotArray;
+            let finalIndex = slotIndex;
+            
+            if (slotType === 'hotbar') {
+                slotArray = inventory;
+            } else if (slotType === 'main-inv') {
+                finalIndex = HOTBAR_SLOTS + slotIndex; // Adjust index for main inventory section
+                slotArray = inventory;
+            } else if (slotType === 'craft-input') {
+                slotArray = craftingInput;
+            } else if (slotType === 'craft-table-input') {
+                slotArray = craftingTableInput;
+            } else if (slotType === 'output') {
+                
+                // Determine which crafting grid is active
+                const inputGrid = isCraftingTableOpen ? craftingTableInput : craftingInput;
+                const gridWidth = isCraftingTableOpen ? 3 : 2;
+                
+                // Check recipe using the external file function
+                const recipeResult = window.checkCraftingRecipe(inputGrid, gridWidth);
+
+                if (recipeResult) {
+                    // 1. If heldItem is empty, pick up one craft's worth
+                    if (heldItem === null) {
+                        if (window.consumeCraftingInputForOne(inputGrid, recipeResult, gridWidth)) {
+                            heldItem = { id: recipeResult.id, count: recipeResult.recipeOutputPerCraft };
+                        }
+                    } 
+                    // 2. If heldItem is the same and not full, combine one craft's worth
+                    else if (heldItem.id === recipeResult.id && heldItem.count + recipeResult.recipeOutputPerCraft <= 64) {
+                        
+                        if (window.consumeCraftingInputForOne(inputGrid, recipeResult, gridWidth)) {
+                            heldItem.count += recipeResult.recipeOutputPerCraft; 
+                        }
+                    }
+                    
+                    // After any output interaction, recalculate the next crafting output
+                    craftingOutput = window.checkCraftingRecipe(inputGrid, gridWidth);
+                }
+            }
+
+            if (slotArray) {
+                manageSlot(slotArray[finalIndex], slotArray, finalIndex);
+                
+                // If the change was in the crafting input grid, recalculate output
+                if (slotType === 'craft-input' || slotType === 'craft-table-input') {
+                    const inputGrid = isCraftingTableOpen ? craftingTableInput : craftingInput;
+                    const gridWidth = isCraftingTableOpen ? 3 : 2;
+                    craftingOutput = window.checkCraftingRecipe(inputGrid, gridWidth);
+                }
+            }
+            
+            renderInventoryScreen(); 
+            updateHotbarUI(); 
+        }
+        
+        function renderInventoryScreen() {
+            const mainGrid = document.getElementById('main-inventory-grid');
+            const hotbarGrid = document.getElementById('inventory-hotbar-grid');
+            
+            // 2x2 Elements
+            const craftInputGrid2x2 = document.getElementById('crafting-input-grid');
+            const craftOutputSlot2x2 = document.getElementById('crafting-output-slot-container');
+            
+            // 3x3 Elements
+            const craftInputGrid3x3 = document.getElementById('crafting-table-grid');
+            const craftOutputSlot3x3 = document.getElementById('crafting-table-output-slot');
+            
+            mainGrid.innerHTML = '';
+            hotbarGrid.innerHTML = '';
+            craftInputGrid2x2.innerHTML = '';
+            craftOutputSlot2x2.innerHTML = '';
+            craftInputGrid3x3.innerHTML = '';
+            craftOutputSlot3x3.innerHTML = '';
+
+            const mainStart = HOTBAR_SLOTS; 
+            const mainEnd = TOTAL_INV_SIZE; 
+
+            // Helper function to create a slot element
+            const createSlot = (item, index, type) => {
+                const slot = document.createElement('div');
+                slot.className = 'inv-slot w-10 h-10 md:w-12 md:h-12';
+                slot.dataset.index = index;
+                slot.dataset.type = type;
+                slot.onclick = () => handleInventoryClick(index, type); 
+                
+                if (item) {
+                    const mat = blockMaterials[item.id];
+                    let imgPath = '';
+                    let colorStyle = '';
+
+                    if (mat.textured) {
+                        // --- USING DIRECT PATH FOR HOTBAR ICON ---
+                        imgPath = ASSET_FILEPATHS[mat.textureKey];
+                    } else {
+                        const colorHex = mat.color ? mat.color.toString(16).padStart(6, '0') : '7F8C8D';
+                        colorStyle = `background-color: #${colorHex};`;
+                    }
+                    
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'w-full h-full p-1'; 
+
+                    if (imgPath) {
+                        itemDiv.innerHTML = `<img src="${imgPath}" alt="${mat.name}" class="texture-icon w-full h-full">`;
+                    } else {
+                        itemDiv.style.cssText = `width: 80%; height: 80%; ${colorStyle} border: 1px solid rgba(0,0,0,0.1);`;
+                    }
+                    
+                    slot.appendChild(itemDiv);
+
+                    const countSpan = document.createElement('span');
+                    countSpan.className = 'item-count';
+                    countSpan.textContent = item.count;
+                    slot.appendChild(countSpan);
+                }
+                return slot;
+            };
+
+            // Hotbar grid (slots 0-8)
+            for (let i = 0; i < HOTBAR_SLOTS; i++) {
+                hotbarGrid.appendChild(createSlot(inventory[i], i, 'hotbar'));
+            }
+
+            // Main inventory grid (slots 9-35)
+            for (let r = 0; r < INV_ROWS; r++) {
+                for (let c = 0; c < INV_COLS; c++) {
+                    const invIndex = mainStart + r * INV_COLS + c;
+                    const displayIndex = r * INV_COLS + c; // Index relative to the main grid (0-26)
+                    mainGrid.appendChild(createSlot(inventory[invIndex], displayIndex, 'main-inv'));
+                }
+            }
+
+            // RENDER CRAFTING GRIDS BASED ON STATE
+            if (isCraftingTableOpen) {
+                // Render 3x3 Grid
+                for (let i = 0; i < 9; i++) {
+                    craftInputGrid3x3.appendChild(createSlot(craftingTableInput[i], i, 'craft-table-input'));
+                }
+                // Output Slot
+                const outputSlotEl = createSlot(craftingOutput, 0, 'output');
+                outputSlotEl.style.backgroundColor = '#6495ed'; 
+                craftOutputSlot3x3.appendChild(outputSlotEl);
+            } else {
+                // Render 2x2 Grid
+                for (let i = 0; i < 4; i++) {
+                    craftInputGrid2x2.appendChild(createSlot(craftingInput[i], i, 'craft-input'));
+                }
+                // Output Slot
+                const outputSlotEl = createSlot(craftingOutput, 0, 'output');
+                outputSlotEl.style.backgroundColor = '#6495ed'; 
+                craftOutputSlot2x2.appendChild(outputSlotEl);
+            }
+
+            
+            renderHeldItem(); 
+        }
+
+        // --- Renders the item attached to the mouse cursor when inventory is open ---
+        function renderHeldItem() {
+            let heldDiv = document.getElementById('held-item-cursor');
+            
+            heldDiv.innerHTML = '';
+            
+            if (heldItem) {
+                const item = heldItem;
+                const mat = blockMaterials[item.id];
+                
+                heldDiv.style.opacity = 1;
+                heldDiv.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+                heldDiv.style.borderRadius = '4px';
+                heldDiv.style.border = '1px solid white';
+                
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'w-full h-full p-1 flex items-center justify-center';
+
+                let imgPath = '';
+                let colorStyle = '';
+
+                if (mat.textured) {
+                    imgPath = ASSET_FILEPATHS[mat.textureKey]; // Direct path
+                } else {
+                    const colorHex = mat.color ? mat.color.toString(16).padStart(6, '0') : '7F8C8D';
+                    colorStyle = `background-color: #${colorHex};`;
+                }
+                
+                if (imgPath) {
+                    itemDiv.innerHTML = `<img src="${imgPath}" alt="${mat.name}" class="texture-icon w-full h-full">`;
+                } else {
+                    itemDiv.style.cssText = `width: 80%; height: 80%; ${colorStyle} border: 1px solid rgba(0,0,0,0.1);`;
+                }
+
+                heldDiv.appendChild(itemDiv);
+
+                const countSpan = document.createElement('span');
+                countSpan.className = 'item-count !text-lg !right-1 !bottom-0'; // make count larger for clarity
+                countSpan.textContent = item.count;
+                heldDiv.appendChild(countSpan);
+            } else {
+                heldDiv.style.opacity = 0;
+                heldDiv.style.backgroundColor = 'transparent';
+                heldDiv.style.border = 'none';
+            }
+        }
+        // --- END: Renders the item attached to the mouse cursor when inventory is open ---
+
+
+        function toggleInventory(openTableMode = false) {
+            const invScreen = document.getElementById('inventory-screen');
+            const hud = document.getElementById('hud');
+            
+            // Elements to toggle
+            const container2x2 = document.getElementById('crafting-2x2-container');
+            const container3x3 = document.getElementById('crafting-3x3-container');
+
+            if (isInventoryOpen) {
+                // CLOSE INVENTORY
+                isInventoryOpen = false;
+                isCraftingTableOpen = false; // Reset table state
+                invScreen.classList.add('hidden');
+                hud.classList.remove('opacity-0');
+                document.body.requestPointerLock();
+                
+                // --- Cleanup held item when closing inventory ---
+                if (heldItem) {
+                    // Try to return item to inventory
+                    if (!addToInventory(heldItem.id, heldItem.count)) {
+                        // If full, drop item (simplified: just delete for now or keep in heldItem? Let's keep logic simple and try to add)
+                        console.log("Inventory full, item lost on close (simplified logic)");
+                    }
+                    heldItem = null;
+                    heldItemSourceIndex = -1;
+                    heldItemSourceType = null;
+                }
+                renderHeldItem(); 
+                updateHotbarUI(); 
+
+            } else {
+                // OPEN INVENTORY
+                isInventoryOpen = true;
+                isCraftingTableOpen = openTableMode;
+                
+                // Toggle visibility of crafting grids
+                if (isCraftingTableOpen) {
+                    container2x2.classList.add('hidden');
+                    container3x3.classList.remove('hidden');
+                } else {
+                    container2x2.classList.remove('hidden');
+                    container3x3.classList.add('hidden');
+                }
+
+                heldItem = null; 
+                heldItemSourceIndex = -1;
+                heldItemSourceType = null;
+                
+                // Recalculate crafting output just before opening
+                const inputGrid = isCraftingTableOpen ? craftingTableInput : craftingInput;
+                const gridWidth = isCraftingTableOpen ? 3 : 2;
+                craftingOutput = window.checkCraftingRecipe(inputGrid, gridWidth);
+                
+                renderInventoryScreen(); 
+                invScreen.classList.remove('hidden');
+                hud.classList.add('opacity-0');
+                document.exitPointerLock(); 
+                player.keys = {}; 
+            }
+        }
+        
+    
+
+        function setupBlockInteraction() {
+            window.addEventListener('pointerdown', onPointerDown, false);
+        }
+
+        function onPointerDown(event) {
+            if (!player.canMove || isInventoryOpen) return;
+
+            raycaster.setFromCamera({ x: 0, y: 0 }, camera); 
+            
+          
+            const meshes = [];
+            worldGroup.children.forEach(g => g.children.forEach(m => meshes.push(m)));
+            
+            const intersects = raycaster.intersectObjects(meshes, true);
+
+            if (intersects.length > 0) {
+                const hit = intersects[0];
+               
+                // LEFT CLICK - Break
+                if (event.button === 0) { 
+                    const hitPos = hit.point.clone().sub(hit.face.normal.clone().multiplyScalar(0.01));
+                    modifyWorld(hitPos, 0); 
+                } 
+                // RIGHT CLICK - Interact or Place
+                else if (event.button === 2) { 
+                    
+                    // 1. Check for Block Interaction (Crafting Table)
+                    const targetBlockPos = hit.point.clone().sub(hit.face.normal.clone().multiplyScalar(0.01));
+                    const wx = Math.floor(targetBlockPos.x);
+                    const wy = Math.floor(targetBlockPos.y);
+                    const wz = Math.floor(targetBlockPos.z);
+                    const targetBlockId = getBlockType(wx, wy, wz);
+
+                    if (targetBlockId === 9) { // 9 = Crafting Table
+                        toggleInventory(true); // Open in Table Mode
+                        return; 
+                    }
+
+                    // 2. Place Block Logic
+                    const item = inventory[selectedHotbarIndex];
+                    if (!item || !isSolid(item.id)) return; 
+
+                    const placePos = hit.point.clone().add(hit.face.normal.clone().multiplyScalar(0.01));
+                    
+                    const px = Math.floor(placePos.x), py = Math.floor(placePos.y), pz = Math.floor(placePos.z);
+                    const playerBox = new THREE.Box3(
+                        new THREE.Vector3(yawObject.position.x - PLAYER_RADIUS, yawObject.position.y, yawObject.position.z - PLAYER_RADIUS),
+                        new THREE.Vector3(yawObject.position.x + PLAYER_RADIUS, yawObject.position.y + PLAYER_HEIGHT, yawObject.position.z + PLAYER_RADIUS)
+                    );
+                    const blockBox = new THREE.Box3(
+                        new THREE.Vector3(px, py, pz), new THREE.Vector3(px+1, py+1, pz+1)
+                    );
+
+                    if (!playerBox.intersectsBox(blockBox)) {
+                        if (modifyWorld(placePos, item.id)) {
+                            consumeSelectedItem();
+                        }
+                    }
+                }
+            }
+        }
+
+        function modifyWorld(posVector, newType) {
+            const wx = Math.floor(posVector.x);
+            const wy = Math.floor(posVector.y);
+            const wz = Math.floor(posVector.z);
+
+            const cx = Math.floor(wx / CHUNK_SIZE);
+            const cz = Math.floor(wz / CHUNK_SIZE);
+            const chunkId = `${cx},${cz}`;
+            const group = chunks.get(chunkId);
+
+            if (!group) return false;
+
+            const lx = wx - cx * CHUNK_SIZE;
+            const lz = wz - cz * CHUNK_SIZE;
+            
+            if (wy < 0 || wy >= CHUNK_HEIGHT) return false;
+
+            const index = lx + wy * CHUNK_SIZE + lz * CHUNK_SIZE * CHUNK_HEIGHT;
+            const chunkData = group.userData.chunkData;
+            
+            const oldType = chunkData[index];
+            
+            if (newType === 0) {
+                
+                if (oldType === 0) return false;
+                if (oldType === 4) return false; 
+                
+             
+                addToInventory(oldType, 1);
+                
+                chunkData[index] = 0;
+            } else {
+               
+                if (oldType !== 0 && oldType !== 4) return false; 
+                chunkData[index] = newType;
+            }
+
+           
+            updateChunkAndNeighbors(group, lx, lz);
+            return true;
+        }
+
+    
+        // --- NEW RIVER MASK UTILITY ---
+        function getRiverMask(wx, wz) {
+            // Use a large scale noise to define the winding path
+            const scale = 0.001; 
+            const pathNoise = simplex.noise2D(wx * scale + 1000, wz * scale + 1000); 
+
+            // Use a second noise layer to slightly modulate the river path
+            const scaleBend = 0.002;
+            const bend = simplex.noise2D(wx * scaleBend + 500, wz * scaleBend + 500) * 0.5;
+
+            // Apply the bend to the path coordinates (creates a wavy river instead of straight bands)
+            const finalPath = simplex.noise2D(wx * scale + bend, wz * scale);
+
+            // Thickness defines how wide the river is. Lower value = wider river band around 0.
+            const thickness = 0.08; 
+            
+            // Attenuation is 1.0 at the center line (finalPath=0) and 0.0 outside the thickness.
+            const attenuation = 1.0 - Math.min(1.0, Math.abs(finalPath) / thickness);
+            
+            return attenuation;
+        }
+        // --- END RIVER MASK UTILITY ---
+
+
+        function updatePlayerMovement() {
+            if (!player.canMove || isInventoryOpen) return;
+
+            // --- World Border Check ---
+            const prevX = yawObject.position.x;
+            const prevZ = yawObject.position.z;
+
+            // Apply world movement
+            player.direction.set(0, 0, 0);
+            const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(yawObject.quaternion);
+            const right = new THREE.Vector3(1, 0, 0).applyQuaternion(yawObject.quaternion);
+            forward.y = 0; forward.normalize();
+            right.y = 0; right.normalize();
+
+            if (player.keys['w']) player.direction.add(forward);
+            if (player.keys['s']) player.direction.sub(forward);
+            if (player.keys['a']) player.direction.sub(right);
+            if (player.keys['d']) player.direction.add(right);
+            player.direction.normalize();
+
+           
+            player.velocity.x = player.direction.x * player.moveSpeed;
+            player.velocity.z = player.direction.z * player.moveSpeed;
+            player.velocity.y += GRAVITY;
+
+          
+            if (player.keys[' '] && !player.isJumping) {
+                player.velocity.y = JUMP_POWER;
+                player.isJumping = true;
+            }
+
+           
+            yawObject.position.x += player.velocity.x;
+            if (isColliding()) yawObject.position.x -= player.velocity.x;
+
+           
+            yawObject.position.z += player.velocity.z;
+            if (isColliding()) yawObject.position.z -= player.velocity.z;
+
+            yawObject.position.y += player.velocity.y;
+            
+            
+            // --- World Border Enforcement ---
+            let changedX = false;
+            let changedZ = false;
+
+            if (yawObject.position.x + PLAYER_RADIUS > WORLD_MAX_COORD) {
+                yawObject.position.x = WORLD_MAX_COORD - PLAYER_RADIUS;
+                changedX = true;
+            } else if (yawObject.position.x - PLAYER_RADIUS < WORLD_MIN_COORD) {
+                yawObject.position.x = WORLD_MIN_COORD + PLAYER_RADIUS;
+                changedX = true;
+            }
+            if (yawObject.position.z + PLAYER_RADIUS > WORLD_MAX_COORD) {
+                yawObject.position.z = WORLD_MAX_COORD - PLAYER_RADIUS;
+                changedZ = true;
+            } else if (yawObject.position.z - PLAYER_RADIUS < WORLD_MIN_COORD) {
+                yawObject.position.z = WORLD_MIN_COORD + PLAYER_RADIUS;
+                changedZ = true;
+            }
+            
+            if (changedX || changedZ) {
+                showGameMessage("The world ends here, L!");
+                player.velocity.x = 0;
+                player.velocity.z = 0;
+            }
+            // --- End World Border Enforcement ---
+         
+            if (player.velocity.y < -0.1 && !player.inAir) {
+                player.inAir = true;
+                player.fallStartY = yawObject.position.y;
+            }
+
+            if (isColliding()) {
+                yawObject.position.y -= player.velocity.y; // Step back
+                
+              
+                if (player.velocity.y < 0) {
+                    player.isJumping = false;
+                    
+                   
+                    if (player.inAir) {
+                        const fallDist = player.fallStartY - yawObject.position.y;
+                        if (fallDist > 4) { // 4 blocks safe fall
+                            const dmg = Math.floor(fallDist - 3);
+                            takeDamage(dmg);
+                        }
+                        player.inAir = false;
+                    }
+                    
+                  
+                    yawObject.position.y = Math.round(yawObject.position.y * 100) / 100;
+                } else {
+                   
+                    player.velocity.y = 0;
+                }
+                player.velocity.y = 0;
+            }
+            
+           
+            if (yawObject.position.y < -10) {
+                takeDamage(999);
+                setInitialPlayerPosition();
+                player.velocity.set(0,0,0);
+            }
+        }
+
+        function takeDamage(amount) {
+            player.health -= amount;
+            if (player.health < 0) player.health = 0;
+            renderHearts();
+            showGameMessage(`Lol!! -${amount} HP`);
+            
+            if (player.health <= 0) {
+                showGameMessage("YOU DIED! Skill issue...");
+                setTimeout(() => {
+                    player.health = player.maxHealth;
+                    renderHearts();
+                    setInitialPlayerPosition();
+                    inventory = new Array(TOTAL_INV_SIZE).fill(null);
+                    updateHotbarUI();
+                }, 1000);
+            }
+        }
+
+        function isColliding() {
+          
+            const px = yawObject.position.x;
+            const py = yawObject.position.y;
+            const pz = yawObject.position.z;
+            const r = PLAYER_RADIUS;
+            const h = PLAYER_HEIGHT; 
+
+            const minX = Math.floor(px - r);
+            const maxX = Math.floor(px + r);
+            const minY = Math.floor(py);
+            const maxY = Math.floor(py + h);
+            const minZ = Math.floor(pz - r);
+            const maxZ = Math.floor(pz + r);
+
+            for (let x = minX; x <= maxX; x++) {
+                for (let y = minY; y <= maxY; y++) {
+                    for (let z = minZ; z <= maxZ; z++) {
+                        const type = getBlockType(x, y, z);
+                        if (isSolid(type)) return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        // --- NEW: Biome Classification (Forest, Plains, Ocean, Desert) ---
+        function getBiome(wx, wz) {
+            // Use a large scale for general climate zones
+            const biomeNoise = simplex.noise2D(wx * 0.0005, wz * 0.0005); 
+            
+            // Second noise layer for detail/splitting within temperate zones
+            const detailNoise = simplex.noise2D(wx * 0.005, wz * 0.005);
+            
+            // Check if coordinates are near the starting center (Island for spawn)
+            const d = Math.sqrt(wx*wx + wz*wz);
+
+            if (d < ISLAND_RADIUS) {
+                // If near spawn, guarantee a Forest for easy wood
+                return 'Forest'; 
+            }
+            
+            if (biomeNoise > 0.35) {
+                return 'Desert';
+            } else if (biomeNoise > -0.1) {
+                // Temperate Zone
+                if (detailNoise > 0) {
+                    return 'Forest';
+                } else {
+                    return 'Plains';
+                }
+            } else {
+                return 'Ocean';
+            }
+        }
+
+        // Refactored function: Height calculation is dependent on the provided biome (Biomes > Terrain)
+        function getNoiseGroundHeight(wx, wz, biome) {
+            
+            // Continental Mask for overall land mass (smoother transition)
+            const scale1 = 0.002; 
+            let continentalMask = (simplex.noise2D(wx * scale1, wz * scale1) + 1) * 0.5;
+            
+            const scale2 = 0.03; 
+            let terrainNoise = (simplex.noise2D(wx * scale2, wz * scale2) + 1) * 0.5; 
+            
+            // High-frequency detail noise
+            const detailNoise = (simplex.noise2D(wx * 0.1, wz * 0.1) + 1) * 0.5;
+            
+            let h;
+
+            if (biome === 'Plains') {
+                // Flatter, slightly rolling land
+                h = BASE_LAND_Y + continentalMask * 8 + terrainNoise * 2;
+            } else if (biome === 'Forest') {
+                // Hillier terrain for forests
+                h = BASE_LAND_Y + continentalMask * 12 + terrainNoise * 7;
+            } else if (biome === 'Desert') {
+                // Taller, sandy terrain
+                h = BASE_LAND_Y + 3 + continentalMask * 10 + terrainNoise * 5;
+            } else { // Ocean Biome
+                h = SEA_LEVEL - 10 - (terrainNoise * 5);
+            }
+            
+            h += detailNoise * 0.5; // Add detail
+
+            // --- RIVER HEIGHT ADJUSTMENT ---
+            const riverInfluence = getRiverMask(wx, wz);
+            if (riverInfluence > 0.1) {
+                // Maximum river depth reduction is 15 blocks, pulling land down towards SEA_LEVEL - 5
+                const riverDepth = riverInfluence * 15; 
+                h = Math.max(h - riverDepth, SEA_LEVEL - 5); 
+            }
+            // --- END RIVER HEIGHT ADJUSTMENT ---
+            
+            // Ensure land blocks are not too low relative to sea level
+            if (h < SEA_LEVEL - 5 && biome !== 'Ocean') h = SEA_LEVEL - 5; 
+
+            return Math.floor(h);
+        }
+
+        function getBlockType(wx, wy, wz) {
+            // Check world boundary before accessing chunk data
+            if (wx < WORLD_MIN_COORD || wx >= WORLD_MAX_COORD || wz < WORLD_MIN_COORD || wz >= WORLD_MAX_COORD) {
+                return 0; // Void outside the generated area
+            }
+
+            if (wy < 0 || wy >= CHUNK_HEIGHT) return 0;
+            const cx = Math.floor(wx / CHUNK_SIZE);
+            const cz = Math.floor(wz / CHUNK_SIZE);
+            const id = `${cx},${cz}`;
+            if (chunks.has(id)) {
+                const group = chunks.get(id);
+                const lx = wx - group.userData.cx * CHUNK_SIZE;
+                const lz = wz - group.userData.cz * CHUNK_SIZE;
+                return group.userData.chunkData[lx + wy * CHUNK_SIZE + lz * CHUNK_SIZE * CHUNK_HEIGHT];
+            }
+            
+            // For blocks outside loaded chunks but inside the boundary, use noise (Fallback)
+            const biome = getBiome(wx, wz); // Calculate biome for fallback
+            const h = getNoiseGroundHeight(wx, wz, biome); 
+            if (wy < h) return 1; // Default to grass for quick fallback
+            if (wy < SEA_LEVEL) return 4;
+            return 0;
+        }
+
+       
+        function setupPointerLockControls() {
+            const el = document.body;
+            document.addEventListener('pointerlockchange', () => {
+                if (document.pointerLockElement === el) {
+                    player.canMove = true;
+                    if(isInventoryOpen) toggleInventory(); 
+                    document.getElementById('instructions').style.opacity = 0;
+                    document.getElementById('crosshair').style.opacity = 1;
+                } else {
+                    player.canMove = false;
+                    if(!isInventoryOpen) {
+                        document.getElementById('instructions').style.opacity = 1;
+                        document.getElementById('crosshair').style.opacity = 0;
+                    }
+                }
+            });
+            document.addEventListener('mousemove', e => {
+                if (!player.canMove || isInventoryOpen) return;
+                yawObject.rotation.y -= e.movementX * player.rotationSpeed;
+                pitchObject.rotation.x -= e.movementY * player.rotationSpeed;
+                pitchObject.rotation.x = Math.max(-1.5, Math.min(1.5, pitchObject.rotation.x));
+            });
+            document.getElementById('instructions').onclick = () => {
+                if(!isInventoryOpen) el.requestPointerLock();
+            };
+        }
+
+        function setupKeyboardControls() {
+            document.addEventListener('keydown', e => {
+                const k = e.key.toLowerCase();
+                if (k === 'e' || k === 'i') {
+                    toggleInventory();
+                    return;
+                }
+                if (k === 'escape' && isInventoryOpen) {
+                    toggleInventory();
+                    return;
+                }
+                if (!isInventoryOpen) {
+                    player.keys[k] = true;
+                    if (k >= '1' && k <= '9') {
+                        selectedHotbarIndex = parseInt(k) - 1;
+                        updateHotbarUI();
+                    }
+                }
+            });
+            document.addEventListener('keyup', e => player.keys[e.key.toLowerCase()] = false);
+        }
+
+      
+        
+        function generateChunkData(cx, cz) {
+             const data = new Array(CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE);
+             
+             for (let x = 0; x < CHUNK_SIZE; x++) {
+                 for (let z = 0; z < CHUNK_SIZE; z++) {
+                     const wx = cx * CHUNK_SIZE + x;
+                     const wz = cz * CHUNK_SIZE + z;
+                     
+                     // Biomes > Terrain: Calculate biome once, then use it for all column data
+                     const biome = getBiome(wx, wz); 
+                     
+                     // Height based on biome
+                     const h = getNoiseGroundHeight(wx, wz, biome);
+
+                     // Check if block is near the world boundary before applying changes
+                     const isNearBoundary = wx < WORLD_MIN_COORD + 4 || wx >= WORLD_MAX_COORD - 4 || 
+                                            wz < WORLD_MIN_COORD + 4 || wz >= WORLD_MAX_COORD - 4;
+                     
+                     const riverInfluence = getRiverMask(wx, wz);
+                     const RIVER_WIDTH_THRESHOLD = 0.1;
+                     const isRiver = riverInfluence > RIVER_WIDTH_THRESHOLD;
+                     
+                     let surfaceBlockType = 0; // Used for tree placement logic
+
+                     for (let y = 0; y < CHUNK_HEIGHT; y++) {
+                         let t = 0; // Block type
+                         
+                         if (y < h) {
+                            
+                             const distFromSurface = h - 1 - y;
+
+                             if (biome === 'Desert') {
+                                 // Desert Biome: Sand surface, Stone/Sandstone below
+                                 if (distFromSurface === 0) {
+                                     t = 7; // Sand
+                                     surfaceBlockType = 7;
+                                 } else if (distFromSurface < 5) {
+                                     t = 7; // Sand layers
+                                 } else {
+                                     t = 3; // Stone (representing Sandstone/Deep rock)
+                                 }
+                             } else { // Plains/Forest/Ocean Biome logic
+                                 
+                                 const isBeachZone = h >= SEA_LEVEL - 1 && h <= SEA_LEVEL + 2;
+
+                                 if (distFromSurface === 0) {
+                                     if (isBeachZone) {
+                                         t = 7; // Sand for beaches
+                                         surfaceBlockType = 7;
+                                     } else {
+                                         t = 1; // Grass for Plains and Forest
+                                         surfaceBlockType = 1;
+                                     }
+                                 } else if (distFromSurface < 4) {
+                                     if (isBeachZone) {
+                                         t = 7; // Sand below beach
+                                     } else {
+                                         t = 2; // Dirt below grass
+                                     }
+                                 } else {
+                                     t = 3; // Stone deep down
+                                 }
+                             }
+                             
+                            // --- RIVER BED OVERRIDE ---
+                            if (isRiver && y < SEA_LEVEL - 1) { 
+                                // If it's part of the river path and below the water line, make it stone/dirt bed
+                                // Use sand/dirt near the surface of the riverbed
+                                if (y > SEA_LEVEL - 3) t = (biome === 'Desert' ? 7 : 2); // Sand/Dirt bed near top
+                                else t = 3; // Stone bed deep down
+                            }
+                            
+                         } else if (y < SEA_LEVEL) {
+                             t = 0; // Start as air above the land height
+                             
+                             // --- WATER FILLING ---
+                             if (isRiver) {
+                                 t = 4; // River water
+                             } 
+                             // If it's the ocean biome, fill the area above ground and below sea level with water
+                             else if (biome === 'Ocean') {
+                                 t = 4;
+                             }
+                             // Otherwise (on dry land, above h, below sea level, not river) it remains air (t=0)
+                         }
+                         
+                        // --- Cave Generation Pass ---
+                        // Apply caving logic ONLY if the block is a solid underground type (Stone, Dirt, Sand)
+                        // and is within the valid depth range.
+                        if (y > CAVE_MIN_Y && y < h - CAVE_MAX_Y_OFFSET) {
+                            
+                            if (t === 3 || t === 2 || t === 7) { 
+                                const caveNoise = simplex.noise3D(
+                                    wx * CAVE_SCALE, 
+                                    y * CAVE_SCALE * 2, // Stretch vertically to make tunnels horizontally wider
+                                    wz * CAVE_SCALE
+                                );
+                                
+                                if (caveNoise > CAVE_THRESHOLD) {
+                                    t = 0; // Convert solid block to air
+                                }
+                            }
+                        }
+                         
+                         // If near boundary and below sea level, wall it up
+                         if (isNearBoundary && y < SEA_LEVEL && (t === 4 || t === 0)) {
+                             // Make water/air into stone wall at the edge
+                             t = 3; 
+                         } 
+
+                         data[x + y*CHUNK_SIZE + z*CHUNK_SIZE*CHUNK_HEIGHT] = t;
+                     }
+                  
+                     // --- Tree Generation (Only on Forest Biome Surface) ---
+                     if (surfaceBlockType === 1 && biome === 'Forest' && !isRiver) { 
+                        
+                         // Low chance to spawn a tree
+                         if (Math.abs((wx * 1327 + wz * 9283) % 100) < 6) { // Increased chance for Forest
+                            
+                             const th = 5 + Math.floor(Math.random() * 2); // Tree height 5-6
+                             // Trunk
+                             for(let i=1; i<=th; i++) {
+                                 
+                                 const idx = x + (h-1+i)*CHUNK_SIZE + z*CHUNK_SIZE*CHUNK_HEIGHT;
+                                 if ((h-1+i) < CHUNK_HEIGHT) data[idx] = 5; // Wood Log
+                             }
+                            
+                             // Leaves
+                             for(let lx=-2; lx<=2; lx++){
+                                 for(let lz=-2; lz<=2; lz++){
+                                     for(let ly=th-2; ly<=th+1; ly++){
+                                         if(Math.abs(lx)+Math.abs(lz)+Math.abs(ly-th) > 3) continue;
+                                         const tx = x+lx; const tz = z+lz; const ty = h-1+ly;
+                                         if(tx>=0 && tx<CHUNK_SIZE && tz>=0 && tz<CHUNK_SIZE && ty<CHUNK_HEIGHT) {
+                                             const lidx = tx + ty*CHUNK_SIZE + tz*CHUNK_SIZE*CHUNK_HEIGHT;
+                                             if(data[lidx]===0) data[lidx] = 6; // Leaves
+                                         }
+                                     }
+                                 }
+                             }
+                         }
+                     }
+                 }
+             }
+             return data;
+        }
+
+        function createChunk(cx, cz) {
+            const data = generateChunkData(cx, cz);
+            const group = new THREE.Group();
+            group.userData = { chunkData: data, cx, cz };
+            updateChunkGeometry(group, data);
+            chunks.set(`${cx},${cz}`, group);
+            worldGroup.add(group);
+            return group;
+        }
+
+        function updateChunkAndNeighbors(centerGroup, lx, lz) {
+            updateChunkGeometry(centerGroup, centerGroup.userData.chunkData);
+            
+           
+            if (lx === 0 || lx === CHUNK_SIZE - 1 || lz === 0 || lz === CHUNK_SIZE - 1) {
+                const cx = centerGroup.userData.cx;
+                const cz = centerGroup.userData.cz;
+
+                const neighborOffsets = [
+                    [-1, 0], [1, 0], [0, -1], [0, 1]
+                ];
+
+                for (const [dx, dz] of neighborOffsets) {
+                    const neighborId = `${cx + dx},${cz + dz}`;
+                    const neighborGroup = chunks.get(neighborId);
+                    if (neighborGroup) {
+                        updateChunkGeometry(neighborGroup, neighborGroup.userData.chunkData);
+                    }
+                }
+            }
+        }
+        
+        // Maps block ID to the THREE.js material key/fallback key
+        function getMaterialKey(id, faceDir) {
+            const mat = blockMaterials[id];
+            
+            if (mat.textured) {
+                const key = mat.textureKey;
+                // Use the loaded material key if it exists, otherwise use a colored fallback key
+                if (materials[key] && materials[key].map) return key; 
+                return `${key}_FALLBACK`;
+            }
+            if (id === 4) return 'WATER'; 
+            if (id === 5) return 'WOOD';  
+            
+            // For non-textured blocks that might have been assigned a vertex color
+            return 'COLORED_OPAQUE';
+        }
+
+        function updateChunkGeometry(group, data) {
+         
+            while(group.children.length) group.remove(group.children[0]);
+            
+            // Map to hold position/normal/uv data arrays for each material key
+            const geometryData = {}; 
+            
+            const cx = group.userData.cx;
+            const cz = group.userData.cz;
+
+            const faces = [
+                { dir: [1,0,0], corners: [[1,1,1],[1,0,1],[1,0,0],[1,1,0]], uv: [0,1, 0,0, 1,0, 1,1] }, // Right
+                { dir: [-1,0,0], corners: [[0,1,0],[0,0,0],[0,0,1],[0,1,1]], uv: [0,1, 0,0, 1,0, 1,1] }, // Left
+                { dir: [0,1,0], corners: [[0,1,1],[1,1,1],[1,1,0],[0,1,0]], uv: [0,1, 0,0, 1,0, 1,1] }, // Top
+                { dir: [0,-1,0], corners: [[0,0,0],[1,0,0],[1,0,1],[0,0,1]], uv: [0,1, 0,0, 1,0, 1,1] } ,// Bottom
+                { dir: [0,0,1], corners: [[0,1,1],[0,0,1],[1,0,1],[1,1,1]], uv: [0,1, 0,0, 1,0, 1,1] }, // Back
+                { dir: [0,0,-1], corners: [[1,1,0],[1,0,0],[0,0,0],[0,1,0]], uv: [0,1, 0,0, 1,0, 1,1] } // Front
+            ];
+
+            const get = (x,y,z) => {
+                if(x<0||x>=16||z<0||z>=16||y<0||y>=96) {
+                    const wx = x + cx*16;
+                    const wz = z + cz*16;
+                    return getBlockType(wx, y, wz); 
+                }
+                return data[x + y*16 + z*16*96];
+            };
+
+            for(let x=0; x<16; x++){
+                for(let y=0; y<96; y++){
+                    for(let z=0; z<16; z++){
+                        const id = data[x + y*16 + z*16*96];
+                        if(id===0) continue;
+                        
+                        const mat = blockMaterials[id];
+                        const isTrans = mat.transparent || (mat.textured && mat.textureKey === 'LEAVES'); 
+                        
+                        for(let i=0; i<6; i++){
+                            const f = faces[i];
+                            const nid = get(x+f.dir[0], y+f.dir[1], z+f.dir[2]);
+                            const neighborMat = blockMaterials[nid];
+                            
+                            let draw = false;
+                            if (nid === 0) draw = true;
+                            else if (!isTrans && neighborMat?.transparent) draw = true;
+                            else if (isTrans && nid !== id) draw = true;
+
+                            if(draw) {
+                                const materialKey = getMaterialKey(id, f.dir);
+                                
+                                if (!geometryData[materialKey]) {
+                                    geometryData[materialKey] = { pos: [], norm: [], col: [], uv: [] };
+                                }
+                                const gd = geometryData[materialKey];
+                                
+                                const wx = x + cx*16;
+                                const wz = z + cz*16;
+                                
+                                for(let c of f.corners) {
+                                    gd.pos.push(wx + c[0], y + c[1], wz + c[2]);
+                                    gd.norm.push(f.dir[0], f.dir[1], f.dir[2]);
+                                }
+                                
+                                
+                                if (materials[materialKey] && materials[materialKey].map) {
+                                    gd.uv.push(...f.uv);
+                                } else {
+                                    // Vertex color for non-textured blocks (like wood/water) or blocks whose texture failed to load
+                                    const color = blockMaterials[id].color || 0xd1c17e; // Fallback color
+                                    
+                                    // Use THREE.Color object to get RGB components if the color is a number
+                                    const c = new THREE.Color(color);
+                                    
+                                    gd.col.push(c.r, c.g, c.b, c.r, c.g, c.b, c.r, c.g, c.b, c.r, c.g, c.b);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Generate meshes for all accumulated materials
+            for (const key in geometryData) {
+                const gd = geometryData[key];
+                if (gd.pos.length === 0) continue;
+                
+                const geom = new THREE.BufferGeometry();
+                geom.setAttribute('position', new THREE.Float32BufferAttribute(gd.pos, 3));
+                geom.setAttribute('normal', new THREE.Float32BufferAttribute(gd.norm, 3));
+                
+                let currentMaterial = materials[key];
+                
+                // Set UVs if material is textured (i.e., it has a map)
+                if (currentMaterial && currentMaterial.map) {
+                    geom.setAttribute('uv', new THREE.Float32BufferAttribute(gd.uv, 2));
+                } 
+                
+                // Set vertex colors if data was accumulated (means texture failed or block is color-only)
+                if (gd.col.length > 0) {
+                    geom.setAttribute('color', new THREE.Float32BufferAttribute(gd.col, 3));
+                    
+                    // If we have vertex colors AND it's not the transparent WATER material, use COLORED_OPAQUE.
+                    if (key !== 'WATER') { 
+                       currentMaterial = materials.COLORED_OPAQUE;
+                    } 
+                }
+                
+                // Indices
+                const idx = [];
+                for(let i=0; i<gd.pos.length/3; i+=4) idx.push(i, i+1, i+2, i, i+2, i+3);
+                geom.setIndex(idx);
+
+                group.add(new THREE.Mesh(geom, currentMaterial));
+            }
+        }
+
+        function setInitialPlayerPosition() {
+          
+            let y = CHUNK_HEIGHT - 1;
+            // Need to calculate biome and height once for the spawn point (0, 0)
+            const biome = getBiome(0, 0);
+            const initialH = getNoiseGroundHeight(0, 0, biome);
+
+            // Start searching from the maximum expected initial height + 5, down to the actual calculated height
+            y = Math.min(CHUNK_HEIGHT - 1, initialH + 5); 
+
+            while(y > 0 && !isSolid(getBlockType(0, y, 0))) {
+                y--;
+            }
+            yawObject.position.set(0, y + 2, 0);
+        }
+
+        function generateWorld() {
+            let count = 0;
+            for(let x=-WORLD_RADIUS; x<=WORLD_RADIUS; x++){
+                for(let z=-WORLD_RADIUS; z<=WORLD_RADIUS; z++){
+                    createChunk(x,z);
+                    count++;
+                }
+            }
+            document.getElementById('chunks-count').textContent = count;
+        }
+
+        function animate(time) {
+            requestAnimationFrame(animate);
+            
+            if (lastTime) {
+                const delta = time - lastTime;
+                
+                // Update game time based on real time delta
+                // GameTime cycles from 0 to 2*PI radians. Rate = (2*PI) / DAY_CYCLE_DURATION (in ms)
+                const timeRate = (2 * Math.PI) / DAY_CYCLE_DURATION;
+                gameTime = (gameTime + delta * timeRate) % (2 * Math.PI);
+                
+                updateSkyAndSun();
+            }
+            lastTime = time;
+
+            if(!isInventoryOpen) updatePlayerMovement();
+            renderer.render(scene, camera);
+        }
+        
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        window.onload = init;
