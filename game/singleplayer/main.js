@@ -3,8 +3,8 @@
         const CHUNK_HEIGHT = 96; 
         const WORLD_RADIUS = 13; // 27x27 chunks wide
         const BLOCK_SIZE = 1;
-        const SEA_LEVEL = 18; 
-        const BASE_LAND_Y = 20; 
+        const SEA_LEVEL = 17; 
+        const BASE_LAND_Y = 30; 
         const ISLAND_RADIUS = 30; 
         
         // --- CAVE CONSTANTS ---
