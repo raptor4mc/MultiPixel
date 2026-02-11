@@ -3,8 +3,8 @@
         const CHUNK_HEIGHT = 96; 
         const WORLD_RADIUS = 13; // 27x27 chunks wide
         const BLOCK_SIZE = 1;
-        const SEA_LEVEL = 17; 
-        const BASE_LAND_Y = 30; 
+        const SEA_LEVEL = 18; 
+        const BASE_LAND_Y = 20; 
         const ISLAND_RADIUS = 30; 
         
         // --- CAVE CONSTANTS ---
@@ -1266,13 +1266,13 @@
             let terrainNoise = (simplex.noise2D(wx * scale2, wz * scale2) + 1) * 0.5; 
             
             // High-frequency detail noise
-            const detailNoise = (simplex.noise2D(wx * 0.1, wz * 0.5) + 1) * 0.5;
+            const detailNoise = (simplex.noise2D(wx * 0.1, wz * 0.1) + 1) * 0.5;
             
             let h;
 
             if (biome === 'Plains') {
                 // Flatter, slightly rolling land
-                h = BASE_LAND_Y + continentalMask * 12 + terrainNoise * 2;
+                h = BASE_LAND_Y + continentalMask * 8 + terrainNoise * 2;
             } else if (biome === 'Forest') {
                 // Hillier terrain for forests
                 h = BASE_LAND_Y + continentalMask * 12 + terrainNoise * 7;
