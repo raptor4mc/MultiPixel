@@ -56,6 +56,7 @@
             OAK_PLANK: getAssetPath('textures/oak_planks.png'),
             CRAFTING_TABLE_SIDE: getAssetPath('textures/crafting_table_side.png'), // Added texture path
             STICK: getAssetPath('textures/stick.png'),
+            SAND_STONE: getAssetPath('textures/sand_stone.png'),
         };
 
 
@@ -75,6 +76,7 @@
             10: { name: 'Stick', id: 10, textured: false, textureKey: 'STICK' },
             11: { name: 'Wooden Pickaxe', id: 11, textured: false, color: 0x8D6E63 },
             12: { name: 'Stone Pickaxe', id: 12, textured: false, color: 0x7F8C8D },
+            13: { name: 'sand stone', id: 13, textured: true, textureKey: 'SAND_STONE' },
         };
         
       
@@ -1416,7 +1418,7 @@
                                  } else if (distFromSurface < 5) {
                                      t = 7; // Sand layers
                                  } else {
-                                     t = 3; // Stone (representing Sandstone/Deep rock)
+                                     t = 13; // Stone (representing Sandstone/Deep rock)
                                  }
                              } else { // Plains/Forest/Ocean Biome logic
                                  
