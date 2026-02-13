@@ -76,11 +76,11 @@
             10: { name: 'Stick', id: 10, textured: false, textureKey: 'STICK' },
             11: { name: 'Wooden Pickaxe', id: 11, textured: false, color: 0x8D6E63 },
             12: { name: 'Stone Pickaxe', id: 12, textured: false, color: 0x7F8C8D },
-            13: { name: 'sand stone', id: 13, textured: true, textureKey: 'SAND_STONE' },
+            13: { name: 'Sand stone', id: 13, textured: true, textureKey: 'SAND_STONE' },
         };
         
       
-        const SOLID_BLOCKS = [1, 2, 3, 5, 6, 7, 8, 9]; 
+        const SOLID_BLOCKS = [1, 2, 3, 5, 6, 7, 8, 9, 13]; 
         const LIQUID_BLOCKS = [4];
         const AIR_BLOCK = 0; 
         
