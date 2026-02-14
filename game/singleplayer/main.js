@@ -1001,7 +1001,25 @@
 
     
         function getRiverMask(wx, wz) {
-            return TerrainModules['river'].getMask({ perlin, wx, wz });
+            return TerrainModules.river.getMask({ perlin, wx, wz });
+            // Use a large scale noise to define the winding path
+            const scale = 0.001; 
+            const pathNoise = perlin.noise2D(wx * scale + 1000, wz * scale + 1000); 
+
+            // Use a second noise layer to slightly modulate the river path
+            const scaleBend = 0.002;
+            const bend = perlin.noise2D(wx * scaleBend + 500, wz * scaleBend + 500) * 0.5;
+
+            // Apply the bend to the path coordinates (creates a wavy river instead of straight bands)
+            const finalPath = perlin.noise2D(wx * scale + bend, wz * scale);
+
+            // Thickness defines how wide the river is. Lower value = wider river band around 0.
+            const thickness = 0.08; 
+            
+            // Attenuation is 1.0 at the center line (finalPath=0) and 0.0 outside the thickness.
+            const attenuation = 1.0 - Math.min(1.0, Math.abs(finalPath) / thickness);
+            
+            return attenuation;
         }
 
 
