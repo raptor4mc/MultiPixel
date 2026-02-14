@@ -35,7 +35,6 @@
     LEAVES: getAssetPath('textures/leaf_oak.png'),
     SAND: getAssetPath('textures/sand_block.png'),
     HEART: getAssetPath('ui/heart_full.png'),
-    FOOD: getAssetPath('ui/food_full.png'),
     OAK_PLANK: getAssetPath('textures/oak_planks.png'),
     CRAFTING_TABLE_SIDE: getAssetPath('textures/crafting_table_side.png'),
     STICK: getAssetPath('textures/stick.png'),
