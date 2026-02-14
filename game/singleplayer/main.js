@@ -1,89 +1,47 @@
         // --- 1. CONFIGURATION ---
-        const CHUNK_SIZE = 16;
-        const CHUNK_HEIGHT = 96; 
-        const WORLD_RADIUS = 13; // 27x27 chunks wide
-        const BLOCK_SIZE = 1;
-        const SEA_LEVEL = 18; 
-        const BASE_LAND_Y = 20; 
-        const ISLAND_RADIUS = 30; 
-        
-        // --- CAVE CONSTANTS ---
-        const CAVE_SCALE = 0.05;
-        const CAVE_THRESHOLD = 0.7; // Raw noise > 0.7 to become a cave
-        const CAVE_MIN_Y = 5;
-        const CAVE_MAX_Y_OFFSET = 4; // Keep caves at least this many blocks below the surface height (h)
-        
-      
-        const PLAYER_HEIGHT = 1.8 * BLOCK_SIZE; 
-        const PLAYER_RADIUS = 0.3; 
-        const GRAVITY = -0.012;
-        const JUMP_POWER = 0.17;
-        
+        const {
+            CHUNK_SIZE,
+            CHUNK_HEIGHT,
+            WORLD_RADIUS,
+            SEA_LEVEL,
+            BASE_LAND_Y,
+            ISLAND_RADIUS,
+            CAVE_SCALE,
+            CAVE_THRESHOLD,
+            CAVE_MIN_Y,
+            CAVE_MAX_Y_OFFSET,
+            PLAYER_HEIGHT,
+            PLAYER_RADIUS,
+            GRAVITY,
+            JUMP_POWER,
+            INV_COLS,
+            INV_ROWS,
+            HOTBAR_SLOTS,
+            TOTAL_INV_SIZE,
+            ASSET_FILEPATHS,
+            blockMaterials,
+            SOLID_BLOCKS,
+            LIQUID_BLOCKS,
+            DEFAULT_PLAYER
+        } = window.SingleplayerConfig;
+
+        const { checkCraftingRecipe, consumeCraftingInputForOne } = window.CraftingSystem;
+
+        const TerrainModules = {
+            ocean: window.OceanTerrain,
+            river: window.RiverTerrain,
+            oakForest: window.OakForestTerrain,
+            desert: window.DesertTerrain,
+            plains: window.PlainsTerrain
+        };
+
         // --- DAY/NIGHT CYCLE CONFIG ---
-        const DAY_CYCLE_DURATION = 60 * 1000; // 60 seconds for a full cycle (1 minute real time)
-        let gameTime = Math.PI / 2; // Start at Math.PI / 2 (High Noon)
+        const DAY_SEGMENTS = { sunrise: 2 * 60 * 1000, day: 8 * 60 * 1000, sunset: 2 * 60 * 1000, night: 8 * 60 * 1000 };
+        const DAY_CYCLE_DURATION = DAY_SEGMENTS.sunrise + DAY_SEGMENTS.day + DAY_SEGMENTS.sunset + DAY_SEGMENTS.night;
+        let cycleTimeMs = DAY_SEGMENTS.sunrise + DAY_SEGMENTS.day / 2; // Start near noon
         let lastTime = 0; // For delta time calculation
         let ambientLight, dirLight; // Made global for modification in animate loop
 
-       
-        const INV_COLS = 9;
-        const INV_ROWS = 3;
-        const HOTBAR_SLOTS = 9;
-        const TOTAL_INV_SIZE = (INV_ROWS * INV_COLS) + HOTBAR_SLOTS; // 27 + 9 = 36 slots
-
-        // --- GITHUB PAGES CONFIGURATION (IMPORTANT FOR ASSET PATHS) ---
-        const REPO_BASE_PREFIX = '/MultiPixel'; 
-        
-        // Function to safely construct asset paths for GitHub Pages/Local
-        const getAssetPath = (subPath) => {
-            const ASSET_BASE_DIR = 'game/singleplayer/assets';
-            if (REPO_BASE_PREFIX) {
-                // Returns '/repo-name/game/singleplayer/assets/textures/...' (Root-relative)
-                return `${REPO_BASE_PREFIX}/${ASSET_BASE_DIR}/${subPath}`;
-            }
-            // Returns 'game/singleplayer/assets/textures/...' (Local-relative)
-            return `${ASSET_BASE_DIR}/${subPath}`;
-        };
-
-
-        // ASSET MAPPING: Using specified filepaths directly, as requested
-        const ASSET_FILEPATHS = {
-            DIRT: getAssetPath('textures/dirt_block.png'),
-            STONE: getAssetPath('textures/stone_block.png'),
-            LEAVES: getAssetPath('textures/leaf_oak.png'), 
-            SAND: getAssetPath('textures/sand_block.png'), 
-            HEART: getAssetPath('ui/heart_full.png'), 
-            OAK_PLANK: getAssetPath('textures/oak_planks.png'),
-            CRAFTING_TABLE_SIDE: getAssetPath('textures/crafting_table_side.png'), // Added texture path
-            STICK: getAssetPath('textures/stick.png'),
-            SAND_STONE: getAssetPath('textures/sand_stone.png'),
-        };
-
-
-        // Simplified block definitions: Type and properties
-        const blockMaterials = {
-            0: { name: 'Air', id: 0, textured: false }, 
-            1: { name: 'Grass', id: 1, textured: true, textureKey: 'DIRT' }, 
-            2: { name: 'Dirt', id: 2, textured: true, textureKey: 'DIRT' }, 
-            3: { name: 'Stone', id: 3, textured: true, textureKey: 'STONE' }, 
-            4: { name: 'Water', id: 4, color: 0x1976D2, transparent: true, opacity: 0.7, textured: false },
-            5: { name: 'Wood Log', id: 5, color: 0x8B4513, textured: false }, 
-            6: { name: 'Leaves', id: 6, textured: true, textureKey: 'LEAVES', transparent: true, opacity: 0.8 },
-            7: { name: 'Sand', id: 7, textured: true, textureKey: 'SAND' },
-            8: { name: 'Oak Planks', id: 8, textured: true, textureKey: 'OAK_PLANK' },
-            // UPDATED BLOCK MATERIALS
-            9: { name: 'Crafting Table', id: 9, textured: true, textureKey: 'CRAFTING_TABLE_SIDE' }, 
-            10: { name: 'Stick', id: 10, textured: false, textureKey: 'STICK' },
-            11: { name: 'Wooden Pickaxe', id: 11, textured: false, color: 0x8D6E63 },
-            12: { name: 'Stone Pickaxe', id: 12, textured: false, color: 0x7F8C8D },
-            13: { name: 'Sand stone', id: 13, textured: true, textureKey: 'SAND_STONE' },
-        };
-        
-      
-        const SOLID_BLOCKS = [1, 2, 3, 5, 6, 7, 8, 9, 13]; 
-        const LIQUID_BLOCKS = [4];
-        const AIR_BLOCK = 0; 
-        
         // Three.js specific materials created after textures are loaded
         let materials = {};
         
@@ -93,13 +51,15 @@
         const player = {
             velocity: new THREE.Vector3(),
             direction: new THREE.Vector3(),
-            moveSpeed: 0.12,
-            rotationSpeed: 0.002,
+            moveSpeed: DEFAULT_PLAYER.moveSpeed,
+            baseMoveSpeed: DEFAULT_PLAYER.moveSpeed,
+            sprintMultiplier: DEFAULT_PLAYER.sprintMultiplier,
+            rotationSpeed: DEFAULT_PLAYER.rotationSpeed,
             isJumping: false,
             canMove: false,
             keys: {},
-            health: 20,
-            maxHealth: 20,
+            health: DEFAULT_PLAYER.health,
+            maxHealth: DEFAULT_PLAYER.maxHealth,
             fallStartY: 0, 
             inAir: false
         };
@@ -117,10 +77,16 @@
         let heldItem = null; 
         let heldItemSourceIndex = -1; 
         let heldItemSourceType = null; 
+
+        // Mining / breaking state
+        const BREAKING_TEXTURE_BASE = `${window.SingleplayerConfig?.REPO_BASE_PREFIX || '/MultiPixel'}/game/singleplayer/assets/breaking`;
+        const BLOCK_HARDNESS = { 1: 1.2, 2: 1.0, 3: 2.6, 5: 1.8, 6: 0.25, 7: 1.0, 8: 1.2, 9: 2.0, 13: 2.2, 14: Infinity };
+        let miningState = { active: false, key: null, blockPos: null, targetType: 0, elapsedMs: 0, neededMs: 0 };
+        let isLeftMouseDown = false;
      
 
       
-        let scene, camera, renderer, simplex, raycaster;
+        let scene, camera, renderer, perlin, raycaster;
         const chunks = new Map();
         const worldGroup = new THREE.Group();
         let yawObject, pitchObject; 
@@ -142,7 +108,7 @@
             // 1. Load textures specified in ASSET_FILEPATHS using the literal relative paths
             for (const key in ASSET_FILEPATHS) {
                 // Skip UI assets which are loaded via <img> tags
-                if (key === 'HEART') continue; 
+                if (key === 'HEART' || key === 'FOOD') continue; 
 
                 const path = ASSET_FILEPATHS[key];
                 
@@ -214,10 +180,10 @@
             // Sky/Fog color set by updateSkyAndSun()
             scene.fog = new THREE.Fog(0x87ceeb, 20, 120); 
 
-            if (typeof SimplexNoise !== 'undefined') {
-                simplex = new SimplexNoise();
+            if (typeof PerlinNoise !== 'undefined') {
+                perlin = new PerlinNoise();
             } else {
-                console.error("SimplexNoise library failed to load.");
+                console.error("PerlinNoise library failed to load.");
                 return;
             }
             
@@ -250,6 +216,9 @@
           
             renderHearts();
             updateHotbarUI();
+            if (window.HungerSystem) {
+                window.HungerSystem.init({ messageCallback: showGameMessage });
+            }
             
            // Renderer setup
             renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -294,50 +263,53 @@
         }
         
         // --- Day/Night Cycle Logic ---
-        function updateSkyAndSun() {
-            // Use cosine for smooth transition, clamped to ensure minimum light at night
-            const sunFactor = Math.cos(gameTime); 
-            const sunIntensity = Math.max(0.2, sunFactor); 
-            const ambientIntensity = Math.max(0.4, sunFactor * 0.5 + 0.7); 
+        function getTimePhaseInfo() {
+            const t = cycleTimeMs % DAY_CYCLE_DURATION;
+            const sunriseEnd = DAY_SEGMENTS.sunrise;
+            const dayEnd = sunriseEnd + DAY_SEGMENTS.day;
+            const sunsetEnd = dayEnd + DAY_SEGMENTS.sunset;
 
-            // Sky Color Interpolation (Day: 87ceeb, Night: 1a1a2e)
-            const dayColor = new THREE.Color(0x87ceeb); // Light Blue
-            const twilightColor = new THREE.Color(0x9a7d90); // Purple/Gray for dawn/dusk
-            const nightColor = new THREE.Color(0x1a1a2e); // Deep Blue/Black
+            if (t < sunriseEnd) return { phase: 'Sunrise', localT: t / DAY_SEGMENTS.sunrise };
+            if (t < dayEnd) return { phase: 'Day', localT: (t - sunriseEnd) / DAY_SEGMENTS.day };
+            if (t < sunsetEnd) return { phase: 'Sunset', localT: (t - dayEnd) / DAY_SEGMENTS.sunset };
+            return { phase: 'Night', localT: (t - sunsetEnd) / DAY_SEGMENTS.night };
+        }
+
+        function updateSkyAndSun() {
+            const phaseInfo = getTimePhaseInfo();
+            let sunFactor = 0;
+
+            if (phaseInfo.phase === 'Day') sunFactor = 1;
+            else if (phaseInfo.phase === 'Night') sunFactor = -0.85;
+            else if (phaseInfo.phase === 'Sunrise') sunFactor = -0.85 + 1.85 * phaseInfo.localT;
+            else sunFactor = 1 - 1.85 * phaseInfo.localT;
+
+            const dayColor = new THREE.Color(0x87ceeb);
+            const twilightColor = new THREE.Color(0x9a7d90);
+            const nightColor = new THREE.Color(0x1a1a2e);
 
             let skyColor;
             if (sunFactor > 0.1) {
-                // Day to Twilight transition
-                const t = Math.min(1, Math.max(0, (sunFactor - 0.1) / 0.9));
-                skyColor = dayColor.clone().lerp(twilightColor, 1 - t);
+                const k = Math.min(1, Math.max(0, (sunFactor - 0.1) / 0.9));
+                skyColor = twilightColor.clone().lerp(dayColor, k);
             } else {
-                // Twilight to Night transition
-                const t = Math.min(1, Math.max(0, (-sunFactor + 0.1) / 0.8));
-                skyColor = twilightColor.clone().lerp(nightColor, t);
+                const k = Math.min(1, Math.max(0, (sunFactor + 0.85) / 0.95));
+                skyColor = nightColor.clone().lerp(twilightColor, k);
             }
-            
-            scene.background.copy(skyColor); // This line is now safe because scene.background is initialized
+
+            scene.background.copy(skyColor);
             scene.fog.color.copy(skyColor);
 
-            // Directional Light (Sun)
-            dirLight.intensity = sunIntensity * 1.5;
-            // Position the sun based on the angle (y and z determine angle)
-            dirLight.position.x = Math.sin(gameTime) * 100;
-            dirLight.position.y = Math.cos(gameTime) * 100;
-            dirLight.position.z = Math.sin(gameTime) * 50;
+            const angle = (cycleTimeMs / DAY_CYCLE_DURATION) * (2 * Math.PI);
+            dirLight.intensity = Math.max(0.08, sunFactor + 0.2) * 1.2;
+            dirLight.position.x = Math.sin(angle) * 100;
+            dirLight.position.y = Math.cos(angle) * 100;
+            dirLight.position.z = Math.sin(angle) * 50;
 
-            // Ambient Light (Overall brightness)
-            ambientLight.intensity = ambientIntensity * 0.8;
-            
-            // Update HUD text
-            let timeOfDay;
-            if (sunFactor > 0.8) timeOfDay = "Day";
-            else if (sunFactor > 0.3) timeOfDay = "Morning/Evening";
-            else if (sunFactor > -0.2) timeOfDay = "Twilight";
-            else timeOfDay = "Night";
-
-            document.getElementById('time-of-day').textContent = timeOfDay;
+            ambientLight.intensity = Math.max(0.2, (sunFactor + 1) / 2) * 0.9;
+            document.getElementById('time-of-day').textContent = phaseInfo.phase;
         }
+
 
      
         function addToInventory(blockId, amount = 1) {
@@ -459,177 +431,6 @@
         }
 
         // --- CRAFTING SYSTEM LOGIC ---
-        
-        // Shape: Array of rows. 0 = empty, ID = required block.
-        // Recipes are agnostic of grid size; the matcher finds the pattern within the grid.
-        window.CRAFTING_RECIPES = [
-            // 1. Oak Planks (1 Log -> 4 Planks)
-            {
-                name: "Oak Planks",
-                output: { id: 8, count: 4 },
-                shape: [
-                    [5] 
-                ]
-            },
-            // 2. Crafting Table (4 Planks -> 1 Crafting Table)
-            {
-                name: "Crafting Table",
-                output: { id: 9, count: 1 }, 
-                shape: [
-                    [8, 8],
-                    [8, 8]
-                ]
-            },
-            // 3. Stick (2 Planks vertical -> 4 Sticks)
-            {
-                name: "Stick",
-                output: { id: 10, count: 4 },
-                shape: [
-                    [8],
-                    [8]
-                ]
-            },
-            // 4. Wooden Pickaxe (3 Planks, 2 Sticks -> 1 Pickaxe)
-            // REQUIRES 3x3 Grid
-            {
-                name: "Wooden Pickaxe",
-                output: { id: 11, count: 1 },
-                shape: [
-                    [8, 8, 8],
-                    [0, 10, 0],
-                    [0, 10, 0]
-                ]
-            },
-            // 5. Stone Pickaxe (3 Stone, 2 Sticks)
-            {
-                name: "Stone Pickaxe",
-                output: { id: 12, count: 1 },
-                shape: [
-                    [3, 3, 3],
-                    [0, 10, 0],
-                    [0, 10, 0]
-                ]
-            }
-        ];
-
-        window.checkCraftingRecipe = function(inputSlots, gridWidth) {
-            // 1. Convert input slots to a 2D matrix of IDs
-            const grid = [];
-            let hasItems = false;
-            
-            for (let r = 0; r < gridWidth; r++) {
-                const row = [];
-                for (let c = 0; c < gridWidth; c++) {
-                    const item = inputSlots[r * gridWidth + c];
-                    row.push(item ? item.id : 0);
-                    if (item) hasItems = true;
-                }
-                grid.push(row);
-            }
-
-            if (!hasItems) return null;
-
-            // 2. Find the bounds of the actual items in the grid (Crop the empty space)
-            let minR = gridWidth, maxR = -1, minC = gridWidth, maxC = -1;
-
-            for (let r = 0; r < gridWidth; r++) {
-                for (let c = 0; c < gridWidth; c++) {
-                    if (grid[r][c] !== 0) {
-                        if (r < minR) minR = r;
-                        if (r > maxR) maxR = r;
-                        if (c < minC) minC = c;
-                        if (c > maxC) maxC = c;
-                    }
-                }
-            }
-
-            const patternHeight = maxR - minR + 1;
-            const patternWidth = maxC - minC + 1;
-
-            // 3. Match against recipes
-            for (const recipe of window.CRAFTING_RECIPES) {
-                const shape = recipe.shape;
-                const recipeH = shape.length;
-                const recipeW = shape[0].length;
-
-                // If dimensions don't match exactly, skip
-                if (patternHeight !== recipeH || patternWidth !== recipeW) continue;
-
-                let match = true;
-                // Check every block in the cropped area
-                for (let r = 0; r < recipeH; r++) {
-                    for (let c = 0; c < recipeW; c++) {
-                        const requiredId = shape[r][c];
-                        // Get the actual ID from the grid, offset by minR/minC
-                        const actualId = grid[minR + r][minC + c];
-
-                        if (requiredId !== 0 && requiredId !== actualId) {
-                            match = false;
-                            break;
-                        }
-                        // Also ensure that if the recipe has air (0), the grid also has air/nothing there
-                        if (requiredId === 0 && actualId !== 0) {
-                            match = false;
-                            break;
-                        }
-                    }
-                    if (!match) break;
-                }
-
-                if (match) {
-                    // Check if we have enough items (assuming 1 per craft for now)
-                    // We need to find the minimum count of all ingredients used
-                    let minCount = 64;
-                    
-                    for (let r = 0; r < gridWidth; r++) {
-                        for (let c = 0; c < gridWidth; c++) {
-                            const item = inputSlots[r * gridWidth + c];
-                            // If this slot is part of the pattern (not empty in grid)
-                            if (item && grid[r][c] !== 0) {
-                                minCount = Math.min(minCount, item.count);
-                            }
-                        }
-                    }
-
-                    return {
-                        id: recipe.output.id,
-                        count: recipe.output.count * minCount,
-                        requiredCountPerCraft: 1, // Standard recipe uses 1 of each input
-                        recipeOutputPerCraft: recipe.output.count,
-                        // We return the crop offset so we know where to consume items from
-                        offset: { r: minR, c: minC, h: recipeH, w: recipeW, shape: shape }
-                    };
-                }
-            }
-
-            return null;
-        };
-
-        window.consumeCraftingInputForOne = function(inputSlots, recipeResult, gridWidth) {
-            if (!recipeResult || !recipeResult.offset) return false;
-
-            const { r: minR, c: minC, h, w, shape } = recipeResult.offset;
-
-            for (let r = 0; r < h; r++) {
-                for (let c = 0; c < w; c++) {
-                    const requiredId = shape[r][c];
-                    if (requiredId !== 0) {
-                        // Calculate actual index in the flat inputSlots array
-                        const slotIndex = (minR + r) * gridWidth + (minC + c);
-                        const item = inputSlots[slotIndex];
-                        
-                        if (item) {
-                            item.count--;
-                            if (item.count <= 0) {
-                                inputSlots[slotIndex] = null;
-                            }
-                        }
-                    }
-                }
-            }
-            return true;
-        };
-
 
         // Helper function for inventory item management
         function manageSlot(targetItem, targetSlotArray, targetIndex) {
@@ -697,25 +498,25 @@
                 const gridWidth = isCraftingTableOpen ? 3 : 2;
                 
                 // Check recipe using the external file function
-                const recipeResult = window.checkCraftingRecipe(inputGrid, gridWidth);
+                const recipeResult = checkCraftingRecipe(inputGrid, gridWidth);
 
                 if (recipeResult) {
                     // 1. If heldItem is empty, pick up one craft's worth
                     if (heldItem === null) {
-                        if (window.consumeCraftingInputForOne(inputGrid, recipeResult, gridWidth)) {
+                        if (consumeCraftingInputForOne(inputGrid, recipeResult, gridWidth)) {
                             heldItem = { id: recipeResult.id, count: recipeResult.recipeOutputPerCraft };
                         }
                     } 
                     // 2. If heldItem is the same and not full, combine one craft's worth
                     else if (heldItem.id === recipeResult.id && heldItem.count + recipeResult.recipeOutputPerCraft <= 64) {
                         
-                        if (window.consumeCraftingInputForOne(inputGrid, recipeResult, gridWidth)) {
+                        if (consumeCraftingInputForOne(inputGrid, recipeResult, gridWidth)) {
                             heldItem.count += recipeResult.recipeOutputPerCraft; 
                         }
                     }
                     
                     // After any output interaction, recalculate the next crafting output
-                    craftingOutput = window.checkCraftingRecipe(inputGrid, gridWidth);
+                    craftingOutput = checkCraftingRecipe(inputGrid, gridWidth);
                 }
             }
 
@@ -726,7 +527,7 @@
                 if (slotType === 'craft-input' || slotType === 'craft-table-input') {
                     const inputGrid = isCraftingTableOpen ? craftingTableInput : craftingInput;
                     const gridWidth = isCraftingTableOpen ? 3 : 2;
-                    craftingOutput = window.checkCraftingRecipe(inputGrid, gridWidth);
+                    craftingOutput = checkCraftingRecipe(inputGrid, gridWidth);
                 }
             }
             
@@ -935,7 +736,7 @@
                 // Recalculate crafting output just before opening
                 const inputGrid = isCraftingTableOpen ? craftingTableInput : craftingInput;
                 const gridWidth = isCraftingTableOpen ? 3 : 2;
-                craftingOutput = window.checkCraftingRecipe(inputGrid, gridWidth);
+                craftingOutput = checkCraftingRecipe(inputGrid, gridWidth);
                 
                 renderInventoryScreen(); 
                 invScreen.classList.remove('hidden');
@@ -947,8 +748,49 @@
         
     
 
+        function getMiningDurationMs(blockId) {
+            const hardness = BLOCK_HARDNESS[blockId] ?? 1.5;
+            if (!isFinite(hardness)) return Infinity;
+
+            const held = inventory[selectedHotbarIndex];
+            const usingWoodPickaxe = held && held.id === 11;
+            const prefersPickaxe = blockId === 3 || blockId === 13 || blockId === 14;
+
+            const baseMs = hardness * 1000;
+            if (prefersPickaxe) {
+                if (usingWoodPickaxe) return baseMs * 0.55;
+                return baseMs * 3.25; // fists are slow on hard blocks
+            }
+            if (usingWoodPickaxe) return baseMs * 1.15; // slight penalty for wrong tool
+            return baseMs;
+        }
+
+        function updateBreakingOverlay() {
+            const overlay = document.getElementById('breaking-overlay');
+            if (!overlay) return;
+            if (!miningState.active || !isFinite(miningState.neededMs)) {
+                overlay.style.opacity = 0;
+                return;
+            }
+
+            const progress = Math.min(1, miningState.elapsedMs / Math.max(1, miningState.neededMs));
+            const stage = Math.min(9, Math.floor(progress * 10));
+            const heartPath = ASSET_FILEPATHS.HEART;
+            const base = heartPath.slice(0, heartPath.lastIndexOf('/ui/'));
+            overlay.style.backgroundImage = `url('${base}/breaking/${stage}.png')`;
+            overlay.style.opacity = 1;
+        }
+
         function setupBlockInteraction() {
             window.addEventListener('pointerdown', onPointerDown, false);
+            window.addEventListener('pointerup', onPointerUp, false);
+        }
+
+        function onPointerUp(event) {
+            if (event.button !== 0) return;
+            isLeftMouseDown = false;
+            miningState.active = false;
+            updateBreakingOverlay();
         }
 
         function onPointerDown(event) {
@@ -966,9 +808,30 @@
                 const hit = intersects[0];
                
                 // LEFT CLICK - Break
-                if (event.button === 0) { 
+                if (event.button === 0) {
+                    isLeftMouseDown = true;
                     const hitPos = hit.point.clone().sub(hit.face.normal.clone().multiplyScalar(0.01));
-                    modifyWorld(hitPos, 0); 
+                    const wx = Math.floor(hitPos.x);
+                    const wy = Math.floor(hitPos.y);
+                    const wz = Math.floor(hitPos.z);
+                    const blockId = getBlockType(wx, wy, wz);
+                    if (blockId === 0 || blockId === 4) return;
+
+                    const neededMs = getMiningDurationMs(blockId);
+                    if (!isFinite(neededMs)) {
+                        showGameMessage("Bedrock is unbreakable.");
+                        return;
+                    }
+
+                    miningState = {
+                        active: true,
+                        key: `${wx},${wy},${wz}`,
+                        blockPos: hitPos,
+                        targetType: blockId,
+                        elapsedMs: 0,
+                        neededMs
+                    };
+                    updateBreakingOverlay();
                 } 
                 // RIGHT CLICK - Interact or Place
                 else if (event.button === 2) { 
@@ -1032,13 +895,17 @@
             const oldType = chunkData[index];
             
             if (newType === 0) {
-                
-                if (oldType === 0) return false;
-                if (oldType === 4) return false; 
-                
-             
-                addToInventory(oldType, 1);
-                
+                if (oldType === 0 || oldType === 4) return false;
+                if (blockMaterials[oldType]?.unbreakable) return false;
+
+                const held = inventory[selectedHotbarIndex];
+                const hasWoodPickaxe = held && held.id === 11;
+                const isHardBlock = oldType === 3 || oldType === 13;
+                if (!isHardBlock || hasWoodPickaxe) {
+                    addToInventory(oldType, 1);
+                } else {
+                    showGameMessage('Need wooden pickaxe for proper drops.');
+                }
                 chunkData[index] = 0;
             } else {
                
@@ -1052,28 +919,9 @@
         }
 
     
-        // --- NEW RIVER MASK UTILITY ---
         function getRiverMask(wx, wz) {
-            // Use a large scale noise to define the winding path
-            const scale = 0.001; 
-            const pathNoise = simplex.noise2D(wx * scale + 1000, wz * scale + 1000); 
-
-            // Use a second noise layer to slightly modulate the river path
-            const scaleBend = 0.002;
-            const bend = simplex.noise2D(wx * scaleBend + 500, wz * scaleBend + 500) * 0.5;
-
-            // Apply the bend to the path coordinates (creates a wavy river instead of straight bands)
-            const finalPath = simplex.noise2D(wx * scale + bend, wz * scale);
-
-            // Thickness defines how wide the river is. Lower value = wider river band around 0.
-            const thickness = 0.08; 
-            
-            // Attenuation is 1.0 at the center line (finalPath=0) and 0.0 outside the thickness.
-            const attenuation = 1.0 - Math.min(1.0, Math.abs(finalPath) / thickness);
-            
-            return attenuation;
+            return TerrainModules.river.getMask({ perlin, wx, wz });
         }
-        // --- END RIVER MASK UTILITY ---
 
 
         function updatePlayerMovement() {
@@ -1096,7 +944,15 @@
             if (player.keys['d']) player.direction.add(right);
             player.direction.normalize();
 
-           
+            const isMoving = player.direction.lengthSq() > 0;
+            const isSprinting = isMoving && player.keys['shift'];
+            if (window.HungerSystem) {
+                window.HungerSystem.update(performance.now(), { isMoving, isSprinting });
+            }
+            const hungerMultiplier = window.HungerSystem ? window.HungerSystem.getSpeedMultiplier() : 1;
+            const sprintMultiplier = isSprinting ? player.sprintMultiplier : 1;
+            player.moveSpeed = player.baseMoveSpeed * sprintMultiplier * hungerMultiplier;
+
             player.velocity.x = player.direction.x * player.moveSpeed;
             player.velocity.z = player.direction.z * player.moveSpeed;
             player.velocity.y += GRAVITY;
@@ -1227,73 +1083,47 @@
             return false;
         }
 
-        // --- NEW: Biome Classification (Forest, Plains, Ocean, Desert) ---
         function getBiome(wx, wz) {
-            // Use a large scale for general climate zones
-            const biomeNoise = simplex.noise2D(wx * 0.0005, wz * 0.0005); 
-            
-            // Second noise layer for detail/splitting within temperate zones
-            const detailNoise = simplex.noise2D(wx * 0.005, wz * 0.005);
-            
-            // Check if coordinates are near the starting center (Island for spawn)
-            const d = Math.sqrt(wx*wx + wz*wz);
+            const climateNoise = perlin.noise2D(wx * 0.0005, wz * 0.0005);
+            const moistureNoise = perlin.noise2D(wx * 0.0008 + 1000, wz * 0.0008 + 1000);
+            const detailNoise = perlin.noise2D(wx * 0.005, wz * 0.005);
+            const distFromCenter = Math.sqrt(wx * wx + wz * wz);
 
-            if (d < ISLAND_RADIUS) {
-                // If near spawn, guarantee a Forest for easy wood
-                return 'Forest'; 
-            }
-            
-            if (biomeNoise > 0.35) {
-                return 'Desert';
-            } else if (biomeNoise > -0.1) {
-                // Temperate Zone
-                if (detailNoise > 0) {
-                    return 'Forest';
-                } else {
-                    return 'Plains';
-                }
-            } else {
-                return 'Ocean';
-            }
+            if (TerrainModules.ocean.isBiome({ climateNoise })) return 'Ocean';
+            if (TerrainModules.desert.isBiome({ climateNoise, moistureNoise })) return 'Desert';
+            if (TerrainModules.oakForest.isBiome({ detailNoise, distFromCenter, ISLAND_RADIUS })) return 'Forest';
+            return 'Plains';
         }
 
-        // Refactored function: Height calculation is dependent on the provided biome (Biomes > Terrain)
         function getNoiseGroundHeight(wx, wz, biome) {
             
             // Continental Mask for overall land mass (smoother transition)
             const scale1 = 0.002; 
-            let continentalMask = (simplex.noise2D(wx * scale1, wz * scale1) + 1) * 0.5;
+            let continentalMask = (perlin.noise2D(wx * scale1, wz * scale1) + 1) * 0.5;
             
             const scale2 = 0.03; 
-            let terrainNoise = (simplex.noise2D(wx * scale2, wz * scale2) + 1) * 0.5; 
+            let terrainNoise = (perlin.noise2D(wx * scale2, wz * scale2) + 1) * 0.5; 
             
             // High-frequency detail noise
-            const detailNoise = (simplex.noise2D(wx * 0.1, wz * 0.1) + 1) * 0.5;
+            const detailNoise = (perlin.noise2D(wx * 0.1, wz * 0.1) + 1) * 0.5;
             
             let h;
 
             if (biome === 'Plains') {
-                // Flatter, slightly rolling land
-                h = BASE_LAND_Y + continentalMask * 8 + terrainNoise * 2;
+                h = TerrainModules.plains.getHeight({ BASE_LAND_Y, continentalMask, terrainNoise });
             } else if (biome === 'Forest') {
-                // Hillier terrain for forests
-                h = BASE_LAND_Y + continentalMask * 12 + terrainNoise * 7;
+                h = TerrainModules.oakForest.getHeight({ BASE_LAND_Y, continentalMask, terrainNoise });
             } else if (biome === 'Desert') {
-                // Taller, sandy terrain
-                h = BASE_LAND_Y + 3 + continentalMask * 10 + terrainNoise * 5;
-            } else { // Ocean Biome
-                h = SEA_LEVEL - 10 - (terrainNoise * 5);
+                h = TerrainModules.desert.getHeight({ BASE_LAND_Y, continentalMask, terrainNoise });
+            } else {
+                h = TerrainModules.ocean.getHeight({ SEA_LEVEL, terrainNoise });
             }
             
             h += detailNoise * 0.5; // Add detail
 
             // --- RIVER HEIGHT ADJUSTMENT ---
             const riverInfluence = getRiverMask(wx, wz);
-            if (riverInfluence > 0.1) {
-                // Maximum river depth reduction is 15 blocks, pulling land down towards SEA_LEVEL - 5
-                const riverDepth = riverInfluence * 15; 
-                h = Math.max(h - riverDepth, SEA_LEVEL - 5); 
-            }
+            h = TerrainModules.river.applyHeight({ height: h, riverInfluence, SEA_LEVEL });
             // --- END RIVER HEIGHT ADJUSTMENT ---
             
             // Ensure land blocks are not too low relative to sea level
@@ -1322,6 +1152,7 @@
             // For blocks outside loaded chunks but inside the boundary, use noise (Fallback)
             const biome = getBiome(wx, wz); // Calculate biome for fallback
             const h = getNoiseGroundHeight(wx, wz, biome); 
+            if (wy === 0) return 14;
             if (wy < h) return 1; // Default to grass for quick fallback
             if (wy < SEA_LEVEL) return 4;
             return 0;
@@ -1405,7 +1236,13 @@
 
                      for (let y = 0; y < CHUNK_HEIGHT; y++) {
                          let t = 0; // Block type
-                         
+
+                         if (y === 0) {
+                             t = 14; // Bedrock floor
+                             data[x + y*CHUNK_SIZE + z*CHUNK_SIZE*CHUNK_HEIGHT] = t;
+                             continue;
+                         }
+
                          if (y < h) {
                             
                              const distFromSurface = h - 1 - y;
@@ -1465,20 +1302,19 @@
                              // Otherwise (on dry land, above h, below sea level, not river) it remains air (t=0)
                          }
                          
-                        // --- Cave Generation Pass ---
-                        // Apply caving logic ONLY if the block is a solid underground type (Stone, Dirt, Sand)
-                        // and is within the valid depth range.
+                        // --- Cave Generation Pass (layered Perlin for bigger cave systems) ---
                         if (y > CAVE_MIN_Y && y < h - CAVE_MAX_Y_OFFSET) {
-                            
-                            if (t === 3 || t === 2 || t === 7) { 
-                                const caveNoise = simplex.noise3D(
-                                    wx * CAVE_SCALE, 
-                                    y * CAVE_SCALE * 2, // Stretch vertically to make tunnels horizontally wider
-                                    wz * CAVE_SCALE
-                                );
-                                
-                                if (caveNoise > CAVE_THRESHOLD) {
-                                    t = 0; // Convert solid block to air
+                            if (t === 3 || t === 2 || t === 7 || t === 13) {
+                                const n1 = perlin.noise3D(wx * CAVE_SCALE, y * CAVE_SCALE * 1.7, wz * CAVE_SCALE);
+                                const n2 = perlin.noise3D(wx * CAVE_SCALE * 2.2 + 100, y * CAVE_SCALE * 1.1, wz * CAVE_SCALE * 2.2 + 100);
+                                const caveShape = n1 * 0.7 + n2 * 0.3;
+
+                                const depth = Math.max(0, (h - y) / Math.max(1, h));
+                                const dynamicThreshold = CAVE_THRESHOLD - Math.min(0.14, depth * 0.2);
+                                const tunnelNoise = Math.abs(perlin.noise3D(wx * CAVE_SCALE * 0.7, y * CAVE_SCALE * 0.45, wz * CAVE_SCALE * 0.7));
+
+                                if (caveShape > dynamicThreshold || (depth > 0.35 && tunnelNoise < 0.06)) {
+                                    t = 0;
                                 }
                             }
                         }
@@ -1718,22 +1554,42 @@
             document.getElementById('chunks-count').textContent = count;
         }
 
+        function updateMining(deltaMs) {
+            if (!isLeftMouseDown || !miningState.active || !miningState.blockPos) {
+                updateBreakingOverlay();
+                return;
+            }
+
+            miningState.elapsedMs += deltaMs;
+            updateBreakingOverlay();
+
+            if (miningState.elapsedMs >= miningState.neededMs) {
+                const { blockPos, targetType } = miningState;
+                const wx = Math.floor(blockPos.x);
+                const wy = Math.floor(blockPos.y);
+                const wz = Math.floor(blockPos.z);
+                const current = getBlockType(wx, wy, wz);
+                if (current === targetType) modifyWorld(blockPos, 0);
+                miningState.active = false;
+                updateBreakingOverlay();
+            }
+        }
+
         function animate(time) {
             requestAnimationFrame(animate);
-            
-            if (lastTime) {
-                const delta = time - lastTime;
-                
-                // Update game time based on real time delta
-                // GameTime cycles from 0 to 2*PI radians. Rate = (2*PI) / DAY_CYCLE_DURATION (in ms)
-                const timeRate = (2 * Math.PI) / DAY_CYCLE_DURATION;
-                gameTime = (gameTime + delta * timeRate) % (2 * Math.PI);
-                
-                updateSkyAndSun();
-            }
+            const delta = lastTime ? (time - lastTime) : 0;
             lastTime = time;
 
-            if(!isInventoryOpen) updatePlayerMovement();
+            cycleTimeMs = (cycleTimeMs + delta) % DAY_CYCLE_DURATION;
+            updateSkyAndSun();
+
+            if(!isInventoryOpen) {
+                updatePlayerMovement();
+                updateMining(delta);
+            } else {
+                miningState.active = false;
+                updateBreakingOverlay();
+            }
             renderer.render(scene, camera);
         }
         
