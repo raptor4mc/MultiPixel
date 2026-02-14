@@ -1,10 +1,10 @@
 (function () {
   const MountainsTerrain = {
-    isBiome({ mountainNoise, climateNoise }) {
-      return mountainNoise > 0.62 && climateNoise > -0.15;
+    isBiome({ mountainNoise, continentalNoise }) {
+      return mountainNoise > 0.58 && continentalNoise > 0.45;
     },
-    getHeight({ BASE_LAND_Y, continentalMask, terrainNoise, ridgeNoise }) {
-      return BASE_LAND_Y + 10 + continentalMask * 14 + terrainNoise * 14 + ridgeNoise * 8;
+    getHeight({ BASE_LAND_Y, continentalMask, ridgeNoise, terrainNoise }) {
+      return BASE_LAND_Y + 15 + continentalMask * 16 + ridgeNoise * 18 + terrainNoise * 5;
     },
   };
   window.MountainsTerrain = MountainsTerrain;

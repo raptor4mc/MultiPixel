@@ -1291,49 +1291,59 @@
         }
 
         function getBiome(wx, wz) {
-            const climateNoise = perlin.noise2D(wx * 0.00035, wz * 0.00035);
-            const moistureNoise = perlin.noise2D(wx * 0.0006 + 1000, wz * 0.0006 + 1000);
+            const continentalNoise = (perlin.noise2D(wx * 0.0016 + 200, wz * 0.0016 + 200) + 1) * 0.5;
+            const climateNoise = perlin.noise2D(wx * 0.00045 - 600, wz * 0.00045 + 300);
+            const moistureNoise = perlin.noise2D(wx * 0.0007 + 1000, wz * 0.0007 + 1000);
+            const humidityNoise = perlin.noise2D(wx * 0.001 + 320, wz * 0.001 - 130);
             const detailNoise = perlin.noise2D(wx * 0.003, wz * 0.003);
-            const mountainNoise = (perlin.noise2D(wx * 0.0012 - 400, wz * 0.0012 + 750) + 1) * 0.5;
+            const mountainNoise = (Math.abs(perlin.noise2D(wx * 0.0013 - 400, wz * 0.0013 + 750)) + 1) * 0.5;
             const distFromCenter = Math.sqrt(wx * wx + wz * wz);
 
-            if (TerrainModules['ocean'].isBiome({ climateNoise })) return 'Ocean';
-            if (TerrainModules['mountains'].isBiome({ mountainNoise, climateNoise })) return 'Mountains';
-            if (TerrainModules['desert'].isBiome({ climateNoise, moistureNoise: moistureNoise - 0.05 })) return 'Desert';
-            if (TerrainModules['oakForest'].isBiome({ detailNoise, distFromCenter, ISLAND_RADIUS })) return 'Forest';
-            return 'Plains';
+            if (TerrainModules['ocean'].isBiome({ continentalNoise, climateNoise })) return 'Ocean';
+            if (TerrainModules['mountains'].isBiome({ mountainNoise, continentalNoise })) return 'Mountains';
+            if (TerrainModules['desert'].isBiome({ climateNoise, moistureNoise, continentalNoise })) return 'Desert';
+            if (TerrainModules['oakForest'].isBiome({ detailNoise, humidityNoise, distFromCenter, ISLAND_RADIUS })) return 'Forest';
+            if (TerrainModules['plains'].isBiome({ humidityNoise, mountainNoise })) return 'Plains';
+            return 'Forest';
         }
 
         function getRavineMask(wx, wz) {
-            const warp = perlin.noise2D(wx * 0.001 + 250, wz * 0.001 + 250) * 28;
+            const warp = perlin.noise2D(wx * 0.001 + 250, wz * 0.001 + 250) * 30;
             const line = Math.abs(perlin.noise2D(wx * 0.0018 + warp, wz * 0.0018));
-            return 1.0 - Math.min(1.0, line / 0.045);
+            return 1.0 - Math.min(1.0, line / 0.043);
         }
 
         function getNoiseGroundHeight(wx, wz, biome) {
-            const scale1 = 0.002;
-            const continentalMask = (perlin.noise2D(wx * scale1, wz * scale1) + 1) * 0.5;
-            const scale2 = 0.03;
-            const terrainNoise = (perlin.noise2D(wx * scale2, wz * scale2) + 1) * 0.5;
-            const detailNoise = (perlin.noise2D(wx * 0.1, wz * 0.1) + 1) * 0.5;
+            const continentalMask = (perlin.noise2D(wx * 0.002, wz * 0.002) + 1) * 0.5;
+            const terrainNoise = (perlin.noise2D(wx * 0.03, wz * 0.03) + 1) * 0.5;
+            const detailNoise = (perlin.noise2D(wx * 0.08, wz * 0.08) + 1) * 0.5;
+            const erosionNoise = (perlin.noise2D(wx * 0.006 + 180, wz * 0.006 - 90) + 1) * 0.5;
             const ridgeNoise = Math.abs(perlin.noise2D(wx * 0.02 + 50, wz * 0.02 + 50));
+            const deepNoise = (perlin.noise2D(wx * 0.01 - 200, wz * 0.01 + 430) + 1) * 0.5;
+            const duneNoise = (perlin.noise2D(wx * 0.045 + 15, wz * 0.045 - 15) + 1) * 0.5;
 
-            let h = BASE_LAND_Y + continentalMask * 9 + terrainNoise * 4 + detailNoise;
-            if (biome === 'Plains') h += 0.5;
-            else if (biome === 'Forest') h += 3;
-            else if (biome === 'Desert') h += 2;
-            else if (biome === 'Mountains') h = TerrainModules['mountains'].getHeight({ BASE_LAND_Y, continentalMask, terrainNoise, ridgeNoise });
-            else h = TerrainModules['ocean'].getHeight({ SEA_LEVEL, terrainNoise });
+            let h;
+            if (biome === 'Plains') {
+                h = TerrainModules['plains'].getHeight({ BASE_LAND_Y, continentalMask, terrainNoise, erosionNoise });
+            } else if (biome === 'Forest') {
+                h = TerrainModules['oakForest'].getHeight({ BASE_LAND_Y, continentalMask, terrainNoise, erosionNoise });
+            } else if (biome === 'Desert') {
+                h = TerrainModules['desert'].getHeight({ BASE_LAND_Y, continentalMask, terrainNoise, duneNoise });
+            } else if (biome === 'Mountains') {
+                h = TerrainModules['mountains'].getHeight({ BASE_LAND_Y, continentalMask, ridgeNoise, terrainNoise });
+            } else {
+                h = TerrainModules['ocean'].getHeight({ SEA_LEVEL, deepNoise, terrainNoise });
+            }
+
+            h += detailNoise * (biome === 'Mountains' ? 2.0 : 0.7);
 
             const riverInfluence = getRiverMask(wx, wz);
             h = TerrainModules['river'].applyHeight({ height: h, riverInfluence, SEA_LEVEL });
 
             const ravine = getRavineMask(wx, wz);
-            if (ravine > 0.78 && biome !== 'Ocean') {
-                h -= (ravine - 0.78) * 70;
-            }
+            if (ravine > 0.8 && biome !== 'Ocean') h -= (ravine - 0.8) * 85;
 
-            if (h < SEA_LEVEL - 5 && biome !== 'Ocean') h = SEA_LEVEL - 5;
+            if (h < SEA_LEVEL - 6 && biome !== 'Ocean') h = SEA_LEVEL - 6;
             return Math.floor(h);
         }
 
@@ -1454,14 +1464,22 @@
                              const distFromSurface = h - 1 - y;
 
                              if (biome === 'Desert') {
-                                 // Desert Biome: Sand surface, Stone/Sandstone below
                                  if (distFromSurface === 0) {
-                                     t = 7; // Sand
+                                     t = 7;
                                      surfaceBlockType = 7;
                                  } else if (distFromSurface < 5) {
-                                     t = 7; // Sand layers
+                                     t = 7;
                                  } else {
-                                     t = 13; // Stone (representing Sandstone/Deep rock)
+                                     t = 13;
+                                 }
+                             } else if (biome === 'Mountains') {
+                                 if (distFromSurface === 0) {
+                                     t = 3;
+                                     surfaceBlockType = 3;
+                                 } else if (distFromSurface < 3) {
+                                     t = 3;
+                                 } else {
+                                     t = 3;
                                  }
                              } else { // Plains/Forest/Ocean Biome logic
                                  
@@ -1742,21 +1760,66 @@
             }
         }
 
-        function setInitialPlayerPosition() {
-          
-            let y = CHUNK_HEIGHT - 1;
-            // Need to calculate biome and height once for the spawn point (0, 0)
-            const biome = getBiome(0, 0);
-            const initialH = getNoiseGroundHeight(0, 0, biome);
+        function isSafeSpawnSpot(x, z) {
+            const wx = Math.floor(x);
+            const wz = Math.floor(z);
 
-            // Start searching from the maximum expected initial height + 5, down to the actual calculated height
-            y = Math.min(CHUNK_HEIGHT - 1, initialH + 5); 
+            for (let y = CHUNK_HEIGHT - 3; y >= 2; y--) {
+                const under = getBlockType(wx, y - 1, wz);
+                const feet = getBlockType(wx, y, wz);
+                const head = getBlockType(wx, y + 1, wz);
 
-            while(y > 0 && !isSolid(getBlockType(0, y, 0))) {
-                y--;
+                if (!isSolid(under) || isLiquid(under)) continue;
+                if (feet !== 0 || head !== 0) continue;
+
+                let blocked = false;
+                for (let dx = -1; dx <= 1 && !blocked; dx++) {
+                    for (let dz = -1; dz <= 1 && !blocked; dz++) {
+                        const f = getBlockType(wx + dx, y, wz + dz);
+                        const h = getBlockType(wx + dx, y + 1, wz + dz);
+                        const u = getBlockType(wx + dx, y - 1, wz + dz);
+                        if (isLiquid(f) || isLiquid(h) || isLiquid(u)) blocked = true;
+                    }
+                }
+                if (blocked) continue;
+
+                return { y };
             }
-            yawObject.position.set(0, y + 2, 0);
+            return null;
         }
+
+        function setInitialPlayerPosition() {
+            const searchRadius = 24;
+            for (let r = 0; r <= searchRadius; r++) {
+                for (let dx = -r; dx <= r; dx++) {
+                    const edgeZ = r;
+                    for (const dz of [-edgeZ, edgeZ]) {
+                        const x = dx + 0.5;
+                        const z = dz + 0.5;
+                        const safe = isSafeSpawnSpot(x, z);
+                        if (safe) {
+                            yawObject.position.set(x, safe.y, z);
+                            return;
+                        }
+                    }
+                }
+                for (let dz = -r + 1; dz <= r - 1; dz++) {
+                    const edgeX = r;
+                    for (const dx of [-edgeX, edgeX]) {
+                        const x = dx + 0.5;
+                        const z = dz + 0.5;
+                        const safe = isSafeSpawnSpot(x, z);
+                        if (safe) {
+                            yawObject.position.set(x, safe.y, z);
+                            return;
+                        }
+                    }
+                }
+            }
+
+            yawObject.position.set(0.5, SEA_LEVEL + 8, 0.5);
+        }
+
 
         function generateWorld() {
             let count = 0;
