@@ -1333,7 +1333,7 @@
             const distFromCenter = Math.sqrt(wx * wx + wz * wz);
             const riverMask = getRiverMask(wx, wz);
 
-            if (TerrainModules['mountains'].isBiome({ mountainNoise, continentalNoise })) return 'Mountains';
+            if (TerrainModules['mountains'].isBiome({ mountainNoise, continentalNoise, climateNoise })) return 'Mountains';
             if (TerrainModules['ocean'].isBiome({ continentalNoise, climateNoise })) return 'Ocean';
 
             const isDesert = TerrainModules['desert'].isBiome({ climateNoise, moistureNoise, continentalNoise });
@@ -1347,7 +1347,7 @@
                     const nHumidity = perlin.noise2D((wx + ox) * 0.001 + 320, (wz + oz) * 0.001 - 130);
                     const nMountain = (Math.abs(perlin.noise2D((wx + ox) * 0.0013 - 400, (wz + oz) * 0.0013 + 750)) + 1) * 0.5;
                     const nContinental = (perlin.noise2D((wx + ox) * 0.0016 + 200, (wz + oz) * 0.0016 + 200) + 1) * 0.5;
-                    if (TerrainModules['mountains'].isBiome({ mountainNoise: nMountain, continentalNoise: nContinental }) ||
+                    if (TerrainModules['mountains'].isBiome({ mountainNoise: nMountain, continentalNoise: nContinental, climateNoise }) ||
                         TerrainModules['oakForest'].isBiome({ detailNoise: nDetail, humidityNoise: nHumidity, distFromCenter, ISLAND_RADIUS }) ||
                         TerrainModules['plains'].isBiome({ humidityNoise: nHumidity, mountainNoise: nMountain })) {
                         return 'Plains';
@@ -1374,6 +1374,8 @@
             const erosionNoise = (perlin.noise2D(wx * 0.006 + 180, wz * 0.006 - 90) + 1) * 0.5;
             const ridgeNoise = Math.abs(perlin.noise2D(wx * 0.02 + 50, wz * 0.02 + 50));
             const peakNoise = Math.abs(perlin.noise2D(wx * 0.007 - 250, wz * 0.007 + 400));
+            const valleyNoise = (Math.abs(perlin.noise2D(wx * 0.0045 + 620, wz * 0.0045 - 310)) + 1) * 0.5;
+            const cliffNoise = Math.abs(perlin.noise2D(wx * 0.012 - 910, wz * 0.012 + 260));
             const deepNoise = (perlin.noise2D(wx * 0.01 - 200, wz * 0.01 + 430) + 1) * 0.5;
             const duneNoise = (perlin.noise2D(wx * 0.045 + 15, wz * 0.045 - 15) + 1) * 0.5;
 
@@ -1385,12 +1387,12 @@
             } else if (biome === 'Desert') {
                 h = TerrainModules['desert'].getHeight({ BASE_LAND_Y, continentalMask, terrainNoise, duneNoise });
             } else if (biome === 'Mountains') {
-                h = TerrainModules['mountains'].getHeight({ BASE_LAND_Y, continentalMask, ridgeNoise, terrainNoise, peakNoise });
+                h = TerrainModules['mountains'].getHeight({ BASE_LAND_Y, continentalMask, ridgeNoise, terrainNoise, peakNoise, erosionNoise, cliffNoise, valleyNoise });
             } else {
                 h = TerrainModules['ocean'].getHeight({ SEA_LEVEL, deepNoise, terrainNoise });
             }
 
-            h += detailNoise * (biome === 'Mountains' ? 3.8 : 0.7);
+            h += detailNoise * (biome === 'Mountains' ? 2.2 : 0.7);
 
             const riverInfluence = getRiverMask(wx, wz);
             h = TerrainModules['river'].applyHeight({ height: h, riverInfluence, SEA_LEVEL });
@@ -1398,6 +1400,7 @@
             const ravine = getRavineMask(wx, wz);
             if (ravine > 0.8 && biome !== 'Ocean') h -= (ravine - 0.8) * 85;
 
+            if (biome === 'Mountains' && h < SEA_LEVEL + 6) h = SEA_LEVEL + 6;
             if (h < SEA_LEVEL - 6 && biome !== 'Ocean') h = SEA_LEVEL - 6;
             return Math.floor(h);
         }
