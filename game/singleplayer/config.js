@@ -40,6 +40,8 @@
     CRAFTING_TABLE_SIDE: getAssetPath('textures/crafting_table_side.png'),
     STICK: getAssetPath('textures/stick.png'),
     SAND_STONE: getAssetPath('textures/sand_stone.png'),
+    WOODEN_PICKAXE: getAssetPath('textures/wooden_pickaxe.png'),
+    BEDROCK: getAssetPath('textures/bedrock.png'),
   };
 
   const blockMaterials = {

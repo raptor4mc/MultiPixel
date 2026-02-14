@@ -28,6 +28,33 @@
         const { checkCraftingRecipe, consumeCraftingInputForOne } = window.CraftingSystem;
 
         const TerrainModules = {
+            ocean: window.OceanTerrain || {
+                isBiome: ({ climateNoise }) => climateNoise <= -0.2,
+                getHeight: ({ SEA_LEVEL, terrainNoise }) => SEA_LEVEL - 10 - terrainNoise * 5,
+            },
+            river: window.RiverTerrain || {
+                getMask: ({ perlin, wx, wz }) => {
+                    const scale = 0.001;
+                    const path = perlin.noise2D(wx * scale, wz * scale);
+                    return 1.0 - Math.min(1.0, Math.abs(path) / 0.08);
+                },
+                applyHeight: ({ height, riverInfluence, SEA_LEVEL }) => {
+                    if (riverInfluence <= 0.1) return height;
+                    return Math.max(height - riverInfluence * 15, SEA_LEVEL - 5);
+                }
+            },
+            oakForest: window.OakForestTerrain || {
+                isBiome: ({ detailNoise, distFromCenter, ISLAND_RADIUS }) => distFromCenter < ISLAND_RADIUS || detailNoise > 0.1,
+                getHeight: ({ BASE_LAND_Y, continentalMask, terrainNoise }) => BASE_LAND_Y + continentalMask * 12 + terrainNoise * 7,
+            },
+            desert: window.DesertTerrain || {
+                isBiome: ({ climateNoise, moistureNoise }) => climateNoise > 0.2 && moistureNoise < 0.2,
+                getHeight: ({ BASE_LAND_Y, continentalMask, terrainNoise }) => BASE_LAND_Y + 3 + continentalMask * 10 + terrainNoise * 5,
+            },
+            plains: window.PlainsTerrain || {
+                isBiome: () => true,
+                getHeight: ({ BASE_LAND_Y, continentalMask, terrainNoise }) => BASE_LAND_Y + continentalMask * 8 + terrainNoise * 2,
+            }
             ocean: window.OceanTerrain,
             river: window.RiverTerrain,
             oakForest: window.OakForestTerrain,
@@ -433,6 +460,64 @@
         // --- CRAFTING SYSTEM LOGIC ---
 
         // Helper function for inventory item management
+
+        function resolveInventorySlotTarget(slotIndex, slotType = 'inv') {
+            let slotArray;
+            let finalIndex = slotIndex;
+
+            if (slotType === 'hotbar') {
+                slotArray = inventory;
+            } else if (slotType === 'main-inv') {
+                finalIndex = HOTBAR_SLOTS + slotIndex;
+                slotArray = inventory;
+            } else if (slotType === 'craft-input') {
+                slotArray = craftingInput;
+            } else if (slotType === 'craft-table-input') {
+                slotArray = craftingTableInput;
+            }
+
+            return { slotArray, finalIndex };
+        }
+
+        function handleInventoryRightClick(slotIndex, slotType = 'inv') {
+            if (!isInventoryOpen || slotType === 'output') return;
+
+            const { slotArray, finalIndex } = resolveInventorySlotTarget(slotIndex, slotType);
+            if (!slotArray) return;
+            const targetItem = slotArray[finalIndex];
+
+            if (!heldItem) {
+                if (targetItem && targetItem.count > 1) {
+                    const split = Math.ceil(targetItem.count / 2);
+                    targetItem.count -= split;
+                    heldItem = { id: targetItem.id, count: split };
+                    if (targetItem.count <= 0) slotArray[finalIndex] = null;
+                }
+            } else {
+                if (!targetItem) {
+                    slotArray[finalIndex] = { id: heldItem.id, count: 1 };
+                    heldItem.count -= 1;
+                } else if (targetItem.id === heldItem.id && targetItem.count < 64) {
+                    targetItem.count += 1;
+                    heldItem.count -= 1;
+                }
+                if (heldItem && heldItem.count <= 0) {
+                    heldItem = null;
+                    heldItemSourceIndex = -1;
+                    heldItemSourceType = null;
+                }
+            }
+
+            if (slotType === 'craft-input' || slotType === 'craft-table-input') {
+                const inputGrid = isCraftingTableOpen ? craftingTableInput : craftingInput;
+                const gridWidth = isCraftingTableOpen ? 3 : 2;
+                craftingOutput = checkCraftingRecipe(inputGrid, gridWidth);
+            }
+
+            renderInventoryScreen();
+            updateHotbarUI();
+        }
+
         function manageSlot(targetItem, targetSlotArray, targetIndex) {
             
             if (!heldItem) {
@@ -479,19 +564,9 @@
         function handleInventoryClick(slotIndex, slotType = 'inv') {
             if (!isInventoryOpen) return;
             
-            let slotArray;
-            let finalIndex = slotIndex;
+            let { slotArray, finalIndex } = resolveInventorySlotTarget(slotIndex, slotType);
             
-            if (slotType === 'hotbar') {
-                slotArray = inventory;
-            } else if (slotType === 'main-inv') {
-                finalIndex = HOTBAR_SLOTS + slotIndex; // Adjust index for main inventory section
-                slotArray = inventory;
-            } else if (slotType === 'craft-input') {
-                slotArray = craftingInput;
-            } else if (slotType === 'craft-table-input') {
-                slotArray = craftingTableInput;
-            } else if (slotType === 'output') {
+            if (slotType === 'output') {
                 
                 // Determine which crafting grid is active
                 const inputGrid = isCraftingTableOpen ? craftingTableInput : craftingInput;
@@ -564,6 +639,10 @@
                 slot.dataset.index = index;
                 slot.dataset.type = type;
                 slot.onclick = () => handleInventoryClick(index, type); 
+                slot.oncontextmenu = (e) => {
+                    e.preventDefault();
+                    handleInventoryRightClick(index, type);
+                }; 
                 
                 if (item) {
                     const mat = blockMaterials[item.id];
@@ -920,6 +999,7 @@
 
     
         function getRiverMask(wx, wz) {
+            return TerrainModules.river.getMask({ perlin, wx, wz });
             // Use a large scale noise to define the winding path
             const scale = 0.001; 
             const pathNoise = perlin.noise2D(wx * scale + 1000, wz * scale + 1000); 
