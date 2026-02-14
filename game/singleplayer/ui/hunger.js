@@ -8,12 +8,27 @@
 
   let onMessage = null;
 
+  function render() {
+    const container = document.getElementById('hunger-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const iconPath = window.SingleplayerConfig?.ASSET_FILEPATHS?.FOOD || '';
+    const foods = Math.ceil(state.value / 2);
+
+    for (let i = 0; i < foods; i++) {
+      const foodImg = document.createElement('img');
+      foodImg.src = iconPath;
+      foodImg.className = 'food-icon';
+      foodImg.alt = 'Food';
+      container.appendChild(foodImg);
+    }
+  }
 
   function init({ messageCallback } = {}) {
     onMessage = messageCallback || null;
     render();
   }
-
 
   function update(nowMs, { isMoving, isSprinting }) {
     if (!state.lastTickAt) state.lastTickAt = nowMs;

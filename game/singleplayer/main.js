@@ -93,7 +93,7 @@
             // 1. Load textures specified in ASSET_FILEPATHS using the literal relative paths
             for (const key in ASSET_FILEPATHS) {
                 // Skip UI assets which are loaded via <img> tags
-                if (key === 'HEART') continue; 
+                if (key === 'HEART' || key === 'FOOD') continue; 
 
                 const path = ASSET_FILEPATHS[key];
                 
