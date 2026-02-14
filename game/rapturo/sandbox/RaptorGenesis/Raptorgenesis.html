@@ -1,1 +1,1133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Raptor's Path - Survival Evolution</title>
+    <style>
+        :root {
+            --forest-dark: #1a2f1a;
+            --forest-light: #2d5a27;
+            --prehistoric-gold: #c5a059;
+            --ui-bg: rgba(0, 0, 0, 0.85);
+            --danger: #ff4d4d;
+            --stamina: #4deaff;
+            --health: #4dff88;
+            --shop-accent: #a059c5;
+        }
 
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #eee;
+            user-select: none;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            display: block;
+            background: #1a2f1a;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+            cursor: none;
+        }
+
+        /* UI Overlay */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .hud-bar-container {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            width: 300px;
+            background: rgba(0,0,0,0.6);
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 5px solid var(--prehistoric-gold);
+            pointer-events: auto;
+            backdrop-filter: blur(5px);
+        }
+
+        .bar-wrapper {
+            margin-bottom: 10px;
+        }
+
+        .label {
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .bar-bg {
+            width: 100%;
+            height: 12px;
+            background: #222;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .bar-fill {
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+
+        #hp-fill { background: var(--health); width: 100%; box-shadow: 0 0 10px var(--health); }
+        #stamina-fill { background: var(--stamina); width: 100%; box-shadow: 0 0 10px var(--stamina); }
+        #hunger-fill { background: #ffaa00; width: 100%; }
+
+        .score-display {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--prehistoric-gold);
+            text-shadow: 2px 2px 4px black;
+            text-align: right;
+            pointer-events: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+
+        #shop-btn {
+            background: var(--shop-accent);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 10px;
+            font-family: inherit;
+            transition: transform 0.2s, background 0.2s;
+            box-shadow: 0 4px 15px rgba(160, 89, 197, 0.4);
+        }
+
+        #shop-btn:hover {
+            transform: translateY(-2px);
+            background: #b36dd8;
+        }
+
+        #evolution-shop {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 450px;
+            background: var(--ui-bg);
+            border: 2px solid var(--shop-accent);
+            border-radius: 15px;
+            padding: 25px;
+            display: none;
+            flex-direction: column;
+            pointer-events: auto;
+            z-index: 200;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 0 100px rgba(0,0,0,0.8);
+        }
+
+        .shop-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #444;
+            padding-bottom: 15px;
+        }
+
+        .shop-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255,255,255,0.05);
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .shop-item:hover {
+            background: rgba(255,255,255,0.1);
+            border-color: var(--shop-accent);
+        }
+
+        .item-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .item-name {
+            font-weight: bold;
+            color: var(--prehistoric-gold);
+            font-size: 16px;
+        }
+
+        .item-desc {
+            font-size: 12px;
+            color: #ccc;
+            margin-top: 2px;
+        }
+
+        .buy-btn {
+            background: #333;
+            color: #888;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: not-allowed;
+            font-size: 13px;
+            min-width: 90px;
+            transition: all 0.2s;
+        }
+
+        .buy-btn.affordable {
+            background: var(--health);
+            color: #000;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .buy-btn.affordable:hover {
+            filter: brightness(1.1);
+            transform: scale(1.05);
+        }
+
+        .overlay-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(20,40,20,0.95) 0%, rgba(0,0,0,1) 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            pointer-events: auto;
+            text-align: center;
+            padding: 20px;
+        }
+
+        h1 {
+            font-size: 72px;
+            margin-bottom: 10px;
+            color: var(--prehistoric-gold);
+            letter-spacing: 8px;
+            text-transform: uppercase;
+            text-shadow: 0 0 30px rgba(197, 160, 89, 0.4);
+        }
+
+        .btn {
+            padding: 18px 50px;
+            font-size: 22px;
+            background: var(--prehistoric-gold);
+            color: #000;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.2s;
+            font-weight: bold;
+            text-transform: uppercase;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+            background: #fff;
+            box-shadow: 0 0 30px rgba(255,255,255,0.3);
+        }
+
+        .controls-hint {
+            margin-top: 40px;
+            font-size: 14px;
+            color: #999;
+            line-height: 1.8;
+            background: rgba(255,255,255,0.05);
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        #death-screen { display: none; }
+
+        #level-up-note {
+            position: absolute;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 60px;
+            color: gold;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.5s;
+            font-weight: 900;
+            text-shadow: 0 0 20px orange;
+        }
+        
+        #save-status {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 12px;
+            color: rgba(255,255,255,0.5);
+            pointer-events: none;
+        }
+
+        @media (max-width: 768px) {
+            .hud-bar-container { width: 220px; bottom: 20px; left: 20px; }
+            h1 { font-size: 40px; }
+            #evolution-shop { width: 95%; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="ui-layer">
+        <div id="save-status">Connecting to Cloud...</div>
+        <div class="hud-bar-container">
+            <div class="bar-wrapper">
+                <div class="label"><span>Health</span><span id="hp-val">100</span></div>
+                <div class="bar-bg"><div id="hp-fill" class="bar-fill"></div></div>
+            </div>
+            <div class="bar-wrapper">
+                <div class="label"><span>Stamina</span><span id="stamina-val">100</span></div>
+                <div class="bar-bg"><div id="stamina-fill" class="bar-fill"></div></div>
+            </div>
+            <div class="bar-wrapper">
+                <div class="label"><span>Hunger</span><span id="hunger-val">100</span></div>
+                <div class="bar-bg"><div id="hunger-fill" class="bar-fill"></div></div>
+            </div>
+            <div style="font-size: 13px; color: #aaa; margin-top: 8px; display: flex; justify-content: space-between;">
+                <span>Evolution Lvl: <span id="lvl-val">1</span></span>
+                <span id="time-display">00:00</span>
+            </div>
+        </div>
+
+        <div class="score-display">
+            <div style="font-size: 16px; color: #888;">EVOLVED POINTS</div>
+            <div id="score-val" style="font-size: 32px; color: gold;">0</div>
+            <button id="shop-btn" onclick="window.toggleShop()">EVOLUTION SHOP</button>
+            <div style="font-size: 10px; color: #666; margin-top: 5px;" id="online-count">Offline</div>
+        </div>
+
+        <div id="evolution-shop">
+            <div class="shop-header">
+                <h2 style="margin:0; color:var(--shop-accent)">Mutation Chamber</h2>
+                <button onclick="window.toggleShop()" style="background:none; border:none; color:white; cursor:pointer; font-size:24px;">✕</button>
+            </div>
+            <div id="shop-items-container"></div>
+            <p style="font-size: 11px; text-align: center; color: #777; margin-top: 15px;">Prices increase exponentially with each purchase.</p>
+        </div>
+
+        <div id="start-screen" class="overlay-screen">
+            <h1>Raptor's Path</h1>
+            <p style="font-size: 18px; color: #aaa; max-width: 600px; margin: 0 auto;">Enter the cretaceous jungle. Hunt smaller prey, avoid the Apex Tyrant, and spend Evolved Points to become the ultimate predator.</p>
+            <p style="color: #4deaff; font-size: 14px; margin-top: 10px;">Cloud Save Active | Multiplayer Enabled</p>
+            <button class="btn" onclick="window.startGame()">Begin Survival</button>
+            <div class="controls-hint">
+                <b>WASD / Arrows</b>: Move &nbsp;|&nbsp; <b>Hold Shift</b>: Sprint &nbsp;|&nbsp; <b>Space</b>: Pounce<br>
+                Look for <b>Golden Struthi</b> for bonus points or <b>Lush Ferns</b> to heal!
+            </div>
+        </div>
+
+        <div id="death-screen" class="overlay-screen">
+            <h1 style="color: var(--danger); letter-spacing: 2px;">Extinction Event</h1>
+            <p style="font-size: 20px;">Your lineage ends here.</p>
+            <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 10px; margin: 20px 0;">
+                <p>Final Evolution Level: <span id="final-lvl" style="color: gold;">1</span></p>
+                <p>Genetic Contribution: <span id="final-score" style="color: gold;">0</span> Points</p>
+                <p>Time Survived: <span id="final-time" style="color: gold;">0</span>s</p>
+            </div>
+            <button class="btn" onclick="location.reload()">Re-Evolve</button>
+        </div>
+
+        <div id="level-up-note">ASCENDED!</div>
+    </div>
+</div>
+
+<script type="module">
+/**
+ * RAPTOR'S PATH - CLOUD ENABLED
+ */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+// --- FIREBASE CONFIG & AUTH ---
+const firebaseConfig = JSON.parse(__firebase_config);
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+let currentUser = null;
+let otherPlayers = {};
+
+// --- GAME LOGIC START ---
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+const WORLD_SIZE = 4500;
+const INITIAL_ENTITIES = {
+    TREES: 140,
+    FERNS: 180,
+    HEAL_FERNS: 15,
+    STRUTHI: 14,
+    TRICERATOPS: 5,
+    REX: 1
+};
+
+const THEME = {
+    grass: '#1e3518',
+    dirt: '#3d2b1f',
+    trunk: '#2b1d12',
+    healFern: '#4dff88',
+    goldStruthi: '#ffd700'
+};
+
+let gameState = 'MENU';
+let camera = { x: 0, y: 0 };
+let player;
+let entities = [];
+let particles = [];
+let keys = {};
+let score = 0;
+let gameTime = 0;
+let dayCycle = 0; 
+let isShopOpen = false;
+
+// Default Shop Items (Costs will scale)
+let shopMutations = {
+    speed: 0,
+    health: 0,
+    stamina: 0,
+    regen: 0,
+    attack: 0
+};
+
+const BASE_SHOP_ITEMS = [
+    { id: 'speed', name: 'Agility Mutator', desc: '+15% Max Speed', baseCost: 1000, type: 'stat' },
+    { id: 'health', name: 'Hardened Hide', desc: '+50 Max Vitality', baseCost: 1500, type: 'hp' },
+    { id: 'stamina', name: 'Powerful Lungs', desc: '+60 Max Stamina', baseCost: 1200, type: 'stamina' },
+    { id: 'regen', name: 'Slow Metabolism', desc: 'Hunger drains 25% slower', baseCost: 2000, type: 'hunger' },
+    { id: 'attack', name: 'Serrated Claws', desc: '+15 Pounce Damage', baseCost: 2500, type: 'damage' }
+];
+
+const randomRange = (min, max) => Math.random() * (max - min) + min;
+const distance = (a, b) => Math.sqrt((a.x - b.x)**2 + (a.y - b.y)**2);
+const lerp = (a, b, t) => a + (b - a) * t;
+
+// --- CLOUD FUNCTIONS ---
+async function initAuth() {
+    try {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+            await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+            await signInAnonymously(auth);
+        }
+    } catch (error) {
+        console.error("Auth Error:", error);
+    }
+}
+
+initAuth();
+
+onAuthStateChanged(auth, async (user) => {
+    if (user) {
+        currentUser = user;
+        document.getElementById('save-status').innerText = "Cloud Sync Active";
+        await loadProgress();
+        setupMultiplayer();
+    }
+});
+
+async function saveProgress() {
+    if (!currentUser) return;
+    try {
+        const userDoc = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'profile', 'stats');
+        await setDoc(userDoc, {
+            score: score,
+            level: player ? player.level : 1,
+            mutations: shopMutations,
+            lastPlayed: Date.now()
+        }, { merge: true });
+        document.getElementById('save-status').innerText = "Progress Saved";
+        setTimeout(() => document.getElementById('save-status').innerText = "Cloud Sync Active", 2000);
+    } catch (e) {
+        console.error("Save failed", e);
+    }
+}
+
+async function loadProgress() {
+    if (!currentUser) return;
+    const userDoc = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'profile', 'stats');
+    const snap = await getDoc(userDoc);
+    if (snap.exists()) {
+        const data = snap.data();
+        score = data.score || 0;
+        shopMutations = data.mutations || shopMutations;
+        // Level is loaded when player spawns
+        if (player) {
+            player.level = data.level || 1;
+            player.applyMutations();
+            player.updateHUD();
+        }
+    }
+}
+
+function setupMultiplayer() {
+    // Listen for other players
+    const playersCol = collection(db, 'artifacts', appId, 'public', 'data', 'players');
+    onSnapshot(playersCol, (snapshot) => {
+        otherPlayers = {};
+        let count = 0;
+        snapshot.forEach(doc => {
+            if (doc.id !== currentUser.uid) {
+                const data = doc.data();
+                // Ignore stale players (>10s old)
+                if (Date.now() - data.timestamp < 10000) {
+                    otherPlayers[doc.id] = data;
+                    count++;
+                }
+            }
+        });
+        document.getElementById('online-count').innerText = `${count + 1} Raptors Hunting`;
+    });
+}
+
+// Throttle position updates
+let lastPosUpdate = 0;
+function updateMultiplayerPos() {
+    if (!currentUser || !player || gameState !== 'PLAYING') return;
+    const now = Date.now();
+    if (now - lastPosUpdate > 1000) { // Update every 1 second
+        lastPosUpdate = now;
+        const myDoc = doc(db, 'artifacts', appId, 'public', 'data', 'players', currentUser.uid);
+        setDoc(myDoc, {
+            x: Math.round(player.x),
+            y: Math.round(player.y),
+            angle: player.angle,
+            level: player.level,
+            timestamp: now
+        });
+    }
+}
+
+// --- GAME CLASSES ---
+
+class Raptor {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.angle = 0;
+        this.speed = 0;
+        this.maxSpeed = 5;
+        this.sprintMult = 1.85;
+        this.accel = 0.25;
+        this.friction = 0.95;
+        
+        this.hp = 100;
+        this.maxHp = 100;
+        this.stamina = 100;
+        this.maxStamina = 100;
+        this.hunger = 100;
+        this.maxHunger = 100;
+        this.level = 1;
+        this.extraDamage = 0;
+        this.hungerDrainRate = 0.006;
+        
+        this.isAttacking = false;
+        this.attackCooldown = 0;
+        this.animFrame = 0;
+        this.legAngle = 0;
+        this.trail = [];
+    }
+
+    applyMutations() {
+        // Recalculate stats based on saved mutations
+        this.maxSpeed = 5 * Math.pow(1.15, shopMutations.speed);
+        this.maxHp = 100 + (shopMutations.health * 50) + (this.level * 25);
+        this.hp = Math.min(this.hp, this.maxHp); // Don't overheal on load
+        this.maxStamina = 100 + (shopMutations.stamina * 60);
+        this.hungerDrainRate = 0.006 * Math.pow(0.75, shopMutations.regen);
+        this.extraDamage = shopMutations.attack * 15;
+    }
+
+    update() {
+        if (this.hp <= 0 || isShopOpen) return;
+
+        let moveX = 0;
+        let moveY = 0;
+        if (keys['w'] || keys['arrowup']) moveY -= 1;
+        if (keys['s'] || keys['arrowdown']) moveY += 1;
+        if (keys['a'] || keys['arrowleft']) moveX -= 1;
+        if (keys['d'] || keys['arrowright']) moveX += 1;
+
+        const isSprinting = keys['shift'] && this.stamina > 2 && (moveX !== 0 || moveY !== 0);
+        
+        if (moveX !== 0 || moveY !== 0) {
+            const mag = Math.sqrt(moveX * moveX + moveY * moveY);
+            moveX /= mag;
+            moveY /= mag;
+
+            const currentMax = isSprinting ? this.maxSpeed * this.sprintMult : this.maxSpeed;
+            this.speed = Math.min(this.speed + this.accel, currentMax);
+            
+            let target = Math.atan2(moveY, moveX);
+            let diff = target - this.angle;
+            while (diff < -Math.PI) diff += Math.PI * 2;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            this.angle += diff * 0.18;
+
+            if (isSprinting) {
+                this.stamina -= 0.6;
+                if (gameTime % 3 === 0) {
+                    this.trail.push({x: this.x, y: this.y, life: 1.0, angle: this.angle});
+                }
+            } else {
+                this.stamina = Math.min(this.stamina + 0.15, this.maxStamina);
+            }
+        } else {
+            this.speed *= this.friction;
+            this.stamina = Math.min(this.stamina + 0.3, this.maxStamina);
+        }
+
+        this.x += Math.cos(this.angle) * this.speed;
+        this.y += Math.sin(this.angle) * this.speed;
+
+        this.x = Math.max(0, Math.min(WORLD_SIZE, this.x));
+        this.y = Math.max(0, Math.min(WORLD_SIZE, this.y));
+
+        this.hunger -= this.hungerDrainRate;
+        if (this.hunger <= 0) {
+            this.hunger = 0;
+            this.hp -= 0.08;
+        }
+        if (this.hunger > 80 && this.hp < this.maxHp) this.hp += 0.02;
+
+        if (keys[' '] && this.attackCooldown <= 0) this.attack();
+        if (this.attackCooldown > 0) this.attackCooldown--;
+
+        this.animFrame += this.speed * 0.15;
+        this.legAngle = Math.sin(this.animFrame) * 0.6;
+
+        for(let i=this.trail.length-1; i>=0; i--) {
+            this.trail[i].life -= 0.05;
+            if (this.trail[i].life <= 0) this.trail.splice(i, 1);
+        }
+
+        this.updateHUD();
+    }
+
+    attack() {
+        this.isAttacking = true;
+        this.attackCooldown = 35;
+        this.speed = 18; 
+        
+        entities.forEach(e => {
+            if (e.type === 'prey' || e.type === 'rival') {
+                const dist = distance(this, e);
+                if (dist < 100) {
+                    const dmg = 30 + (this.level * 8) + this.extraDamage;
+                    e.takeDamage(dmg);
+                    createBlood(e.x, e.y, e.color || 'red');
+                }
+            }
+        });
+
+        setTimeout(() => this.isAttacking = false, 250);
+    }
+
+    takeDamage(amt) {
+        this.hp -= amt;
+        createBlood(this.x, this.y, 'red');
+        if (this.hp <= 0) endGame();
+    }
+
+    eat(carcass) {
+        if (this.hunger < this.maxHunger) {
+            const gain = carcass.isGolden ? 50 : 25;
+            this.hunger = Math.min(this.maxHunger, this.hunger + gain);
+            this.hp = Math.min(this.maxHp, this.hp + 15);
+            score += carcass.isGolden ? 1000 : 150;
+            checkLevelUp();
+            updateShopUI(); // Updates visuals
+            saveProgress(); // Auto save on eat/gain points
+            return true;
+        }
+        return false;
+    }
+
+    updateHUD() {
+        document.getElementById('hp-fill').style.width = (this.hp / this.maxHp * 100) + '%';
+        document.getElementById('stamina-fill').style.width = (this.stamina / this.maxStamina * 100) + '%';
+        document.getElementById('hunger-fill').style.width = (this.hunger / this.maxHunger * 100) + '%';
+        document.getElementById('hp-val').innerText = Math.ceil(this.hp);
+        document.getElementById('stamina-val').innerText = Math.ceil(this.stamina);
+        document.getElementById('hunger-val').innerText = Math.ceil(this.hunger);
+        document.getElementById('score-val').innerText = Math.floor(score);
+        document.getElementById('lvl-val').innerText = this.level;
+        
+        const mins = Math.floor(gameTime / 3600);
+        const secs = Math.floor((gameTime % 3600) / 60);
+        document.getElementById('time-display').innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    draw() {
+        this.trail.forEach(t => {
+            ctx.save();
+            ctx.globalAlpha = t.life * 0.3;
+            ctx.translate(t.x, t.y);
+            ctx.rotate(t.angle);
+            ctx.fillStyle = '#4a6b3c';
+            ctx.beginPath(); ctx.ellipse(0, 0, 20, 8, 0, 0, Math.PI*2); ctx.fill();
+            ctx.restore();
+        });
+
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.angle);
+
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.beginPath(); ctx.ellipse(0, 5, 30, 15, 0, 0, Math.PI * 2); ctx.fill();
+
+        ctx.strokeStyle = '#2d4c1e';
+        ctx.lineWidth = 6;
+        ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(0, 5); ctx.lineTo(Math.cos(this.legAngle) * 20, 18); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, -5); ctx.lineTo(Math.cos(this.legAngle + Math.PI) * 20, -18); ctx.stroke();
+
+        ctx.beginPath();
+        ctx.strokeStyle = '#4a6b3c';
+        ctx.lineWidth = 8;
+        ctx.moveTo(-10, 0);
+        ctx.quadraticCurveTo(-45, Math.sin(this.animFrame*0.3)*12, -65, 0);
+        ctx.stroke();
+
+        ctx.fillStyle = '#4a6b3c';
+        ctx.beginPath(); ctx.ellipse(0, 0, 28, 14, 0, 0, Math.PI * 2); ctx.fill();
+        
+        ctx.save();
+        ctx.translate(22, 0);
+        ctx.rotate(Math.sin(this.animFrame*0.1)*0.15);
+        ctx.fillStyle = '#4a6b3c';
+        ctx.beginPath();
+        ctx.moveTo(0, -10); ctx.lineTo(30, -5); ctx.lineTo(30, 5); ctx.lineTo(0, 10);
+        ctx.fill();
+        ctx.fillStyle = 'yellow';
+        ctx.beginPath(); ctx.arc(18, -4, 2.5, 0, Math.PI*2); ctx.fill();
+        
+        if (this.isAttacking) {
+            ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+            ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.moveTo(25, -10); ctx.lineTo(45, 0); ctx.lineTo(25, 10); ctx.stroke();
+        }
+        ctx.restore();
+
+        ctx.restore();
+    }
+}
+
+class Entity {
+    constructor(x, y, type) {
+        this.x = x; this.y = y;
+        this.type = type;
+        this.dead = false;
+        this.angle = Math.random() * Math.PI * 2;
+        this.health = 100;
+    }
+    update() {}
+    draw() {}
+    takeDamage(amt) {
+        this.health -= amt;
+        if (this.health <= 0) this.die();
+    }
+    die() { this.dead = true; }
+}
+
+class Fern extends Entity {
+    constructor(x, y, isHealing = false) {
+        super(x, y, 'scenery');
+        this.isHealing = isHealing;
+        this.size = randomRange(15, 30);
+        this.leaves = Math.floor(randomRange(6, 10));
+    }
+    update() {
+        if (this.isHealing && distance(this, player) < 80) {
+            player.hp = Math.min(player.maxHp, player.hp + 0.15);
+            if (gameTime % 10 === 0) {
+                particles.push({x: this.x + randomRange(-20,20), y: this.y + randomRange(-20,20), vx: 0, vy: -1, life: 1, color: '#4dff88', size: 2});
+            }
+        }
+    }
+    draw() {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.fillStyle = this.isHealing ? THEME.healFern : '#2d5a27';
+        for(let i=0; i<this.leaves; i++) {
+            ctx.rotate((Math.PI * 2) / this.leaves);
+            ctx.beginPath(); ctx.ellipse(this.size/2, 0, this.size, this.size/4, 0, 0, Math.PI*2); ctx.fill();
+        }
+        if (this.isHealing) {
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = THEME.healFern;
+            ctx.fillStyle = 'white';
+            ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI*2); ctx.fill();
+        }
+        ctx.restore();
+    }
+}
+
+class Tree extends Entity {
+    constructor(x, y) {
+        super(x, y, 'scenery');
+        this.size = randomRange(50, 110);
+    }
+    draw() {
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.beginPath(); ctx.arc(this.x, this.y + 10, this.size*0.4, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = THEME.trunk;
+        ctx.beginPath(); ctx.arc(this.x, this.y, this.size * 0.25, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#1b3d1b';
+        ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+        ctx.lineWidth = 5;
+        ctx.beginPath(); ctx.arc(this.x, this.y, this.size * 0.7, 0, Math.PI * 2); ctx.stroke();
+    }
+}
+
+class Prey extends Entity {
+    constructor(x, y, subType = 'struthi') {
+        super(x, y, 'prey');
+        this.subType = subType;
+        this.isGolden = subType === 'struthi' && Math.random() < 0.08;
+        this.maxSpeed = subType === 'struthi' ? (this.isGolden ? 8 : 6.5) : 3.5;
+        this.speed = 0;
+        this.health = subType === 'struthi' ? 40 : 180;
+        this.color = this.isGolden ? THEME.goldStruthi : (subType === 'struthi' ? '#c5a059' : '#7a6a56');
+        this.timer = 0;
+    }
+    update() {
+        if (isShopOpen) return;
+        const d = distance(this, player);
+        if (d < 400) {
+            this.angle = Math.atan2(this.y - player.y, this.x - player.x);
+            this.speed = this.maxSpeed;
+        } else {
+            if (--this.timer <= 0) {
+                this.timer = randomRange(60, 180);
+                this.angle = randomRange(0, Math.PI*2);
+                this.speed = Math.random() < 0.5 ? 1.5 : 0;
+            }
+        }
+        this.x += Math.cos(this.angle) * this.speed;
+        this.y += Math.sin(this.angle) * this.speed;
+        this.x = Math.max(0, Math.min(WORLD_SIZE, this.x));
+        this.y = Math.max(0, Math.min(WORLD_SIZE, this.y));
+    }
+    draw() {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.angle);
+        if (this.isGolden) { ctx.shadowBlur = 15; ctx.shadowColor = 'gold'; }
+        ctx.fillStyle = this.color;
+        const s = this.subType === 'struthi' ? 22 : 45;
+        ctx.beginPath(); ctx.ellipse(0, 0, s, s/2.5, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+    }
+    die() {
+        this.dead = true;
+        entities.push(new Carcass(this.x, this.y, this.isGolden));
+    }
+}
+
+class Carcass extends Entity {
+    constructor(x, y, isGolden) {
+        super(x, y, 'food');
+        this.isGolden = isGolden;
+        this.meat = 100;
+    }
+    update() {
+        if (distance(this, player) < 60 && player.eat(this)) {
+            this.meat -= 20;
+            if (this.meat <= 0) this.dead = true;
+        }
+    }
+    draw() {
+        ctx.fillStyle = this.isGolden ? 'gold' : '#8a2b2b';
+        ctx.beginPath(); ctx.ellipse(this.x, this.y, 25 * (this.meat/100), 15 * (this.meat/100), 0, 0, Math.PI*2); ctx.fill();
+    }
+}
+
+class Rex extends Entity {
+    constructor(x,y) {
+        super(x,y,'rival');
+        this.maxSpeed = 5.2; // Slightly faster
+        this.speed = 0;
+        this.angle = 0;
+        // BALANCE FIX: Massive HP scaling based on player level
+        // 5000 Base HP + 2000 per Player Level
+        this.health = 5000 + (player ? player.level * 2000 : 0);
+        this.maxHealth = this.health;
+    }
+    update() {
+        if (isShopOpen) return;
+        const d = distance(this, player);
+        if (d < 1200) {
+            this.angle = Math.atan2(player.y - this.y, player.x - this.x);
+            this.speed = this.maxSpeed;
+            if (d < 120 && Math.random() < 0.05) {
+                // Damage scales with level too
+                player.takeDamage(10 + (player.level * 2));
+            }
+        } else {
+            this.speed *= 0.98;
+        }
+        this.x += Math.cos(this.angle) * this.speed;
+        this.y += Math.sin(this.angle) * this.speed;
+    }
+    draw() {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.angle);
+        ctx.fillStyle = '#4a3b27';
+        ctx.beginPath(); ctx.ellipse(0, 0, 90, 45, 0, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#33281a';
+        ctx.fillRect(55, -30, 70, 60); // Head
+        ctx.fillStyle = 'red';
+        ctx.beginPath(); ctx.arc(100, -15, 5, 0, Math.PI*2); ctx.fill();
+        
+        // HP Bar for Rex
+        ctx.fillStyle = 'black';
+        ctx.fillRect(-50, -60, 100, 10);
+        ctx.fillStyle = 'red';
+        ctx.fillRect(-50, -60, 100 * (this.health / this.maxHealth), 10);
+        
+        ctx.restore();
+    }
+}
+
+function spawnWorld() {
+    entities = [];
+    for(let i=0; i<INITIAL_ENTITIES.TREES; i++) entities.push(new Tree(randomRange(0, WORLD_SIZE), randomRange(0, WORLD_SIZE)));
+    for(let i=0; i<INITIAL_ENTITIES.FERNS; i++) entities.push(new Fern(randomRange(0, WORLD_SIZE), randomRange(0, WORLD_SIZE)));
+    for(let i=0; i<INITIAL_ENTITIES.HEAL_FERNS; i++) entities.push(new Fern(randomRange(0, WORLD_SIZE), randomRange(0, WORLD_SIZE), true));
+    for(let i=0; i<INITIAL_ENTITIES.STRUTHI; i++) entities.push(new Prey(randomRange(0, WORLD_SIZE), randomRange(0, WORLD_SIZE), 'struthi'));
+    for(let i=0; i<INITIAL_ENTITIES.TRICERATOPS; i++) entities.push(new Prey(randomRange(0, WORLD_SIZE), randomRange(0, WORLD_SIZE), 'trike'));
+    entities.push(new Rex(WORLD_SIZE-400, WORLD_SIZE-400));
+}
+
+function createBlood(x, y, color) {
+    for(let i=0; i<12; i++) {
+        particles.push({
+            x, y, vx: randomRange(-4, 4), vy: randomRange(-4, 4),
+            life: 1.0, color: color, size: randomRange(2, 6)
+        });
+    }
+}
+
+// Global functions for HTML access
+window.toggleShop = function() {
+    isShopOpen = !isShopOpen;
+    document.getElementById('evolution-shop').style.display = isShopOpen ? 'flex' : 'none';
+    if (isShopOpen) updateShopUI();
+}
+
+function updateShopUI() {
+    const container = document.getElementById('shop-items-container');
+    container.innerHTML = '';
+    BASE_SHOP_ITEMS.forEach(item => {
+        const count = shopMutations[item.id] || 0;
+        // BALANCE FIX: Exponential cost scaling (1.8^count)
+        const currentCost = Math.floor(item.baseCost * Math.pow(1.8, count));
+        const affordable = score >= currentCost;
+        
+        const el = document.createElement('div');
+        el.className = 'shop-item';
+        el.innerHTML = `
+            <div class="item-info">
+                <span class="item-name">${item.name} <span style="font-size:10px; color:#666">(Lvl ${count})</span></span>
+                <span class="item-desc">${item.desc}</span>
+            </div>
+            <button class="buy-btn ${affordable ? 'affordable' : ''}" data-id="${item.id}" data-cost="${currentCost}">${currentCost} EP</button>
+        `;
+        // Add event listener manually to avoid global scope issues with params
+        el.querySelector('button').onclick = () => buyItem(item.id, currentCost);
+        container.appendChild(el);
+    });
+}
+
+function buyItem(id, cost) {
+    if (score < cost) return;
+    
+    score -= cost;
+    shopMutations[id] = (shopMutations[id] || 0) + 1;
+    
+    player.applyMutations();
+    player.updateHUD();
+    updateShopUI();
+    saveProgress();
+}
+
+function checkLevelUp() {
+    // Slower leveling: Level * 2500
+    if (score >= player.level * 2500) {
+        player.level++;
+        player.applyMutations(); // Apply level-based stats
+        player.hp = player.maxHp;
+        const note = document.getElementById('level-up-note');
+        note.style.opacity = '1';
+        note.style.top = '30%';
+        setTimeout(() => { note.style.opacity = '0'; note.style.top = '40%'; }, 2000);
+        saveProgress();
+    }
+}
+
+window.startGame = function() {
+    document.getElementById('start-screen').style.display = 'none';
+    player = new Raptor(WORLD_SIZE/2, WORLD_SIZE/2);
+    // Apply saved data if loaded before start
+    if (currentUser) {
+        loadProgress().then(() => {
+            player.applyMutations();
+            player.updateHUD();
+        });
+    }
+    spawnWorld();
+    gameState = 'PLAYING';
+    requestAnimationFrame(gameLoop);
+}
+
+function endGame() {
+    gameState = 'DEAD';
+    document.getElementById('death-screen').style.display = 'flex';
+    document.getElementById('final-score').innerText = Math.floor(score);
+    document.getElementById('final-time').innerText = Math.floor(gameTime / 60);
+    document.getElementById('final-lvl').innerText = player.level;
+    saveProgress();
+}
+
+function gameLoop() {
+    if (gameState !== 'PLAYING') return;
+    
+    if (!isShopOpen) {
+        gameTime++;
+        player.update();
+        updateMultiplayerPos();
+        
+        camera.x = lerp(camera.x, player.x - canvas.width / 2, 0.1);
+        camera.y = lerp(camera.y, player.y - canvas.height / 2, 0.1);
+        
+        entities.forEach((e, idx) => {
+            e.update();
+            if (e.dead) entities.splice(idx, 1);
+        });
+        
+        for(let i=particles.length-1; i>=0; i--) {
+            particles[i].x += particles[i].vx;
+            particles[i].y += particles[i].vy;
+            particles[i].life -= 0.02;
+            if (particles[i].life <= 0) particles.splice(i,1);
+        }
+        
+        if (gameTime % 400 === 0 && entities.filter(e => e.type === 'prey').length < 15) {
+            entities.push(new Prey(randomRange(0, WORLD_SIZE), randomRange(0, WORLD_SIZE), 'struthi'));
+        }
+    }
+    
+    draw();
+    requestAnimationFrame(gameLoop);
+}
+
+function draw() {
+    ctx.fillStyle = THEME.grass;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    ctx.save();
+    ctx.translate(-camera.x, -camera.y);
+    
+    // Bounds
+    ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+    ctx.lineWidth = 15;
+    ctx.strokeRect(-10, -10, WORLD_SIZE+20, WORLD_SIZE+20);
+
+    const sorted = [...entities].sort((a,b) => a.y - b.y);
+    sorted.forEach(e => { if(e.y < player.y) e.draw(); });
+
+    // Draw Multiplayer Ghosts
+    Object.keys(otherPlayers).forEach(key => {
+        const pData = otherPlayers[key];
+        ctx.save();
+        ctx.translate(pData.x, pData.y);
+        ctx.rotate(pData.angle);
+        ctx.globalAlpha = 0.5;
+        // Ghost Body
+        ctx.fillStyle = '#ffffff'; 
+        ctx.beginPath(); ctx.ellipse(0, 0, 28, 14, 0, 0, Math.PI * 2); ctx.fill();
+        // Name Tag
+        ctx.fillStyle = '#fff';
+        ctx.globalAlpha = 1.0;
+        ctx.font = '12px Arial';
+        ctx.fillText(`Player (Lvl ${pData.level || 1})`, -30, -20);
+        ctx.restore();
+    });
+    
+    particles.forEach(p => {
+        ctx.globalAlpha = p.life;
+        ctx.fillStyle = p.color;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
+    });
+    ctx.globalAlpha = 1.0;
+    
+    player.draw();
+    sorted.forEach(e => { if(e.y >= player.y) e.draw(); });
+    
+    ctx.restore();
+
+    // Night overlay based on sine wave
+    const darkness = Math.max(0, 0.5 * Math.sin(gameTime * 0.0005));
+    ctx.fillStyle = `rgba(0,0,20,${darkness})`;
+    ctx.fillRect(0,0,canvas.width, canvas.height);
+}
+
+window.addEventListener('resize', () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+});
+window.dispatchEvent(new Event('resize'));
+window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
+window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+
+</script>
+</body>
+</html>
