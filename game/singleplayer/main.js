@@ -64,6 +64,11 @@
             getHeight: function (ctx) { return ctx.BASE_LAND_Y + ctx.continentalMask * 8 + ctx.terrainNoise * 2; }
         };
 
+        TerrainModules['mountains'] = window.MountainsTerrain || {
+            isBiome: function (ctx) { return ctx.mountainNoise > 0.62 && ctx.climateNoise > -0.15; },
+            getHeight: function (ctx) { return ctx.BASE_LAND_Y + 10 + ctx.continentalMask * 14 + ctx.terrainNoise * 14 + ctx.ridgeNoise * 8; }
+        };
+
         // --- DAY/NIGHT CYCLE CONFIG ---
         const DAY_SEGMENTS = { sunrise: 2 * 60 * 1000, day: 8 * 60 * 1000, sunset: 2 * 60 * 1000, night: 8 * 60 * 1000 };
         const DAY_CYCLE_DURATION = DAY_SEGMENTS.sunrise + DAY_SEGMENTS.day + DAY_SEGMENTS.sunset + DAY_SEGMENTS.night;
@@ -112,6 +117,8 @@
         const BLOCK_HARDNESS = { 1: 1.2, 2: 1.0, 3: 2.6, 5: 1.8, 6: 0.25, 7: 1.0, 8: 1.2, 9: 2.0, 13: 2.2, 14: Infinity };
         let miningState = { active: false, key: null, blockPos: null, targetType: 0, elapsedMs: 0, neededMs: 0 };
         let isLeftMouseDown = false;
+        const breakingStageTextures = new Array(10).fill(null);
+        let breakingCrackMesh = null;
      
 
       
@@ -203,6 +210,7 @@
         async function init() {
             
             await loadAssets(); // Load all textures and materials first!
+            preloadBreakingTextures();
 
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x87ceeb); // FIX: Initialize background color
@@ -846,21 +854,84 @@
             return baseMs;
         }
 
+        function preloadBreakingTextures() {
+            const loader = new THREE.TextureLoader();
+            for (let i = 0; i < 10; i++) {
+                loader.load(`${BREAKING_TEXTURE_BASE}/${i}.png`, (tex) => {
+                    tex.magFilter = THREE.NearestFilter;
+                    tex.minFilter = THREE.NearestFilter;
+                    breakingStageTextures[i] = tex;
+                });
+            }
+        }
+
+        function ensureBreakingCrackMesh() {
+            if (breakingCrackMesh) return;
+            const geom = new THREE.BoxGeometry(1.01, 1.01, 1.01);
+            const mat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide });
+            breakingCrackMesh = new THREE.Mesh(geom, mat);
+            breakingCrackMesh.visible = false;
+            worldGroup.add(breakingCrackMesh);
+        }
+
+        function getTargetBlockFromCrosshair() {
+            if (!raycaster || !camera) return null;
+            raycaster.setFromCamera({ x: 0, y: 0 }, camera);
+            const meshes = [];
+            worldGroup.children.forEach(g => {
+                if (g.isMesh) meshes.push(g);
+                else if (g.children) g.children.forEach(m => meshes.push(m));
+            });
+            const intersects = raycaster.intersectObjects(meshes, true);
+            if (intersects.length <= 0) return null;
+            const hit = intersects[0];
+            const pos = hit.point.clone().sub(hit.face.normal.clone().multiplyScalar(0.01));
+            const wx = Math.floor(pos.x), wy = Math.floor(pos.y), wz = Math.floor(pos.z);
+            const blockId = getBlockType(wx, wy, wz);
+            if (blockId === 0 || blockId === 4) return null;
+            return { pos, wx, wy, wz, blockId };
+        }
+
+        function beginMiningTarget(target) {
+            const neededMs = getMiningDurationMs(target.blockId);
+            if (!isFinite(neededMs)) {
+                showGameMessage('Bedrock is unbreakable.');
+                return false;
+            }
+            miningState = {
+                active: true,
+                key: `${target.wx},${target.wy},${target.wz}`,
+                blockPos: target.pos,
+                targetType: target.blockId,
+                elapsedMs: 0,
+                neededMs,
+            };
+            return true;
+        }
+
         function updateBreakingOverlay() {
+            ensureBreakingCrackMesh();
             const overlay = document.getElementById('breaking-overlay');
-            if (!overlay) return;
-            if (!miningState.active || !isFinite(miningState.neededMs)) {
-                overlay.style.opacity = 0;
+            if (overlay) overlay.style.opacity = 0;
+
+            if (!miningState.active || !isFinite(miningState.neededMs) || !miningState.blockPos) {
+                if (breakingCrackMesh) breakingCrackMesh.visible = false;
                 return;
             }
 
             const progress = Math.min(1, miningState.elapsedMs / Math.max(1, miningState.neededMs));
             const stage = Math.min(9, Math.floor(progress * 10));
-            const heartPath = ASSET_FILEPATHS.HEART;
-            const base = heartPath.slice(0, heartPath.lastIndexOf('/ui/'));
-            overlay.style.backgroundImage = `url('${base}/breaking/${stage}.png')`;
-            overlay.style.opacity = 1;
+            const tex = breakingStageTextures[stage];
+
+            const wx = Math.floor(miningState.blockPos.x);
+            const wy = Math.floor(miningState.blockPos.y);
+            const wz = Math.floor(miningState.blockPos.z);
+            breakingCrackMesh.position.set(wx + 0.5, wy + 0.5, wz + 0.5);
+            if (tex) breakingCrackMesh.material.map = tex;
+            breakingCrackMesh.material.needsUpdate = true;
+            breakingCrackMesh.visible = true;
         }
+
 
         function setupBlockInteraction() {
             window.addEventListener('pointerdown', onPointerDown, false);
@@ -891,28 +962,11 @@
                 // LEFT CLICK - Break
                 if (event.button === 0) {
                     isLeftMouseDown = true;
-                    const hitPos = hit.point.clone().sub(hit.face.normal.clone().multiplyScalar(0.01));
-                    const wx = Math.floor(hitPos.x);
-                    const wy = Math.floor(hitPos.y);
-                    const wz = Math.floor(hitPos.z);
-                    const blockId = getBlockType(wx, wy, wz);
-                    if (blockId === 0 || blockId === 4) return;
-
-                    const neededMs = getMiningDurationMs(blockId);
-                    if (!isFinite(neededMs)) {
-                        showGameMessage("Bedrock is unbreakable.");
-                        return;
+                    const target = getTargetBlockFromCrosshair();
+                    if (target) {
+                        beginMiningTarget(target);
+                        updateBreakingOverlay();
                     }
-
-                    miningState = {
-                        active: true,
-                        key: `${wx},${wy},${wz}`,
-                        blockPos: hitPos,
-                        targetType: blockId,
-                        elapsedMs: 0,
-                        neededMs
-                    };
-                    updateBreakingOverlay();
                 } 
                 // RIGHT CLICK - Interact or Place
                 else if (event.button === 2) { 
@@ -1001,25 +1055,7 @@
 
     
         function getRiverMask(wx, wz) {
-            return TerrainModules.river.getMask({ perlin, wx, wz });
-            // Use a large scale noise to define the winding path
-            const scale = 0.001; 
-            const pathNoise = perlin.noise2D(wx * scale + 1000, wz * scale + 1000); 
-
-            // Use a second noise layer to slightly modulate the river path
-            const scaleBend = 0.002;
-            const bend = perlin.noise2D(wx * scaleBend + 500, wz * scaleBend + 500) * 0.5;
-
-            // Apply the bend to the path coordinates (creates a wavy river instead of straight bands)
-            const finalPath = perlin.noise2D(wx * scale + bend, wz * scale);
-
-            // Thickness defines how wide the river is. Lower value = wider river band around 0.
-            const thickness = 0.08; 
-            
-            // Attenuation is 1.0 at the center line (finalPath=0) and 0.0 outside the thickness.
-            const attenuation = 1.0 - Math.min(1.0, Math.abs(finalPath) / thickness);
-            
-            return attenuation;
+            return TerrainModules['river'].getMask({ perlin, wx, wz });
         }
 
 
@@ -1183,53 +1219,52 @@
         }
 
         function getBiome(wx, wz) {
-            const climateNoise = perlin.noise2D(wx * 0.0005, wz * 0.0005);
-            const moistureNoise = perlin.noise2D(wx * 0.0008 + 1000, wz * 0.0008 + 1000);
-            const detailNoise = perlin.noise2D(wx * 0.005, wz * 0.005);
+            const climateNoise = perlin.noise2D(wx * 0.00035, wz * 0.00035);
+            const moistureNoise = perlin.noise2D(wx * 0.0006 + 1000, wz * 0.0006 + 1000);
+            const detailNoise = perlin.noise2D(wx * 0.003, wz * 0.003);
+            const mountainNoise = (perlin.noise2D(wx * 0.0012 - 400, wz * 0.0012 + 750) + 1) * 0.5;
             const distFromCenter = Math.sqrt(wx * wx + wz * wz);
 
             if (TerrainModules['ocean'].isBiome({ climateNoise })) return 'Ocean';
-            if (TerrainModules['desert'].isBiome({ climateNoise, moistureNoise })) return 'Desert';
+            if (TerrainModules['mountains'].isBiome({ mountainNoise, climateNoise })) return 'Mountains';
+            if (TerrainModules['desert'].isBiome({ climateNoise, moistureNoise: moistureNoise - 0.05 })) return 'Desert';
             if (TerrainModules['oakForest'].isBiome({ detailNoise, distFromCenter, ISLAND_RADIUS })) return 'Forest';
             return 'Plains';
         }
 
+        function getRavineMask(wx, wz) {
+            const warp = perlin.noise2D(wx * 0.001 + 250, wz * 0.001 + 250) * 28;
+            const line = Math.abs(perlin.noise2D(wx * 0.0018 + warp, wz * 0.0018));
+            return 1.0 - Math.min(1.0, line / 0.045);
+        }
+
         function getNoiseGroundHeight(wx, wz, biome) {
-            
-            // Continental Mask for overall land mass (smoother transition)
-            const scale1 = 0.002; 
-            let continentalMask = (perlin.noise2D(wx * scale1, wz * scale1) + 1) * 0.5;
-            
-            const scale2 = 0.03; 
-            let terrainNoise = (perlin.noise2D(wx * scale2, wz * scale2) + 1) * 0.5; 
-            
-            // High-frequency detail noise
+            const scale1 = 0.002;
+            const continentalMask = (perlin.noise2D(wx * scale1, wz * scale1) + 1) * 0.5;
+            const scale2 = 0.03;
+            const terrainNoise = (perlin.noise2D(wx * scale2, wz * scale2) + 1) * 0.5;
             const detailNoise = (perlin.noise2D(wx * 0.1, wz * 0.1) + 1) * 0.5;
-            
-            let h;
+            const ridgeNoise = Math.abs(perlin.noise2D(wx * 0.02 + 50, wz * 0.02 + 50));
 
-            if (biome === 'Plains') {
-                h = TerrainModules['plains'].getHeight({ BASE_LAND_Y, continentalMask, terrainNoise });
-            } else if (biome === 'Forest') {
-                h = TerrainModules['oakForest'].getHeight({ BASE_LAND_Y, continentalMask, terrainNoise });
-            } else if (biome === 'Desert') {
-                h = TerrainModules['desert'].getHeight({ BASE_LAND_Y, continentalMask, terrainNoise });
-            } else {
-                h = TerrainModules['ocean'].getHeight({ SEA_LEVEL, terrainNoise });
-            }
-            
-            h += detailNoise * 0.5; // Add detail
+            let h = BASE_LAND_Y + continentalMask * 9 + terrainNoise * 4 + detailNoise;
+            if (biome === 'Plains') h += 0.5;
+            else if (biome === 'Forest') h += 3;
+            else if (biome === 'Desert') h += 2;
+            else if (biome === 'Mountains') h = TerrainModules['mountains'].getHeight({ BASE_LAND_Y, continentalMask, terrainNoise, ridgeNoise });
+            else h = TerrainModules['ocean'].getHeight({ SEA_LEVEL, terrainNoise });
 
-            // --- RIVER HEIGHT ADJUSTMENT ---
             const riverInfluence = getRiverMask(wx, wz);
             h = TerrainModules['river'].applyHeight({ height: h, riverInfluence, SEA_LEVEL });
-            // --- END RIVER HEIGHT ADJUSTMENT ---
-            
-            // Ensure land blocks are not too low relative to sea level
-            if (h < SEA_LEVEL - 5 && biome !== 'Ocean') h = SEA_LEVEL - 5; 
 
+            const ravine = getRavineMask(wx, wz);
+            if (ravine > 0.78 && biome !== 'Ocean') {
+                h -= (ravine - 0.78) * 70;
+            }
+
+            if (h < SEA_LEVEL - 5 && biome !== 'Ocean') h = SEA_LEVEL - 5;
             return Math.floor(h);
         }
+
 
         function getBlockType(wx, wy, wz) {
             // Check world boundary before accessing chunk data
@@ -1418,20 +1453,29 @@
                             }
                         }
                          
-                         // If near boundary and below sea level, wall it up
+                         const ravineMask = getRavineMask(wx, wz);
+                         if (ravineMask > 0.82) {
+                             const ravineDepth = Math.floor((ravineMask - 0.82) * 70) + 10;
+                             const ravineTop = Math.min(h + 6, CHUNK_HEIGHT - 1);
+                             const ravineBottom = Math.max(2, ravineTop - ravineDepth);
+                             if (y <= ravineTop && y >= ravineBottom) {
+                                 if (y < SEA_LEVEL - 2) t = 4;
+                                 else t = 0;
+                             }
+                         }
+
                          if (isNearBoundary && y < SEA_LEVEL && (t === 4 || t === 0)) {
-                             // Make water/air into stone wall at the edge
                              t = 3; 
                          } 
 
                          data[x + y*CHUNK_SIZE + z*CHUNK_SIZE*CHUNK_HEIGHT] = t;
                      }
                   
-                     // --- Tree Generation (Only on Forest Biome Surface) ---
-                     if (surfaceBlockType === 1 && biome === 'Forest' && !isRiver) { 
+                     // --- Tree Generation (Forest often, Plains occasionally) ---
+                     if (surfaceBlockType === 1 && (biome === 'Forest' || biome === 'Plains') && !isRiver) { 
                         
-                         // Low chance to spawn a tree
-                         if (Math.abs((wx * 1327 + wz * 9283) % 100) < 6) { // Increased chance for Forest
+                         const treeChance = biome === 'Forest' ? 6 : 2;
+                         if (Math.abs((wx * 1327 + wz * 9283) % 100) < treeChance) {
                             
                              const th = 5 + Math.floor(Math.random() * 2); // Tree height 5-6
                              // Trunk
@@ -1654,7 +1698,22 @@
         }
 
         function updateMining(deltaMs) {
-            if (!isLeftMouseDown || !miningState.active || !miningState.blockPos) {
+            if (!isLeftMouseDown) {
+                miningState.active = false;
+                updateBreakingOverlay();
+                return;
+            }
+
+            const target = getTargetBlockFromCrosshair();
+            if (!target) {
+                miningState.active = false;
+                updateBreakingOverlay();
+                return;
+            }
+
+            const currentKey = `${target.wx},${target.wy},${target.wz}`;
+            if (!miningState.active || miningState.key !== currentKey) {
+                beginMiningTarget(target);
                 updateBreakingOverlay();
                 return;
             }
@@ -1670,9 +1729,9 @@
                 const current = getBlockType(wx, wy, wz);
                 if (current === targetType) modifyWorld(blockPos, 0);
                 miningState.active = false;
-                updateBreakingOverlay();
             }
         }
+
 
         function animate(time) {
             requestAnimationFrame(animate);

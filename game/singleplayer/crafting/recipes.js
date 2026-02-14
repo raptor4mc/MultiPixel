@@ -5,6 +5,7 @@
     { name: 'Stick', output: { id: 10, count: 4 }, shape: [[8], [8]] },
     { name: 'Wooden Pickaxe', output: { id: 11, count: 1 }, shape: [[8, 8, 8], [0, 10, 0], [0, 10, 0]] },
     { name: 'Stone Pickaxe', output: { id: 12, count: 1 }, shape: [[3, 3, 3], [0, 10, 0], [0, 10, 0]] },
+    { name: 'Sand Stone', output: { id: 13, count: 4 }, shape: [[7, 7], [7, 7]] },
   ];
 
   function checkCraftingRecipe(inputSlots, gridWidth) {
