@@ -27,38 +27,39 @@
 
         const { checkCraftingRecipe, consumeCraftingInputForOne } = window.CraftingSystem;
 
-        const TerrainModules = {};
-
-        TerrainModules.ocean = window.OceanTerrain || {
-            isBiome: function (ctx) { return ctx.climateNoise <= -0.2; },
-            getHeight: function (ctx) { return ctx.SEA_LEVEL - 10 - ctx.terrainNoise * 5; }
-        };
-
-        TerrainModules.river = window.RiverTerrain || {
-            getMask: function (ctx) {
-                const scale = 0.001;
-                const path = ctx.perlin.noise2D(ctx.wx * scale, ctx.wz * scale);
-                return 1.0 - Math.min(1.0, Math.abs(path) / 0.08);
+        const TerrainModules = {
+            ocean: window.OceanTerrain || {
+                isBiome: ({ climateNoise }) => climateNoise <= -0.2,
+                getHeight: ({ SEA_LEVEL, terrainNoise }) => SEA_LEVEL - 10 - terrainNoise * 5,
             },
-            applyHeight: function (ctx) {
-                if (ctx.riverInfluence <= 0.1) return ctx.height;
-                return Math.max(ctx.height - ctx.riverInfluence * 15, ctx.SEA_LEVEL - 5);
+            river: window.RiverTerrain || {
+                getMask: ({ perlin, wx, wz }) => {
+                    const scale = 0.001;
+                    const path = perlin.noise2D(wx * scale, wz * scale);
+                    return 1.0 - Math.min(1.0, Math.abs(path) / 0.08);
+                },
+                applyHeight: ({ height, riverInfluence, SEA_LEVEL }) => {
+                    if (riverInfluence <= 0.1) return height;
+                    return Math.max(height - riverInfluence * 15, SEA_LEVEL - 5);
+                }
+            },
+            oakForest: window.OakForestTerrain || {
+                isBiome: ({ detailNoise, distFromCenter, ISLAND_RADIUS }) => distFromCenter < ISLAND_RADIUS || detailNoise > 0.1,
+                getHeight: ({ BASE_LAND_Y, continentalMask, terrainNoise }) => BASE_LAND_Y + continentalMask * 12 + terrainNoise * 7,
+            },
+            desert: window.DesertTerrain || {
+                isBiome: ({ climateNoise, moistureNoise }) => climateNoise > 0.2 && moistureNoise < 0.2,
+                getHeight: ({ BASE_LAND_Y, continentalMask, terrainNoise }) => BASE_LAND_Y + 3 + continentalMask * 10 + terrainNoise * 5,
+            },
+            plains: window.PlainsTerrain || {
+                isBiome: () => true,
+                getHeight: ({ BASE_LAND_Y, continentalMask, terrainNoise }) => BASE_LAND_Y + continentalMask * 8 + terrainNoise * 2,
             }
-        };
-
-        TerrainModules.oakForest = window.OakForestTerrain || {
-            isBiome: function (ctx) { return ctx.distFromCenter < ctx.ISLAND_RADIUS || ctx.detailNoise > 0.1; },
-            getHeight: function (ctx) { return ctx.BASE_LAND_Y + ctx.continentalMask * 12 + ctx.terrainNoise * 7; }
-        };
-
-        TerrainModules.desert = window.DesertTerrain || {
-            isBiome: function (ctx) { return ctx.climateNoise > 0.2 && ctx.moistureNoise < 0.2; },
-            getHeight: function (ctx) { return ctx.BASE_LAND_Y + 3 + ctx.continentalMask * 10 + ctx.terrainNoise * 5; }
-        };
-
-        TerrainModules.plains = window.PlainsTerrain || {
-            isBiome: function () { return true; },
-            getHeight: function (ctx) { return ctx.BASE_LAND_Y + ctx.continentalMask * 8 + ctx.terrainNoise * 2; }
+            ocean: window.OceanTerrain,
+            river: window.RiverTerrain,
+            oakForest: window.OakForestTerrain,
+            desert: window.DesertTerrain,
+            plains: window.PlainsTerrain
         };
 
         // --- DAY/NIGHT CYCLE CONFIG ---
@@ -999,6 +1000,24 @@
     
         function getRiverMask(wx, wz) {
             return TerrainModules.river.getMask({ perlin, wx, wz });
+            // Use a large scale noise to define the winding path
+            const scale = 0.001; 
+            const pathNoise = perlin.noise2D(wx * scale + 1000, wz * scale + 1000); 
+
+            // Use a second noise layer to slightly modulate the river path
+            const scaleBend = 0.002;
+            const bend = perlin.noise2D(wx * scaleBend + 500, wz * scaleBend + 500) * 0.5;
+
+            // Apply the bend to the path coordinates (creates a wavy river instead of straight bands)
+            const finalPath = perlin.noise2D(wx * scale + bend, wz * scale);
+
+            // Thickness defines how wide the river is. Lower value = wider river band around 0.
+            const thickness = 0.08; 
+            
+            // Attenuation is 1.0 at the center line (finalPath=0) and 0.0 outside the thickness.
+            const attenuation = 1.0 - Math.min(1.0, Math.abs(finalPath) / thickness);
+            
+            return attenuation;
         }
 
 
