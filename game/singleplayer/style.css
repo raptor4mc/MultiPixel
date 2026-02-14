@@ -14,7 +14,7 @@
             padding: 1rem;
             background-color: rgba(0, 0, 0, 0.6);
             color: white;
-            z-index: 10;
+            z-index: 200;
             border-bottom-right-radius: 8px;
             font-size: 0.8rem;
         }
