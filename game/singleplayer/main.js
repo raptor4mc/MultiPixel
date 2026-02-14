@@ -27,7 +27,7 @@
 
         const { checkCraftingRecipe, consumeCraftingInputForOne } = window.CraftingSystem;
 
-        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-14-3';
+        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-14-4';
         console.info('[Singleplayer build]', window.__SINGLEPLAYER_BUILD__);
 
         const TerrainModules = {};
@@ -885,19 +885,31 @@
         function getTargetBlockFromCrosshair() {
             if (!raycaster || !camera) return null;
             raycaster.setFromCamera({ x: 0, y: 0 }, camera);
+
             const meshes = [];
             worldGroup.children.forEach(g => {
+                if (g === breakingCrackMesh) return;
                 if (g.isMesh) meshes.push(g);
-                else if (g.children) g.children.forEach(m => meshes.push(m));
+                else if (g.children) {
+                    g.children.forEach(m => {
+                        if (m !== breakingCrackMesh) meshes.push(m);
+                    });
+                }
             });
+
             const intersects = raycaster.intersectObjects(meshes, true);
             if (intersects.length <= 0) return null;
-            const hit = intersects[0];
-            const pos = hit.point.clone().sub(hit.face.normal.clone().multiplyScalar(0.01));
-            const wx = Math.floor(pos.x), wy = Math.floor(pos.y), wz = Math.floor(pos.z);
-            const blockId = getBlockType(wx, wy, wz);
-            if (blockId === 0 || blockId === 4) return null;
-            return { pos, wx, wy, wz, blockId };
+
+            for (const hit of intersects) {
+                if (!hit.face || !hit.face.normal) continue;
+                const pos = hit.point.clone().sub(hit.face.normal.clone().multiplyScalar(0.03));
+                const wx = Math.floor(pos.x), wy = Math.floor(pos.y), wz = Math.floor(pos.z);
+                const blockId = getBlockType(wx, wy, wz);
+                if (blockId === 0 || blockId === 4) continue;
+                return { pos, wx, wy, wz, blockId };
+            }
+
+            return null;
         }
 
         function beginMiningTarget(target) {
@@ -1054,17 +1066,17 @@
 
         function applyBlockPhysics(nowMs) {
             if (!window.WaterPhysics || !window.SandPhysics) return;
-            if (nowMs - lastPhysicsTickMs < 160) return;
+            if (nowMs - lastPhysicsTickMs < 90) return;
             lastPhysicsTickMs = nowMs;
 
             const centerCx = Math.floor(yawObject.position.x / CHUNK_SIZE);
             const centerCz = Math.floor(yawObject.position.z / CHUNK_SIZE);
             const activeRadius = 2;
-            const maxUpdates = 64;
+            const maxUpdates = 220;
             let updates = 0;
 
             const startY = physicsCursorY;
-            const bandHeight = 14;
+            const bandHeight = 26;
             const endY = Math.min(CHUNK_HEIGHT - 2, startY + bandHeight);
             physicsCursorY = endY >= CHUNK_HEIGHT - 2 ? 1 : endY;
 
@@ -1392,7 +1404,7 @@
                 h = TerrainModules['ocean'].getHeight({ SEA_LEVEL, deepNoise, terrainNoise });
             }
 
-            h += detailNoise * (biome === 'Mountains' ? 2.2 : 0.7);
+            h += detailNoise * (biome === 'Mountains' ? 1.6 : 0.7);
 
             const riverInfluence = getRiverMask(wx, wz);
             h = TerrainModules['river'].applyHeight({ height: h, riverInfluence, SEA_LEVEL });
