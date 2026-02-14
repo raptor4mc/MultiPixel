@@ -27,39 +27,41 @@
 
         const { checkCraftingRecipe, consumeCraftingInputForOne } = window.CraftingSystem;
 
-        const TerrainModules = {
-            ocean: window.OceanTerrain || {
-                isBiome: ({ climateNoise }) => climateNoise <= -0.2,
-                getHeight: ({ SEA_LEVEL, terrainNoise }) => SEA_LEVEL - 10 - terrainNoise * 5,
+        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-14-1';
+        console.info('[Singleplayer build]', window.__SINGLEPLAYER_BUILD__);
+
+        const TerrainModules = {};
+
+        TerrainModules['ocean'] = window.OceanTerrain || {
+            isBiome: function (ctx) { return ctx.climateNoise <= -0.2; },
+            getHeight: function (ctx) { return ctx.SEA_LEVEL - 10 - ctx.terrainNoise * 5; }
+        };
+
+        TerrainModules['river'] = window.RiverTerrain || {
+            getMask: function (ctx) {
+                const scale = 0.001;
+                const path = ctx.perlin.noise2D(ctx.wx * scale, ctx.wz * scale);
+                return 1.0 - Math.min(1.0, Math.abs(path) / 0.08);
             },
-            river: window.RiverTerrain || {
-                getMask: ({ perlin, wx, wz }) => {
-                    const scale = 0.001;
-                    const path = perlin.noise2D(wx * scale, wz * scale);
-                    return 1.0 - Math.min(1.0, Math.abs(path) / 0.08);
-                },
-                applyHeight: ({ height, riverInfluence, SEA_LEVEL }) => {
-                    if (riverInfluence <= 0.1) return height;
-                    return Math.max(height - riverInfluence * 15, SEA_LEVEL - 5);
-                }
-            },
-            oakForest: window.OakForestTerrain || {
-                isBiome: ({ detailNoise, distFromCenter, ISLAND_RADIUS }) => distFromCenter < ISLAND_RADIUS || detailNoise > 0.1,
-                getHeight: ({ BASE_LAND_Y, continentalMask, terrainNoise }) => BASE_LAND_Y + continentalMask * 12 + terrainNoise * 7,
-            },
-            desert: window.DesertTerrain || {
-                isBiome: ({ climateNoise, moistureNoise }) => climateNoise > 0.2 && moistureNoise < 0.2,
-                getHeight: ({ BASE_LAND_Y, continentalMask, terrainNoise }) => BASE_LAND_Y + 3 + continentalMask * 10 + terrainNoise * 5,
-            },
-            plains: window.PlainsTerrain || {
-                isBiome: () => true,
-                getHeight: ({ BASE_LAND_Y, continentalMask, terrainNoise }) => BASE_LAND_Y + continentalMask * 8 + terrainNoise * 2,
+            applyHeight: function (ctx) {
+                if (ctx.riverInfluence <= 0.1) return ctx.height;
+                return Math.max(ctx.height - ctx.riverInfluence * 15, ctx.SEA_LEVEL - 5);
             }
-            ocean: window.OceanTerrain,
-            river: window.RiverTerrain,
-            oakForest: window.OakForestTerrain,
-            desert: window.DesertTerrain,
-            plains: window.PlainsTerrain
+        };
+
+        TerrainModules['oakForest'] = window.OakForestTerrain || {
+            isBiome: function (ctx) { return ctx.distFromCenter < ctx.ISLAND_RADIUS || ctx.detailNoise > 0.1; },
+            getHeight: function (ctx) { return ctx.BASE_LAND_Y + ctx.continentalMask * 12 + ctx.terrainNoise * 7; }
+        };
+
+        TerrainModules['desert'] = window.DesertTerrain || {
+            isBiome: function (ctx) { return ctx.climateNoise > 0.2 && ctx.moistureNoise < 0.2; },
+            getHeight: function (ctx) { return ctx.BASE_LAND_Y + 3 + ctx.continentalMask * 10 + ctx.terrainNoise * 5; }
+        };
+
+        TerrainModules['plains'] = window.PlainsTerrain || {
+            isBiome: function () { return true; },
+            getHeight: function (ctx) { return ctx.BASE_LAND_Y + ctx.continentalMask * 8 + ctx.terrainNoise * 2; }
         };
 
         // --- DAY/NIGHT CYCLE CONFIG ---
@@ -1186,9 +1188,9 @@
             const detailNoise = perlin.noise2D(wx * 0.005, wz * 0.005);
             const distFromCenter = Math.sqrt(wx * wx + wz * wz);
 
-            if (TerrainModules.ocean.isBiome({ climateNoise })) return 'Ocean';
-            if (TerrainModules.desert.isBiome({ climateNoise, moistureNoise })) return 'Desert';
-            if (TerrainModules.oakForest.isBiome({ detailNoise, distFromCenter, ISLAND_RADIUS })) return 'Forest';
+            if (TerrainModules['ocean'].isBiome({ climateNoise })) return 'Ocean';
+            if (TerrainModules['desert'].isBiome({ climateNoise, moistureNoise })) return 'Desert';
+            if (TerrainModules['oakForest'].isBiome({ detailNoise, distFromCenter, ISLAND_RADIUS })) return 'Forest';
             return 'Plains';
         }
 
@@ -1207,20 +1209,20 @@
             let h;
 
             if (biome === 'Plains') {
-                h = TerrainModules.plains.getHeight({ BASE_LAND_Y, continentalMask, terrainNoise });
+                h = TerrainModules['plains'].getHeight({ BASE_LAND_Y, continentalMask, terrainNoise });
             } else if (biome === 'Forest') {
-                h = TerrainModules.oakForest.getHeight({ BASE_LAND_Y, continentalMask, terrainNoise });
+                h = TerrainModules['oakForest'].getHeight({ BASE_LAND_Y, continentalMask, terrainNoise });
             } else if (biome === 'Desert') {
-                h = TerrainModules.desert.getHeight({ BASE_LAND_Y, continentalMask, terrainNoise });
+                h = TerrainModules['desert'].getHeight({ BASE_LAND_Y, continentalMask, terrainNoise });
             } else {
-                h = TerrainModules.ocean.getHeight({ SEA_LEVEL, terrainNoise });
+                h = TerrainModules['ocean'].getHeight({ SEA_LEVEL, terrainNoise });
             }
             
             h += detailNoise * 0.5; // Add detail
 
             // --- RIVER HEIGHT ADJUSTMENT ---
             const riverInfluence = getRiverMask(wx, wz);
-            h = TerrainModules.river.applyHeight({ height: h, riverInfluence, SEA_LEVEL });
+            h = TerrainModules['river'].applyHeight({ height: h, riverInfluence, SEA_LEVEL });
             // --- END RIVER HEIGHT ADJUSTMENT ---
             
             // Ensure land blocks are not too low relative to sea level
