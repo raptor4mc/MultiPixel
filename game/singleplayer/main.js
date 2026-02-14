@@ -119,6 +119,7 @@
         let isLeftMouseDown = false;
         const breakingStageTextures = new Array(10).fill(null);
         let breakingCrackMesh = null;
+        let lastPhysicsTickMs = 0;
      
 
       
@@ -1007,6 +1008,77 @@
             }
         }
 
+        function setBlockTypeRaw(wx, wy, wz, newType) {
+            const cx = Math.floor(wx / CHUNK_SIZE);
+            const cz = Math.floor(wz / CHUNK_SIZE);
+            const chunkId = `${cx},${cz}`;
+            const group = chunks.get(chunkId);
+            if (!group) return false;
+            if (wy < 0 || wy >= CHUNK_HEIGHT) return false;
+
+            const lx = wx - cx * CHUNK_SIZE;
+            const lz = wz - cz * CHUNK_SIZE;
+            if (lx < 0 || lx >= CHUNK_SIZE || lz < 0 || lz >= CHUNK_SIZE) return false;
+
+            const index = lx + wy * CHUNK_SIZE + lz * CHUNK_SIZE * CHUNK_HEIGHT;
+            const chunkData = group.userData.chunkData;
+            if (chunkData[index] === newType) return false;
+            chunkData[index] = newType;
+            updateChunkAndNeighbors(group, lx, lz);
+            return true;
+        }
+
+        function swapBlocksRaw(wx1, wy1, wz1, wx2, wy2, wz2) {
+            const a = getBlockType(wx1, wy1, wz1);
+            const b = getBlockType(wx2, wy2, wz2);
+            if (!setBlockTypeRaw(wx1, wy1, wz1, b)) return false;
+            setBlockTypeRaw(wx2, wy2, wz2, a);
+            return true;
+        }
+
+        function applyBlockPhysics(nowMs) {
+            if (!window.WaterPhysics || !window.SandPhysics) return;
+            if (nowMs - lastPhysicsTickMs < 130) return;
+            lastPhysicsTickMs = nowMs;
+
+            const centerCx = Math.floor(yawObject.position.x / CHUNK_SIZE);
+            const centerCz = Math.floor(yawObject.position.z / CHUNK_SIZE);
+            const activeRadius = 2;
+            const maxUpdates = 120;
+            let updates = 0;
+
+            for (let cx = centerCx - activeRadius; cx <= centerCx + activeRadius; cx++) {
+                for (let cz = centerCz - activeRadius; cz <= centerCz + activeRadius; cz++) {
+                    const group = chunks.get(`${cx},${cz}`);
+                    if (!group) continue;
+                    const data = group.userData.chunkData;
+
+                    for (let y = 1; y < CHUNK_HEIGHT - 1 && updates < maxUpdates; y++) {
+                        for (let x = 0; x < CHUNK_SIZE && updates < maxUpdates; x++) {
+                            for (let z = 0; z < CHUNK_SIZE && updates < maxUpdates; z++) {
+                                const idx = x + y * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
+                                const type = data[idx];
+                                if (type !== 4 && type !== 7) continue;
+
+                                const wx = cx * CHUNK_SIZE + x;
+                                const wz = cz * CHUNK_SIZE + z;
+                                const ctx = {
+                                    wx, wy: y, wz,
+                                    getBlock: getBlockType,
+                                    setBlock: setBlockTypeRaw,
+                                    swapBlocks: swapBlocksRaw,
+                                    random: Math.random,
+                                };
+
+                                const changed = type === 4 ? window.WaterPhysics.tryUpdate(ctx) : window.SandPhysics.tryUpdate(ctx);
+                                if (changed) updates++;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         function modifyWorld(posVector, newType) {
             const wx = Math.floor(posVector.x);
             const wy = Math.floor(posVector.y);
@@ -1080,7 +1152,7 @@
             player.direction.normalize();
 
             const isMoving = player.direction.lengthSq() > 0;
-            const isSprinting = isMoving && player.keys['shift'];
+            const isSprinting = isMoving && player.keys['e'];
             if (window.HungerSystem) {
                 window.HungerSystem.update(performance.now(), { isMoving, isSprinting });
             }
@@ -1323,7 +1395,7 @@
         function setupKeyboardControls() {
             document.addEventListener('keydown', e => {
                 const k = e.key.toLowerCase();
-                if (k === 'e' || k === 'i') {
+                if (k === 'y' || k === 'i') {
                     toggleInventory();
                     return;
                 }
@@ -1744,6 +1816,7 @@
             if(!isInventoryOpen) {
                 updatePlayerMovement();
                 updateMining(delta);
+                applyBlockPhysics(time);
             } else {
                 miningState.active = false;
                 updateBreakingOverlay();
