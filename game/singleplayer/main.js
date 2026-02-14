@@ -27,7 +27,7 @@
 
         const { checkCraftingRecipe, consumeCraftingInputForOne } = window.CraftingSystem;
 
-        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-14-4';
+        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-14-5';
         console.info('[Singleplayer build]', window.__SINGLEPLAYER_BUILD__);
 
         const TerrainModules = {};
@@ -115,7 +115,7 @@
         // Mining / breaking state
         const BREAKING_TEXTURE_BASE = `${window.SingleplayerConfig?.REPO_BASE_PREFIX || '/MultiPixel'}/game/singleplayer/assets/breaking`;
         const BLOCK_HARDNESS = { 1: 1.2, 2: 1.0, 3: 2.6, 5: 1.8, 6: 0.25, 7: 1.0, 8: 1.2, 9: 2.0, 13: 2.2, 14: Infinity, 15: 0.35, 17: 2.1 };
-        let miningState = { active: false, key: null, blockPos: null, targetType: 0, elapsedMs: 0, neededMs: 0 };
+        let miningState = { active: false, key: null, blockPos: null, targetType: 0, elapsedMs: 0, neededMs: 0, missMs: 0 };
         let isLeftMouseDown = false;
         const breakingStageTextures = new Array(10).fill(null);
         let breakingCrackMesh = null;
@@ -905,7 +905,14 @@
                 const pos = hit.point.clone().sub(hit.face.normal.clone().multiplyScalar(0.03));
                 const wx = Math.floor(pos.x), wy = Math.floor(pos.y), wz = Math.floor(pos.z);
                 const blockId = getBlockType(wx, wy, wz);
-                if (blockId === 0 || blockId === 4) continue;
+                if (blockId === 0 || blockId === 4) {
+                    const dir = raycaster.ray.direction.clone();
+                    const altPos = hit.point.clone().sub(dir.multiplyScalar(0.12));
+                    const ax = Math.floor(altPos.x), ay = Math.floor(altPos.y), az = Math.floor(altPos.z);
+                    const altId = getBlockType(ax, ay, az);
+                    if (altId !== 0 && altId !== 4) return { pos: altPos, wx: ax, wy: ay, wz: az, blockId: altId };
+                    continue;
+                }
                 return { pos, wx, wy, wz, blockId };
             }
 
@@ -925,6 +932,7 @@
                 targetType: target.blockId,
                 elapsedMs: 0,
                 neededMs,
+                missMs: 0,
             };
             return true;
         }
@@ -1071,12 +1079,12 @@
 
             const centerCx = Math.floor(yawObject.position.x / CHUNK_SIZE);
             const centerCz = Math.floor(yawObject.position.z / CHUNK_SIZE);
-            const activeRadius = 2;
-            const maxUpdates = 220;
+            const activeRadius = 3;
+            const maxUpdates = 360;
             let updates = 0;
 
             const startY = physicsCursorY;
-            const bandHeight = 26;
+            const bandHeight = 34;
             const endY = Math.min(CHUNK_HEIGHT - 2, startY + bandHeight);
             physicsCursorY = endY >= CHUNK_HEIGHT - 2 ? 1 : endY;
 
@@ -1379,14 +1387,23 @@
             return 1.0 - Math.min(1.0, line / 0.043);
         }
 
+        function sampleTerrainVector(wx, wz) {
+            const continentalness = perlin.noise2D(wx * 0.0016 + 200, wz * 0.0016 + 200);
+            const erosion = perlin.noise2D(wx * 0.0055 + 180, wz * 0.0055 - 90);
+            const weirdness = perlin.noise2D(wx * 0.0022 - 510, wz * 0.0022 + 140);
+            const peaksValleys = 1 - Math.abs(weirdness);
+            const ridges = Math.pow(Math.max(0, peaksValleys), 1.75);
+            return { continentalness, erosion, weirdness, peaksValleys, ridges };
+        }
+
         function getNoiseGroundHeight(wx, wz, biome) {
-            const continentalMask = (perlin.noise2D(wx * 0.002, wz * 0.002) + 1) * 0.5;
+            const tv = sampleTerrainVector(wx, wz);
+            const continentalMask = (tv.continentalness + 1) * 0.5;
             const terrainNoise = (perlin.noise2D(wx * 0.03, wz * 0.03) + 1) * 0.5;
             const detailNoise = (perlin.noise2D(wx * 0.08, wz * 0.08) + 1) * 0.5;
-            const erosionNoise = (perlin.noise2D(wx * 0.006 + 180, wz * 0.006 - 90) + 1) * 0.5;
+            const erosionNoise = (tv.erosion + 1) * 0.5;
             const ridgeNoise = Math.abs(perlin.noise2D(wx * 0.02 + 50, wz * 0.02 + 50));
             const peakNoise = Math.abs(perlin.noise2D(wx * 0.007 - 250, wz * 0.007 + 400));
-            const valleyNoise = (Math.abs(perlin.noise2D(wx * 0.0045 + 620, wz * 0.0045 - 310)) + 1) * 0.5;
             const cliffNoise = Math.abs(perlin.noise2D(wx * 0.012 - 910, wz * 0.012 + 260));
             const deepNoise = (perlin.noise2D(wx * 0.01 - 200, wz * 0.01 + 430) + 1) * 0.5;
             const duneNoise = (perlin.noise2D(wx * 0.045 + 15, wz * 0.045 - 15) + 1) * 0.5;
@@ -1399,20 +1416,28 @@
             } else if (biome === 'Desert') {
                 h = TerrainModules['desert'].getHeight({ BASE_LAND_Y, continentalMask, terrainNoise, duneNoise });
             } else if (biome === 'Mountains') {
-                h = TerrainModules['mountains'].getHeight({ BASE_LAND_Y, continentalMask, ridgeNoise, terrainNoise, peakNoise, erosionNoise, cliffNoise, valleyNoise });
+                h = TerrainModules['mountains'].getHeight({
+                    BASE_LAND_Y,
+                    continentalness: tv.continentalness,
+                    erosion: tv.erosion,
+                    ridges: tv.ridges,
+                    terrainNoise,
+                    cliffNoise,
+                    peakNoise,
+                });
             } else {
                 h = TerrainModules['ocean'].getHeight({ SEA_LEVEL, deepNoise, terrainNoise });
             }
 
-            h += detailNoise * (biome === 'Mountains' ? 1.6 : 0.7);
+            h += detailNoise * (biome === 'Mountains' ? 1.2 : 0.7);
 
             const riverInfluence = getRiverMask(wx, wz);
             h = TerrainModules['river'].applyHeight({ height: h, riverInfluence, SEA_LEVEL });
 
             const ravine = getRavineMask(wx, wz);
-            if (ravine > 0.8 && biome !== 'Ocean') h -= (ravine - 0.8) * 85;
+            if (ravine > 0.84 && biome !== 'Ocean') h -= (ravine - 0.84) * 70;
 
-            if (biome === 'Mountains' && h < SEA_LEVEL + 6) h = SEA_LEVEL + 6;
+            if (biome === 'Mountains' && h < SEA_LEVEL + 8) h = SEA_LEVEL + 8;
             if (h < SEA_LEVEL - 6 && biome !== 'Ocean') h = SEA_LEVEL - 6;
             return Math.floor(h);
         }
@@ -1550,12 +1575,16 @@
                                      t = 13;
                                  }
                              } else if (biome === 'Mountains') {
-                                 const isSnowCap = h > SEA_LEVEL + 20;
-                                 if (distFromSurface === 0) {
+                                 const isSnowCap = h > SEA_LEVEL + 26;
+                                 const cheese = perlin.noise3D(wx * 0.045, y * 0.062, wz * 0.045);
+                                 const overhang = perlin.noise3D(wx * 0.02 + 700, y * 0.03, wz * 0.02 - 300);
+                                 const density = (h - y) + cheese * 5.5 + overhang * 3.2 - ((CHUNK_HEIGHT - y) / CHUNK_HEIGHT) * 3.5;
+
+                                 if (density <= 0.4 && distFromSurface <= 22) {
+                                     t = 0; // allow cliffs/overhangs
+                                 } else if (distFromSurface === 0) {
                                      t = isSnowCap ? 15 : 3;
                                      surfaceBlockType = t;
-                                 } else if (distFromSurface < 3) {
-                                     t = 3;
                                  } else {
                                      t = 3;
                                  }
@@ -1959,11 +1988,19 @@
 
             const target = getTargetBlockFromCrosshair();
             if (!target) {
+                if (miningState.active) {
+                    miningState.missMs += deltaMs;
+                    if (miningState.missMs <= 220) {
+                        updateBreakingOverlay();
+                        return;
+                    }
+                }
                 miningState.active = false;
                 updateBreakingOverlay();
                 return;
             }
 
+            miningState.missMs = 0;
             const currentKey = `${target.wx},${target.wy},${target.wz}`;
             if (!miningState.active || miningState.key !== currentKey) {
                 beginMiningTarget(target);

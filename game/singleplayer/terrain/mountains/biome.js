@@ -1,17 +1,30 @@
 (function () {
+  function lerp(a, b, t) { return a + (b - a) * t; }
+
+  // Approximate cubic-spline-style response for mountain uplift.
+  function mountainFactor(continentalness, erosion, ridges) {
+    const inland = Math.max(0, (continentalness + 0.15) / 0.85);
+    const erodeInv = Math.max(0, 1 - (erosion + 1) * 0.5);
+    const ridgeBoost = Math.max(0, ridges);
+
+    const broadUplift = lerp(6, 28, inland);
+    const steepness = lerp(0.4, 1.0, erodeInv);
+    const peakGain = lerp(4, 46, Math.pow(ridgeBoost, 1.7));
+    return broadUplift * steepness + peakGain;
+  }
+
   const MountainsTerrain = {
     isBiome({ mountainNoise, continentalNoise, climateNoise }) {
-      return mountainNoise > 0.62 && continentalNoise > 0.43 && climateNoise > -0.42;
+      return mountainNoise > 0.6 && continentalNoise > 0.42 && climateNoise > -0.45;
     },
-    getHeight({ BASE_LAND_Y, continentalMask, ridgeNoise, terrainNoise, peakNoise, erosionNoise, cliffNoise, valleyNoise }) {
-      const baseMassif = 12 + continentalMask * 22;
-      const ridgedSpine = Math.pow(Math.max(0, ridgeNoise), 1.6) * 34;
-      const alpinePeaks = Math.pow(Math.max(0, peakNoise - 0.35), 2.0) * 95;
-      const cliffFaces = Math.max(0, cliffNoise - 0.58) * 14;
-      const valleyCarve = valleyNoise * 7 + erosionNoise * 5;
+    getHeight({ BASE_LAND_Y, continentalness, erosion, ridges, terrainNoise, cliffNoise, peakNoise }) {
+      const uplift = mountainFactor(continentalness, erosion, ridges);
+      const cliffFaces = Math.max(0, cliffNoise - 0.56) * 16;
+      const needlePeaks = Math.max(0, peakNoise - 0.52) * 44;
       const roughness = terrainNoise * 4;
-      return BASE_LAND_Y + baseMassif + ridgedSpine + alpinePeaks + cliffFaces + roughness - valleyCarve;
+      return BASE_LAND_Y + uplift + cliffFaces + needlePeaks + roughness;
     },
   };
+
   window.MountainsTerrain = MountainsTerrain;
 })();
