@@ -60,6 +60,8 @@
     12: { name: 'Stone Pickaxe', id: 12, textured: false, color: 0x7F8C8D },
     13: { name: 'Sand stone', id: 13, textured: true, textureKey: 'SAND_STONE' },
     14: { name: 'Bedrock', id: 14, textured: true, textureKey: 'BEDROCK', unbreakable: true },
+    15: { name: 'Snow Block', id: 15, textured: false, color: 0xf2f7ff },
+    16: { name: 'Snowball', id: 16, textured: false, color: 0xe7eefc },
   };
 
   window.SingleplayerConfig = {
@@ -69,7 +71,7 @@
     INV_COLS, INV_ROWS, HOTBAR_SLOTS, TOTAL_INV_SIZE,
     REPO_BASE_PREFIX,
     ASSET_FILEPATHS, blockMaterials,
-    SOLID_BLOCKS: [1, 2, 3, 5, 6, 7, 8, 9, 13, 14],
+    SOLID_BLOCKS: [1, 2, 3, 5, 6, 7, 8, 9, 13, 14, 15],
     LIQUID_BLOCKS: [4],
     DEFAULT_PLAYER: {
       moveSpeed: 0.12,
