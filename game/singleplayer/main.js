@@ -120,6 +120,8 @@
         const breakingStageTextures = new Array(10).fill(null);
         let breakingCrackMesh = null;
         let lastPhysicsTickMs = 0;
+        const dirtyChunkKeys = new Set();
+        let physicsCursorY = 1;
      
 
       
@@ -1008,7 +1010,7 @@
             }
         }
 
-        function setBlockTypeRaw(wx, wy, wz, newType) {
+        function setBlockTypeRaw(wx, wy, wz, newType, deferGeometryUpdate = false) {
             const cx = Math.floor(wx / CHUNK_SIZE);
             const cz = Math.floor(wz / CHUNK_SIZE);
             const chunkId = `${cx},${cz}`;
@@ -1024,28 +1026,42 @@
             const chunkData = group.userData.chunkData;
             if (chunkData[index] === newType) return false;
             chunkData[index] = newType;
-            updateChunkAndNeighbors(group, lx, lz);
+
+            if (deferGeometryUpdate) {
+                dirtyChunkKeys.add(chunkId);
+                if (lx <= 0) dirtyChunkKeys.add(`${cx-1},${cz}`);
+                if (lx >= CHUNK_SIZE - 1) dirtyChunkKeys.add(`${cx+1},${cz}`);
+                if (lz <= 0) dirtyChunkKeys.add(`${cx},${cz-1}`);
+                if (lz >= CHUNK_SIZE - 1) dirtyChunkKeys.add(`${cx},${cz+1}`);
+            } else {
+                updateChunkAndNeighbors(group, lx, lz);
+            }
             return true;
         }
 
         function swapBlocksRaw(wx1, wy1, wz1, wx2, wy2, wz2) {
             const a = getBlockType(wx1, wy1, wz1);
             const b = getBlockType(wx2, wy2, wz2);
-            if (!setBlockTypeRaw(wx1, wy1, wz1, b)) return false;
-            setBlockTypeRaw(wx2, wy2, wz2, a);
+            if (!setBlockTypeRaw(wx1, wy1, wz1, b, true)) return false;
+            setBlockTypeRaw(wx2, wy2, wz2, a, true);
             return true;
         }
 
         function applyBlockPhysics(nowMs) {
             if (!window.WaterPhysics || !window.SandPhysics) return;
-            if (nowMs - lastPhysicsTickMs < 130) return;
+            if (nowMs - lastPhysicsTickMs < 160) return;
             lastPhysicsTickMs = nowMs;
 
             const centerCx = Math.floor(yawObject.position.x / CHUNK_SIZE);
             const centerCz = Math.floor(yawObject.position.z / CHUNK_SIZE);
             const activeRadius = 2;
-            const maxUpdates = 120;
+            const maxUpdates = 64;
             let updates = 0;
+
+            const startY = physicsCursorY;
+            const bandHeight = 14;
+            const endY = Math.min(CHUNK_HEIGHT - 2, startY + bandHeight);
+            physicsCursorY = endY >= CHUNK_HEIGHT - 2 ? 1 : endY;
 
             for (let cx = centerCx - activeRadius; cx <= centerCx + activeRadius; cx++) {
                 for (let cz = centerCz - activeRadius; cz <= centerCz + activeRadius; cz++) {
@@ -1053,29 +1069,37 @@
                     if (!group) continue;
                     const data = group.userData.chunkData;
 
-                    for (let y = 1; y < CHUNK_HEIGHT - 1 && updates < maxUpdates; y++) {
-                        for (let x = 0; x < CHUNK_SIZE && updates < maxUpdates; x++) {
-                            for (let z = 0; z < CHUNK_SIZE && updates < maxUpdates; z++) {
-                                const idx = x + y * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
-                                const type = data[idx];
-                                if (type !== 4 && type !== 7) continue;
+                    for (let y = startY; y <= endY && updates < maxUpdates; y++) {
+                        for (let i = 0; i < CHUNK_SIZE * CHUNK_SIZE && updates < maxUpdates; i++) {
+                            const x = i % CHUNK_SIZE;
+                            const z = (i * 7 + y * 3) % CHUNK_SIZE;
+                            const idx = x + y * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
+                            const type = data[idx];
+                            if (type !== 4 && type !== 7) continue;
 
-                                const wx = cx * CHUNK_SIZE + x;
-                                const wz = cz * CHUNK_SIZE + z;
-                                const ctx = {
-                                    wx, wy: y, wz,
-                                    getBlock: getBlockType,
-                                    setBlock: setBlockTypeRaw,
-                                    swapBlocks: swapBlocksRaw,
-                                    random: Math.random,
-                                };
+                            const wx = cx * CHUNK_SIZE + x;
+                            const wz = cz * CHUNK_SIZE + z;
+                            const ctx = {
+                                wx, wy: y, wz,
+                                getBlock: getBlockType,
+                                setBlock: (xw, yw, zw, nt) => setBlockTypeRaw(xw, yw, zw, nt, true),
+                                swapBlocks: swapBlocksRaw,
+                                random: Math.random,
+                            };
 
-                                const changed = type === 4 ? window.WaterPhysics.tryUpdate(ctx) : window.SandPhysics.tryUpdate(ctx);
-                                if (changed) updates++;
-                            }
+                            const changed = type === 4 ? window.WaterPhysics.tryUpdate(ctx) : window.SandPhysics.tryUpdate(ctx);
+                            if (changed) updates++;
                         }
                     }
                 }
+            }
+
+            if (dirtyChunkKeys.size > 0) {
+                for (const key of dirtyChunkKeys) {
+                    const g = chunks.get(key);
+                    if (g) updateChunkGeometry(g, g.userData.chunkData);
+                }
+                dirtyChunkKeys.clear();
             }
         }
 
@@ -1760,6 +1784,39 @@
             }
         }
 
+        const SPAWN_MIN_LIGHT_LEVEL = 9;
+        const EMISSIVE_BLOCK_LIGHT = { 4: 2, 9: 4 };
+
+        function getSkyLightLevel(wx, wy, wz) {
+            let light = 15;
+            for (let y = CHUNK_HEIGHT - 1; y > wy; y--) {
+                const b = getBlockType(wx, y, wz);
+                if (b !== 0 && !isLiquid(b)) {
+                    light = Math.max(0, light - 3);
+                    if (light <= 0) break;
+                }
+            }
+            return light;
+        }
+
+        function getBlockLightLevel(wx, wy, wz) {
+            let best = 0;
+            const r = 4;
+            for (let dx = -r; dx <= r; dx++) {
+                for (let dy = -r; dy <= r; dy++) {
+                    for (let dz = -r; dz <= r; dz++) {
+                        const b = getBlockType(wx + dx, wy + dy, wz + dz);
+                        const emit = EMISSIVE_BLOCK_LIGHT[b] || 0;
+                        if (!emit) continue;
+                        const dist = Math.abs(dx) + Math.abs(dy) + Math.abs(dz);
+                        const val = Math.max(0, emit - dist);
+                        if (val > best) best = val;
+                    }
+                }
+            }
+            return best;
+        }
+
         function isSafeSpawnSpot(x, z) {
             const wx = Math.floor(x);
             const wz = Math.floor(z);
@@ -1783,7 +1840,12 @@
                 }
                 if (blocked) continue;
 
-                return { y };
+                const skyLight = getSkyLightLevel(wx, y, wz);
+                const blockLight = getBlockLightLevel(wx, y, wz);
+                const lightLevel = Math.max(skyLight, blockLight);
+                if (lightLevel < SPAWN_MIN_LIGHT_LEVEL) continue;
+
+                return { y, lightLevel };
             }
             return null;
         }
@@ -1799,6 +1861,7 @@
                         const safe = isSafeSpawnSpot(x, z);
                         if (safe) {
                             yawObject.position.set(x, safe.y, z);
+                            showGameMessage(`Spawned at light level ${safe.lightLevel}`);
                             return;
                         }
                     }
@@ -1811,6 +1874,7 @@
                         const safe = isSafeSpawnSpot(x, z);
                         if (safe) {
                             yawObject.position.set(x, safe.y, z);
+                            showGameMessage(`Spawned at light level ${safe.lightLevel}`);
                             return;
                         }
                     }
