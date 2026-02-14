@@ -4,7 +4,7 @@
     { name: 'Crafting Table', output: { id: 9, count: 1 }, shape: [[8, 8], [8, 8]] },
     { name: 'Stick', output: { id: 10, count: 4 }, shape: [[8], [8]] },
     { name: 'Wooden Pickaxe', output: { id: 11, count: 1 }, shape: [[8, 8, 8], [0, 10, 0], [0, 10, 0]] },
-    { name: 'Stone Pickaxe', output: { id: 12, count: 1 }, shape: [[3, 3, 3], [0, 10, 0], [0, 10, 0]] },
+    { name: 'Stone Pickaxe', output: { id: 12, count: 1 }, shape: [[17, 17, 17], [0, 10, 0], [0, 10, 0]] },
     { name: 'Sand Stone', output: { id: 13, count: 4 }, shape: [[7, 7], [7, 7]] },
     { name: 'Snow Block', output: { id: 15, count: 1 }, shape: [[16, 16], [16, 16]] },
   ];

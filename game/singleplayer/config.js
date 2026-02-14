@@ -40,6 +40,9 @@
     CRAFTING_TABLE_SIDE: getAssetPath('textures/crafting_table_side.png'),
     STICK: getAssetPath('textures/stick.png'),
     SAND_STONE: getAssetPath('textures/sand_stone.png'),
+    COBBLESTONE: getAssetPath('textures/cobblestone.png'),
+    SNOW_BLOCK: getAssetPath('textures/snow_block.png'),
+    SNOWBALL: getAssetPath('textures/snowball_item.png'),
     WOODEN_PICKAXE: getAssetPath('textures/wooden_pickaxe.png'),
     BEDROCK: getAssetPath('textures/bedrock.png'),
   };
@@ -55,13 +58,14 @@
     7: { name: 'Sand', id: 7, textured: true, textureKey: 'SAND' },
     8: { name: 'Oak Planks', id: 8, textured: true, textureKey: 'OAK_PLANK' },
     9: { name: 'Crafting Table', id: 9, textured: true, textureKey: 'CRAFTING_TABLE_SIDE' },
-    10: { name: 'Stick', id: 10, textured: false, textureKey: 'STICK' },
+    10: { name: 'Stick', id: 10, textured: true, textureKey: 'STICK' },
     11: { name: 'Wooden Pickaxe', id: 11, textured: true, textureKey: 'WOODEN_PICKAXE', toolType: 'pickaxe', tier: 1 },
     12: { name: 'Stone Pickaxe', id: 12, textured: false, color: 0x7F8C8D },
     13: { name: 'Sand stone', id: 13, textured: true, textureKey: 'SAND_STONE' },
     14: { name: 'Bedrock', id: 14, textured: true, textureKey: 'BEDROCK', unbreakable: true },
-    15: { name: 'Snow Block', id: 15, textured: false, color: 0xf2f7ff },
-    16: { name: 'Snowball', id: 16, textured: false, color: 0xe7eefc },
+    15: { name: 'Snow Block', id: 15, textured: true, textureKey: 'SNOW_BLOCK', color: 0xf2f7ff },
+    16: { name: 'Snowball', id: 16, textured: true, textureKey: 'SNOWBALL', color: 0xe7eefc },
+    17: { name: 'Cobblestone', id: 17, textured: true, textureKey: 'COBBLESTONE' },
   };
 
   window.SingleplayerConfig = {
@@ -71,7 +75,7 @@
     INV_COLS, INV_ROWS, HOTBAR_SLOTS, TOTAL_INV_SIZE,
     REPO_BASE_PREFIX,
     ASSET_FILEPATHS, blockMaterials,
-    SOLID_BLOCKS: [1, 2, 3, 5, 6, 7, 8, 9, 13, 14, 15],
+    SOLID_BLOCKS: [1, 2, 3, 5, 6, 7, 8, 9, 13, 14, 15, 17],
     LIQUID_BLOCKS: [4],
     DEFAULT_PLAYER: {
       moveSpeed: 0.12,

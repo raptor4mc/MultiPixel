@@ -27,7 +27,7 @@
 
         const { checkCraftingRecipe, consumeCraftingInputForOne } = window.CraftingSystem;
 
-        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-14-2';
+        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-14-3';
         console.info('[Singleplayer build]', window.__SINGLEPLAYER_BUILD__);
 
         const TerrainModules = {};
@@ -114,7 +114,7 @@
 
         // Mining / breaking state
         const BREAKING_TEXTURE_BASE = `${window.SingleplayerConfig?.REPO_BASE_PREFIX || '/MultiPixel'}/game/singleplayer/assets/breaking`;
-        const BLOCK_HARDNESS = { 1: 1.2, 2: 1.0, 3: 2.6, 5: 1.8, 6: 0.25, 7: 1.0, 8: 1.2, 9: 2.0, 13: 2.2, 14: Infinity, 15: 0.45 };
+        const BLOCK_HARDNESS = { 1: 1.2, 2: 1.0, 3: 2.6, 5: 1.8, 6: 0.25, 7: 1.0, 8: 1.2, 9: 2.0, 13: 2.2, 14: Infinity, 15: 0.35, 17: 2.1 };
         let miningState = { active: false, key: null, blockPos: null, targetType: 0, elapsedMs: 0, neededMs: 0 };
         let isLeftMouseDown = false;
         const breakingStageTextures = new Array(10).fill(null);
@@ -848,15 +848,17 @@
             if (!isFinite(hardness)) return Infinity;
 
             const held = inventory[selectedHotbarIndex];
-            const usingWoodPickaxe = held && held.id === 11;
-            const prefersPickaxe = blockId === 3 || blockId === 13 || blockId === 14;
+            const pickaxeTier = held && held.id === 12 ? 2 : (held && held.id === 11 ? 1 : 0);
+            const prefersPickaxe = blockId === 3 || blockId === 13 || blockId === 14 || blockId === 17;
 
-            const baseMs = hardness * 1000;
+            const baseMs = hardness * 950;
             if (prefersPickaxe) {
-                if (usingWoodPickaxe) return baseMs * 0.55;
-                return baseMs * 3.25; // fists are slow on hard blocks
+                if (pickaxeTier === 2) return baseMs * 0.36;
+                if (pickaxeTier === 1) return baseMs * 0.55;
+                return baseMs * 3.0;
             }
-            if (usingWoodPickaxe) return baseMs * 1.15; // slight penalty for wrong tool
+
+            if (pickaxeTier > 0) return baseMs * 1.05;
             return baseMs;
         }
 
@@ -1133,10 +1135,12 @@
                 if (blockMaterials[oldType]?.unbreakable) return false;
 
                 const held = inventory[selectedHotbarIndex];
-                const hasWoodPickaxe = held && held.id === 11;
-                const isHardBlock = oldType === 3 || oldType === 13;
+                const hasWoodPickaxe = held && (held.id === 11 || held.id === 12);
+                const isHardBlock = oldType === 3 || oldType === 13 || oldType === 17;
                 if (oldType === 15) {
                     addToInventory(16, 2);
+                } else if (oldType === 3) {
+                    addToInventory(17, 1);
                 } else if (!isHardBlock || hasWoodPickaxe) {
                     addToInventory(oldType, 1);
                 } else {
@@ -1334,14 +1338,18 @@
 
             const isDesert = TerrainModules['desert'].isBiome({ climateNoise, moistureNoise, continentalNoise });
             if (isDesert) {
-                if (riverMask > 0.35) return 'Desert';
+                if (riverMask >= 0.35) return 'Desert';
 
-                // Deserts only border greener biomes through river corridor transition.
-                const neighborOffsets = [[64, 0], [-64, 0], [0, 64], [0, -64]];
+                // If desert would touch greener biomes, force a plains transition unless there's a river crossing.
+                const neighborOffsets = [[48, 0], [-48, 0], [0, 48], [0, -48], [48, 48], [-48, -48]];
                 for (const [ox, oz] of neighborOffsets) {
-                    const nMountainNoise = (Math.abs(perlin.noise2D((wx + ox) * 0.0013 - 400, (wz + oz) * 0.0013 + 750)) + 1) * 0.5;
-                    const nContinentalNoise = (perlin.noise2D((wx + ox) * 0.0016 + 200, (wz + oz) * 0.0016 + 200) + 1) * 0.5;
-                    if (TerrainModules['mountains'].isBiome({ mountainNoise: nMountainNoise, continentalNoise: nContinentalNoise })) {
+                    const nDetail = perlin.noise2D((wx + ox) * 0.003, (wz + oz) * 0.003);
+                    const nHumidity = perlin.noise2D((wx + ox) * 0.001 + 320, (wz + oz) * 0.001 - 130);
+                    const nMountain = (Math.abs(perlin.noise2D((wx + ox) * 0.0013 - 400, (wz + oz) * 0.0013 + 750)) + 1) * 0.5;
+                    const nContinental = (perlin.noise2D((wx + ox) * 0.0016 + 200, (wz + oz) * 0.0016 + 200) + 1) * 0.5;
+                    if (TerrainModules['mountains'].isBiome({ mountainNoise: nMountain, continentalNoise: nContinental }) ||
+                        TerrainModules['oakForest'].isBiome({ detailNoise: nDetail, humidityNoise: nHumidity, distFromCenter, ISLAND_RADIUS }) ||
+                        TerrainModules['plains'].isBiome({ humidityNoise: nHumidity, mountainNoise: nMountain })) {
                         return 'Plains';
                     }
                 }
@@ -1365,6 +1373,7 @@
             const detailNoise = (perlin.noise2D(wx * 0.08, wz * 0.08) + 1) * 0.5;
             const erosionNoise = (perlin.noise2D(wx * 0.006 + 180, wz * 0.006 - 90) + 1) * 0.5;
             const ridgeNoise = Math.abs(perlin.noise2D(wx * 0.02 + 50, wz * 0.02 + 50));
+            const peakNoise = Math.abs(perlin.noise2D(wx * 0.007 - 250, wz * 0.007 + 400));
             const deepNoise = (perlin.noise2D(wx * 0.01 - 200, wz * 0.01 + 430) + 1) * 0.5;
             const duneNoise = (perlin.noise2D(wx * 0.045 + 15, wz * 0.045 - 15) + 1) * 0.5;
 
@@ -1376,12 +1385,12 @@
             } else if (biome === 'Desert') {
                 h = TerrainModules['desert'].getHeight({ BASE_LAND_Y, continentalMask, terrainNoise, duneNoise });
             } else if (biome === 'Mountains') {
-                h = TerrainModules['mountains'].getHeight({ BASE_LAND_Y, continentalMask, ridgeNoise, terrainNoise });
+                h = TerrainModules['mountains'].getHeight({ BASE_LAND_Y, continentalMask, ridgeNoise, terrainNoise, peakNoise });
             } else {
                 h = TerrainModules['ocean'].getHeight({ SEA_LEVEL, deepNoise, terrainNoise });
             }
 
-            h += detailNoise * (biome === 'Mountains' ? 2.0 : 0.7);
+            h += detailNoise * (biome === 'Mountains' ? 3.8 : 0.7);
 
             const riverInfluence = getRiverMask(wx, wz);
             h = TerrainModules['river'].applyHeight({ height: h, riverInfluence, SEA_LEVEL });
@@ -1415,7 +1424,14 @@
             const biome = getBiome(wx, wz); // Calculate biome for fallback
             const h = getNoiseGroundHeight(wx, wz, biome); 
             if (wy === 0) return 14;
-            if (wy < h) return biome === 'Desert' ? 7 : (biome === 'Mountains' && wy >= h - 1 && h > SEA_LEVEL + 16 ? 15 : 1); // quick fallback
+            if (wy < h) {
+                if (biome === 'Desert') return 7;
+                if (biome === 'Mountains') {
+                    if (wy >= h - 1 && h > SEA_LEVEL + 16) return 15;
+                    return 3;
+                }
+                return 1;
+            }
             if (wy < SEA_LEVEL) return 4;
             return 0;
         }
