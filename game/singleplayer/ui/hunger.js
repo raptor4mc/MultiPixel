@@ -8,15 +8,12 @@
 
   let onMessage = null;
 
+
   function init({ messageCallback } = {}) {
     onMessage = messageCallback || null;
     render();
   }
 
-  function render() {
-    const hud = document.getElementById('hunger-value');
-    if (hud) hud.textContent = `${Math.ceil(state.value)}/${state.max}`;
-  }
 
   function update(nowMs, { isMoving, isSprinting }) {
     if (!state.lastTickAt) state.lastTickAt = nowMs;

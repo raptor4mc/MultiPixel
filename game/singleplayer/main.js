@@ -71,7 +71,7 @@
      
 
       
-        let scene, camera, renderer, simplex, raycaster;
+        let scene, camera, renderer, perlin, raycaster;
         const chunks = new Map();
         const worldGroup = new THREE.Group();
         let yawObject, pitchObject; 
@@ -165,10 +165,10 @@
             // Sky/Fog color set by updateSkyAndSun()
             scene.fog = new THREE.Fog(0x87ceeb, 20, 120); 
 
-            if (typeof SimplexNoise !== 'undefined') {
-                simplex = new SimplexNoise();
+            if (typeof PerlinNoise !== 'undefined') {
+                perlin = new PerlinNoise();
             } else {
-                console.error("SimplexNoise library failed to load.");
+                console.error("PerlinNoise library failed to load.");
                 return;
             }
             
@@ -839,14 +839,14 @@
         function getRiverMask(wx, wz) {
             // Use a large scale noise to define the winding path
             const scale = 0.001; 
-            const pathNoise = simplex.noise2D(wx * scale + 1000, wz * scale + 1000); 
+            const pathNoise = perlin.noise2D(wx * scale + 1000, wz * scale + 1000); 
 
             // Use a second noise layer to slightly modulate the river path
             const scaleBend = 0.002;
-            const bend = simplex.noise2D(wx * scaleBend + 500, wz * scaleBend + 500) * 0.5;
+            const bend = perlin.noise2D(wx * scaleBend + 500, wz * scaleBend + 500) * 0.5;
 
             // Apply the bend to the path coordinates (creates a wavy river instead of straight bands)
-            const finalPath = simplex.noise2D(wx * scale + bend, wz * scale);
+            const finalPath = perlin.noise2D(wx * scale + bend, wz * scale);
 
             // Thickness defines how wide the river is. Lower value = wider river band around 0.
             const thickness = 0.08; 
@@ -1021,10 +1021,10 @@
         // --- NEW: Biome Classification (Forest, Plains, Ocean, Desert) ---
         function getBiome(wx, wz) {
             // Use a large scale for general climate zones
-            const biomeNoise = simplex.noise2D(wx * 0.0005, wz * 0.0005); 
+            const biomeNoise = perlin.noise2D(wx * 0.0005, wz * 0.0005); 
             
             // Second noise layer for detail/splitting within temperate zones
-            const detailNoise = simplex.noise2D(wx * 0.005, wz * 0.005);
+            const detailNoise = perlin.noise2D(wx * 0.005, wz * 0.005);
             
             // Check if coordinates are near the starting center (Island for spawn)
             const d = Math.sqrt(wx*wx + wz*wz);
@@ -1053,13 +1053,13 @@
             
             // Continental Mask for overall land mass (smoother transition)
             const scale1 = 0.002; 
-            let continentalMask = (simplex.noise2D(wx * scale1, wz * scale1) + 1) * 0.5;
+            let continentalMask = (perlin.noise2D(wx * scale1, wz * scale1) + 1) * 0.5;
             
             const scale2 = 0.03; 
-            let terrainNoise = (simplex.noise2D(wx * scale2, wz * scale2) + 1) * 0.5; 
+            let terrainNoise = (perlin.noise2D(wx * scale2, wz * scale2) + 1) * 0.5; 
             
             // High-frequency detail noise
-            const detailNoise = (simplex.noise2D(wx * 0.1, wz * 0.1) + 1) * 0.5;
+            const detailNoise = (perlin.noise2D(wx * 0.1, wz * 0.1) + 1) * 0.5;
             
             let h;
 
@@ -1262,7 +1262,7 @@
                         if (y > CAVE_MIN_Y && y < h - CAVE_MAX_Y_OFFSET) {
                             
                             if (t === 3 || t === 2 || t === 7) { 
-                                const caveNoise = simplex.noise3D(
+                                const caveNoise = perlin.noise3D(
                                     wx * CAVE_SCALE, 
                                     y * CAVE_SCALE * 2, // Stretch vertically to make tunnels horizontally wider
                                     wz * CAVE_SCALE
