@@ -27,9 +27,18 @@
 
         const { checkCraftingRecipe, consumeCraftingInputForOne } = window.CraftingSystem;
 
+        const TerrainModules = {
+            ocean: window.OceanTerrain,
+            river: window.RiverTerrain,
+            oakForest: window.OakForestTerrain,
+            desert: window.DesertTerrain,
+            plains: window.PlainsTerrain
+        };
+
         // --- DAY/NIGHT CYCLE CONFIG ---
-        const DAY_CYCLE_DURATION = 60 * 1000; // 60 seconds for a full cycle (1 minute real time)
-        let gameTime = Math.PI / 2; // Start at Math.PI / 2 (High Noon)
+        const DAY_SEGMENTS = { sunrise: 2 * 60 * 1000, day: 8 * 60 * 1000, sunset: 2 * 60 * 1000, night: 8 * 60 * 1000 };
+        const DAY_CYCLE_DURATION = DAY_SEGMENTS.sunrise + DAY_SEGMENTS.day + DAY_SEGMENTS.sunset + DAY_SEGMENTS.night;
+        let cycleTimeMs = DAY_SEGMENTS.sunrise + DAY_SEGMENTS.day / 2; // Start near noon
         let lastTime = 0; // For delta time calculation
         let ambientLight, dirLight; // Made global for modification in animate loop
 
@@ -68,6 +77,12 @@
         let heldItem = null; 
         let heldItemSourceIndex = -1; 
         let heldItemSourceType = null; 
+
+        // Mining / breaking state
+        const BREAKING_TEXTURE_BASE = `${window.SingleplayerConfig?.REPO_BASE_PREFIX || '/MultiPixel'}/game/singleplayer/assets/breaking`;
+        const BLOCK_HARDNESS = { 1: 1.2, 2: 1.0, 3: 2.6, 5: 1.8, 6: 0.25, 7: 1.0, 8: 1.2, 9: 2.0, 13: 2.2, 14: Infinity };
+        let miningState = { active: false, key: null, blockPos: null, targetType: 0, elapsedMs: 0, neededMs: 0 };
+        let isLeftMouseDown = false;
      
 
       
@@ -248,50 +263,53 @@
         }
         
         // --- Day/Night Cycle Logic ---
-        function updateSkyAndSun() {
-            // Use cosine for smooth transition, clamped to ensure minimum light at night
-            const sunFactor = Math.cos(gameTime); 
-            const sunIntensity = Math.max(0.2, sunFactor); 
-            const ambientIntensity = Math.max(0.4, sunFactor * 0.5 + 0.7); 
+        function getTimePhaseInfo() {
+            const t = cycleTimeMs % DAY_CYCLE_DURATION;
+            const sunriseEnd = DAY_SEGMENTS.sunrise;
+            const dayEnd = sunriseEnd + DAY_SEGMENTS.day;
+            const sunsetEnd = dayEnd + DAY_SEGMENTS.sunset;
 
-            // Sky Color Interpolation (Day: 87ceeb, Night: 1a1a2e)
-            const dayColor = new THREE.Color(0x87ceeb); // Light Blue
-            const twilightColor = new THREE.Color(0x9a7d90); // Purple/Gray for dawn/dusk
-            const nightColor = new THREE.Color(0x1a1a2e); // Deep Blue/Black
+            if (t < sunriseEnd) return { phase: 'Sunrise', localT: t / DAY_SEGMENTS.sunrise };
+            if (t < dayEnd) return { phase: 'Day', localT: (t - sunriseEnd) / DAY_SEGMENTS.day };
+            if (t < sunsetEnd) return { phase: 'Sunset', localT: (t - dayEnd) / DAY_SEGMENTS.sunset };
+            return { phase: 'Night', localT: (t - sunsetEnd) / DAY_SEGMENTS.night };
+        }
+
+        function updateSkyAndSun() {
+            const phaseInfo = getTimePhaseInfo();
+            let sunFactor = 0;
+
+            if (phaseInfo.phase === 'Day') sunFactor = 1;
+            else if (phaseInfo.phase === 'Night') sunFactor = -0.85;
+            else if (phaseInfo.phase === 'Sunrise') sunFactor = -0.85 + 1.85 * phaseInfo.localT;
+            else sunFactor = 1 - 1.85 * phaseInfo.localT;
+
+            const dayColor = new THREE.Color(0x87ceeb);
+            const twilightColor = new THREE.Color(0x9a7d90);
+            const nightColor = new THREE.Color(0x1a1a2e);
 
             let skyColor;
             if (sunFactor > 0.1) {
-                // Day to Twilight transition
-                const t = Math.min(1, Math.max(0, (sunFactor - 0.1) / 0.9));
-                skyColor = dayColor.clone().lerp(twilightColor, 1 - t);
+                const k = Math.min(1, Math.max(0, (sunFactor - 0.1) / 0.9));
+                skyColor = twilightColor.clone().lerp(dayColor, k);
             } else {
-                // Twilight to Night transition
-                const t = Math.min(1, Math.max(0, (-sunFactor + 0.1) / 0.8));
-                skyColor = twilightColor.clone().lerp(nightColor, t);
+                const k = Math.min(1, Math.max(0, (sunFactor + 0.85) / 0.95));
+                skyColor = nightColor.clone().lerp(twilightColor, k);
             }
-            
-            scene.background.copy(skyColor); // This line is now safe because scene.background is initialized
+
+            scene.background.copy(skyColor);
             scene.fog.color.copy(skyColor);
 
-            // Directional Light (Sun)
-            dirLight.intensity = sunIntensity * 1.5;
-            // Position the sun based on the angle (y and z determine angle)
-            dirLight.position.x = Math.sin(gameTime) * 100;
-            dirLight.position.y = Math.cos(gameTime) * 100;
-            dirLight.position.z = Math.sin(gameTime) * 50;
+            const angle = (cycleTimeMs / DAY_CYCLE_DURATION) * (2 * Math.PI);
+            dirLight.intensity = Math.max(0.08, sunFactor + 0.2) * 1.2;
+            dirLight.position.x = Math.sin(angle) * 100;
+            dirLight.position.y = Math.cos(angle) * 100;
+            dirLight.position.z = Math.sin(angle) * 50;
 
-            // Ambient Light (Overall brightness)
-            ambientLight.intensity = ambientIntensity * 0.8;
-            
-            // Update HUD text
-            let timeOfDay;
-            if (sunFactor > 0.8) timeOfDay = "Day";
-            else if (sunFactor > 0.3) timeOfDay = "Morning/Evening";
-            else if (sunFactor > -0.2) timeOfDay = "Twilight";
-            else timeOfDay = "Night";
-
-            document.getElementById('time-of-day').textContent = timeOfDay;
+            ambientLight.intensity = Math.max(0.2, (sunFactor + 1) / 2) * 0.9;
+            document.getElementById('time-of-day').textContent = phaseInfo.phase;
         }
+
 
      
         function addToInventory(blockId, amount = 1) {
@@ -730,8 +748,49 @@
         
     
 
+        function getMiningDurationMs(blockId) {
+            const hardness = BLOCK_HARDNESS[blockId] ?? 1.5;
+            if (!isFinite(hardness)) return Infinity;
+
+            const held = inventory[selectedHotbarIndex];
+            const usingWoodPickaxe = held && held.id === 11;
+            const prefersPickaxe = blockId === 3 || blockId === 13 || blockId === 14;
+
+            const baseMs = hardness * 1000;
+            if (prefersPickaxe) {
+                if (usingWoodPickaxe) return baseMs * 0.55;
+                return baseMs * 3.25; // fists are slow on hard blocks
+            }
+            if (usingWoodPickaxe) return baseMs * 1.15; // slight penalty for wrong tool
+            return baseMs;
+        }
+
+        function updateBreakingOverlay() {
+            const overlay = document.getElementById('breaking-overlay');
+            if (!overlay) return;
+            if (!miningState.active || !isFinite(miningState.neededMs)) {
+                overlay.style.opacity = 0;
+                return;
+            }
+
+            const progress = Math.min(1, miningState.elapsedMs / Math.max(1, miningState.neededMs));
+            const stage = Math.min(9, Math.floor(progress * 10));
+            const heartPath = ASSET_FILEPATHS.HEART;
+            const base = heartPath.slice(0, heartPath.lastIndexOf('/ui/'));
+            overlay.style.backgroundImage = `url('${base}/breaking/${stage}.png')`;
+            overlay.style.opacity = 1;
+        }
+
         function setupBlockInteraction() {
             window.addEventListener('pointerdown', onPointerDown, false);
+            window.addEventListener('pointerup', onPointerUp, false);
+        }
+
+        function onPointerUp(event) {
+            if (event.button !== 0) return;
+            isLeftMouseDown = false;
+            miningState.active = false;
+            updateBreakingOverlay();
         }
 
         function onPointerDown(event) {
@@ -749,9 +808,30 @@
                 const hit = intersects[0];
                
                 // LEFT CLICK - Break
-                if (event.button === 0) { 
+                if (event.button === 0) {
+                    isLeftMouseDown = true;
                     const hitPos = hit.point.clone().sub(hit.face.normal.clone().multiplyScalar(0.01));
-                    modifyWorld(hitPos, 0); 
+                    const wx = Math.floor(hitPos.x);
+                    const wy = Math.floor(hitPos.y);
+                    const wz = Math.floor(hitPos.z);
+                    const blockId = getBlockType(wx, wy, wz);
+                    if (blockId === 0 || blockId === 4) return;
+
+                    const neededMs = getMiningDurationMs(blockId);
+                    if (!isFinite(neededMs)) {
+                        showGameMessage("Bedrock is unbreakable.");
+                        return;
+                    }
+
+                    miningState = {
+                        active: true,
+                        key: `${wx},${wy},${wz}`,
+                        blockPos: hitPos,
+                        targetType: blockId,
+                        elapsedMs: 0,
+                        neededMs
+                    };
+                    updateBreakingOverlay();
                 } 
                 // RIGHT CLICK - Interact or Place
                 else if (event.button === 2) { 
@@ -815,13 +895,17 @@
             const oldType = chunkData[index];
             
             if (newType === 0) {
-                
-                if (oldType === 0) return false;
-                if (oldType === 4) return false; 
-                
-             
-                addToInventory(oldType, 1);
-                
+                if (oldType === 0 || oldType === 4) return false;
+                if (blockMaterials[oldType]?.unbreakable) return false;
+
+                const held = inventory[selectedHotbarIndex];
+                const hasWoodPickaxe = held && held.id === 11;
+                const isHardBlock = oldType === 3 || oldType === 13;
+                if (!isHardBlock || hasWoodPickaxe) {
+                    addToInventory(oldType, 1);
+                } else {
+                    showGameMessage('Need wooden pickaxe for proper drops.');
+                }
                 chunkData[index] = 0;
             } else {
                
@@ -835,7 +919,6 @@
         }
 
     
-        // --- NEW RIVER MASK UTILITY ---
         function getRiverMask(wx, wz) {
             // Use a large scale noise to define the winding path
             const scale = 0.001; 
@@ -856,7 +939,6 @@
             
             return attenuation;
         }
-        // --- END RIVER MASK UTILITY ---
 
 
         function updatePlayerMovement() {
@@ -1018,37 +1100,18 @@
             return false;
         }
 
-        // --- NEW: Biome Classification (Forest, Plains, Ocean, Desert) ---
         function getBiome(wx, wz) {
-            // Use a large scale for general climate zones
-            const biomeNoise = perlin.noise2D(wx * 0.0005, wz * 0.0005); 
-            
-            // Second noise layer for detail/splitting within temperate zones
+            const climateNoise = perlin.noise2D(wx * 0.0005, wz * 0.0005);
+            const moistureNoise = perlin.noise2D(wx * 0.0008 + 1000, wz * 0.0008 + 1000);
             const detailNoise = perlin.noise2D(wx * 0.005, wz * 0.005);
-            
-            // Check if coordinates are near the starting center (Island for spawn)
-            const d = Math.sqrt(wx*wx + wz*wz);
+            const distFromCenter = Math.sqrt(wx * wx + wz * wz);
 
-            if (d < ISLAND_RADIUS) {
-                // If near spawn, guarantee a Forest for easy wood
-                return 'Forest'; 
-            }
-            
-            if (biomeNoise > 0.35) {
-                return 'Desert';
-            } else if (biomeNoise > -0.1) {
-                // Temperate Zone
-                if (detailNoise > 0) {
-                    return 'Forest';
-                } else {
-                    return 'Plains';
-                }
-            } else {
-                return 'Ocean';
-            }
+            if (TerrainModules.ocean.isBiome({ climateNoise })) return 'Ocean';
+            if (TerrainModules.desert.isBiome({ climateNoise, moistureNoise })) return 'Desert';
+            if (TerrainModules.oakForest.isBiome({ detailNoise, distFromCenter, ISLAND_RADIUS })) return 'Forest';
+            return 'Plains';
         }
 
-        // Refactored function: Height calculation is dependent on the provided biome (Biomes > Terrain)
         function getNoiseGroundHeight(wx, wz, biome) {
             
             // Continental Mask for overall land mass (smoother transition)
@@ -1064,27 +1127,20 @@
             let h;
 
             if (biome === 'Plains') {
-                // Flatter, slightly rolling land
-                h = BASE_LAND_Y + continentalMask * 8 + terrainNoise * 2;
+                h = TerrainModules.plains.getHeight({ BASE_LAND_Y, continentalMask, terrainNoise });
             } else if (biome === 'Forest') {
-                // Hillier terrain for forests
-                h = BASE_LAND_Y + continentalMask * 12 + terrainNoise * 7;
+                h = TerrainModules.oakForest.getHeight({ BASE_LAND_Y, continentalMask, terrainNoise });
             } else if (biome === 'Desert') {
-                // Taller, sandy terrain
-                h = BASE_LAND_Y + 3 + continentalMask * 10 + terrainNoise * 5;
-            } else { // Ocean Biome
-                h = SEA_LEVEL - 10 - (terrainNoise * 5);
+                h = TerrainModules.desert.getHeight({ BASE_LAND_Y, continentalMask, terrainNoise });
+            } else {
+                h = TerrainModules.ocean.getHeight({ SEA_LEVEL, terrainNoise });
             }
             
             h += detailNoise * 0.5; // Add detail
 
             // --- RIVER HEIGHT ADJUSTMENT ---
             const riverInfluence = getRiverMask(wx, wz);
-            if (riverInfluence > 0.1) {
-                // Maximum river depth reduction is 15 blocks, pulling land down towards SEA_LEVEL - 5
-                const riverDepth = riverInfluence * 15; 
-                h = Math.max(h - riverDepth, SEA_LEVEL - 5); 
-            }
+            h = TerrainModules.river.applyHeight({ height: h, riverInfluence, SEA_LEVEL });
             // --- END RIVER HEIGHT ADJUSTMENT ---
             
             // Ensure land blocks are not too low relative to sea level
@@ -1113,6 +1169,7 @@
             // For blocks outside loaded chunks but inside the boundary, use noise (Fallback)
             const biome = getBiome(wx, wz); // Calculate biome for fallback
             const h = getNoiseGroundHeight(wx, wz, biome); 
+            if (wy === 0) return 14;
             if (wy < h) return 1; // Default to grass for quick fallback
             if (wy < SEA_LEVEL) return 4;
             return 0;
@@ -1196,7 +1253,13 @@
 
                      for (let y = 0; y < CHUNK_HEIGHT; y++) {
                          let t = 0; // Block type
-                         
+
+                         if (y === 0) {
+                             t = 14; // Bedrock floor
+                             data[x + y*CHUNK_SIZE + z*CHUNK_SIZE*CHUNK_HEIGHT] = t;
+                             continue;
+                         }
+
                          if (y < h) {
                             
                              const distFromSurface = h - 1 - y;
@@ -1256,20 +1319,19 @@
                              // Otherwise (on dry land, above h, below sea level, not river) it remains air (t=0)
                          }
                          
-                        // --- Cave Generation Pass ---
-                        // Apply caving logic ONLY if the block is a solid underground type (Stone, Dirt, Sand)
-                        // and is within the valid depth range.
+                        // --- Cave Generation Pass (layered Perlin for bigger cave systems) ---
                         if (y > CAVE_MIN_Y && y < h - CAVE_MAX_Y_OFFSET) {
-                            
-                            if (t === 3 || t === 2 || t === 7) { 
-                                const caveNoise = perlin.noise3D(
-                                    wx * CAVE_SCALE, 
-                                    y * CAVE_SCALE * 2, // Stretch vertically to make tunnels horizontally wider
-                                    wz * CAVE_SCALE
-                                );
-                                
-                                if (caveNoise > CAVE_THRESHOLD) {
-                                    t = 0; // Convert solid block to air
+                            if (t === 3 || t === 2 || t === 7 || t === 13) {
+                                const n1 = perlin.noise3D(wx * CAVE_SCALE, y * CAVE_SCALE * 1.7, wz * CAVE_SCALE);
+                                const n2 = perlin.noise3D(wx * CAVE_SCALE * 2.2 + 100, y * CAVE_SCALE * 1.1, wz * CAVE_SCALE * 2.2 + 100);
+                                const caveShape = n1 * 0.7 + n2 * 0.3;
+
+                                const depth = Math.max(0, (h - y) / Math.max(1, h));
+                                const dynamicThreshold = CAVE_THRESHOLD - Math.min(0.14, depth * 0.2);
+                                const tunnelNoise = Math.abs(perlin.noise3D(wx * CAVE_SCALE * 0.7, y * CAVE_SCALE * 0.45, wz * CAVE_SCALE * 0.7));
+
+                                if (caveShape > dynamicThreshold || (depth > 0.35 && tunnelNoise < 0.06)) {
+                                    t = 0;
                                 }
                             }
                         }
@@ -1509,22 +1571,42 @@
             document.getElementById('chunks-count').textContent = count;
         }
 
+        function updateMining(deltaMs) {
+            if (!isLeftMouseDown || !miningState.active || !miningState.blockPos) {
+                updateBreakingOverlay();
+                return;
+            }
+
+            miningState.elapsedMs += deltaMs;
+            updateBreakingOverlay();
+
+            if (miningState.elapsedMs >= miningState.neededMs) {
+                const { blockPos, targetType } = miningState;
+                const wx = Math.floor(blockPos.x);
+                const wy = Math.floor(blockPos.y);
+                const wz = Math.floor(blockPos.z);
+                const current = getBlockType(wx, wy, wz);
+                if (current === targetType) modifyWorld(blockPos, 0);
+                miningState.active = false;
+                updateBreakingOverlay();
+            }
+        }
+
         function animate(time) {
             requestAnimationFrame(animate);
-            
-            if (lastTime) {
-                const delta = time - lastTime;
-                
-                // Update game time based on real time delta
-                // GameTime cycles from 0 to 2*PI radians. Rate = (2*PI) / DAY_CYCLE_DURATION (in ms)
-                const timeRate = (2 * Math.PI) / DAY_CYCLE_DURATION;
-                gameTime = (gameTime + delta * timeRate) % (2 * Math.PI);
-                
-                updateSkyAndSun();
-            }
+            const delta = lastTime ? (time - lastTime) : 0;
             lastTime = time;
 
-            if(!isInventoryOpen) updatePlayerMovement();
+            cycleTimeMs = (cycleTimeMs + delta) % DAY_CYCLE_DURATION;
+            updateSkyAndSun();
+
+            if(!isInventoryOpen) {
+                updatePlayerMovement();
+                updateMining(delta);
+            } else {
+                miningState.active = false;
+                updateBreakingOverlay();
+            }
             renderer.render(scene, camera);
         }
         

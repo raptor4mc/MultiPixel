@@ -54,9 +54,10 @@
     8: { name: 'Oak Planks', id: 8, textured: true, textureKey: 'OAK_PLANK' },
     9: { name: 'Crafting Table', id: 9, textured: true, textureKey: 'CRAFTING_TABLE_SIDE' },
     10: { name: 'Stick', id: 10, textured: false, textureKey: 'STICK' },
-    11: { name: 'Wooden Pickaxe', id: 11, textured: false, color: 0x8D6E63 },
+    11: { name: 'Wooden Pickaxe', id: 11, textured: true, textureKey: 'WOODEN_PICKAXE', toolType: 'pickaxe', tier: 1 },
     12: { name: 'Stone Pickaxe', id: 12, textured: false, color: 0x7F8C8D },
     13: { name: 'Sand stone', id: 13, textured: true, textureKey: 'SAND_STONE' },
+    14: { name: 'Bedrock', id: 14, textured: true, textureKey: 'BEDROCK', unbreakable: true },
   };
 
   window.SingleplayerConfig = {
@@ -64,8 +65,9 @@
     CAVE_SCALE, CAVE_THRESHOLD, CAVE_MIN_Y, CAVE_MAX_Y_OFFSET,
     PLAYER_HEIGHT, PLAYER_RADIUS, GRAVITY, JUMP_POWER,
     INV_COLS, INV_ROWS, HOTBAR_SLOTS, TOTAL_INV_SIZE,
+    REPO_BASE_PREFIX,
     ASSET_FILEPATHS, blockMaterials,
-    SOLID_BLOCKS: [1, 2, 3, 5, 6, 7, 8, 9, 13],
+    SOLID_BLOCKS: [1, 2, 3, 5, 6, 7, 8, 9, 13, 14],
     LIQUID_BLOCKS: [4],
     DEFAULT_PLAYER: {
       moveSpeed: 0.12,

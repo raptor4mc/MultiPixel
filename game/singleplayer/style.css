@@ -115,3 +115,21 @@
             image-rendering: pixelated;
             filter: drop-shadow(1px 1px 0px #000);
         }
+
+
+        #breaking-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 72px;
+            height: 72px;
+            margin-left: -36px;
+            margin-top: -36px;
+            pointer-events: none;
+            opacity: 0;
+            z-index: 98;
+            image-rendering: pixelated;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
