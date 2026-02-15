@@ -29,7 +29,7 @@
         const PickaxeSystem = window.PickaxeSystem || {};
         const SpawnLighting = window.SpawnLighting || {};
 
-        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-14-14';
+        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-14-15';
         console.info('[Singleplayer build]', window.__SINGLEPLAYER_BUILD__);
 
         const TerrainModules = {};
@@ -1329,10 +1329,20 @@
         }
 
         const BIOME_CLIMATE_TARGETS = [
-            { name: 'Desert', temp: 0.78, humidity: -0.62, continentalness: 0.55, erosion: 0.05, weirdness: 0.1, depth: 0.24 },
-            { name: 'Forest', temp: 0.42, humidity: 0.62, continentalness: 0.46, erosion: 0.12, weirdness: -0.08, depth: 0.2 },
-            { name: 'Plains', temp: 0.52, humidity: 0.1, continentalness: 0.42, erosion: 0.38, weirdness: 0.02, depth: 0.14 },
+            { name: 'Desert', temp: 0.78, humidity: -0.62, continentalness: 0.55, erosion: 0.05, weirdness: 0.1 },
+            { name: 'Forest', temp: 0.42, humidity: 0.62, continentalness: 0.46, erosion: 0.12, weirdness: -0.08 },
+            { name: 'Plains', temp: 0.52, humidity: 0.1, continentalness: 0.42, erosion: 0.38, weirdness: 0.02 },
         ];
+
+        function sampleClimateVector(wx, wz, y = SEA_LEVEL) {
+            return {
+                temp: octaveNoise3D(wx, y, wz, 3, 0.52, 2.0, 0.00048, -600, 170, 300),
+                humidity: octaveNoise3D(wx, y, wz, 3, 0.55, 2.0, 0.00072, 320, -240, -130),
+                continentalness: octaveNoise3D(wx, y, wz, 3, 0.52, 2.0, 0.00145, 200, 90, 200),
+                erosion: octaveNoise3D(wx, y, wz, 4, 0.5, 2.05, 0.0039, 180, -120, -90),
+                weirdness: octaveNoise3D(wx, y, wz, 4, 0.5, 2.0, 0.0021, -510, 380, 140),
+            };
+        }
 
         function chooseBiomeByClimate(vec) {
             let best = 'Plains';
@@ -1343,8 +1353,7 @@
                 const dCont = vec.continentalness - t.continentalness;
                 const dEro = vec.erosion - t.erosion;
                 const dWeird = vec.weirdness - t.weirdness;
-                const dDepth = vec.depth - t.depth;
-                const dist = dTemp*dTemp + dHum*dHum + dCont*dCont + dEro*dEro + dWeird*dWeird + dDepth*dDepth;
+                const dist = dTemp*dTemp + dHum*dHum + dCont*dCont + dEro*dEro + dWeird*dWeird;
                 if (dist < bestDist) {
                     bestDist = dist;
                     best = t.name;
@@ -1355,41 +1364,31 @@
 
         function getBiome(wx, wz) {
             const tv = sampleTerrainVector(wx, wz);
-            const climateNoise = octaveNoise2D(wx, wz, 3, 0.52, 2.0, 0.00045, -600, 300);
-            const moistureNoise = octaveNoise2D(wx, wz, 3, 0.55, 2.0, 0.0007, 1000, 1000);
+            const climate = sampleClimateVector(wx, wz, SEA_LEVEL + 8);
             const detailNoise = octaveNoise2D(wx, wz, 3, 0.6, 2.0, 0.003, 0, 0);
             const mountainNoise = (Math.abs(octaveNoise2D(wx, wz, 3, 0.56, 2.0, 0.0013, -400, 750)) + 1) * 0.5;
             const continentalNoise = (tv.continentalness + 1) * 0.5;
             const distFromCenter = Math.sqrt(wx * wx + wz * wz);
             const riverMask = getRiverMask(wx, wz);
 
-            if (TerrainModules['mountains'].isBiome({ mountainNoise, continentalNoise, climateNoise })) return 'Mountains';
-            if (TerrainModules['ocean'].isBiome({ continentalNoise, climateNoise })) return 'Ocean';
+            if (TerrainModules['mountains'].isBiome({ mountainNoise, continentalNoise, climateNoise: climate.temp })) return 'Mountains';
+            if (TerrainModules['ocean'].isBiome({ continentalNoise, climateNoise: climate.temp })) return 'Ocean';
 
-            const climateVec = {
-                temp: climateNoise,
-                humidity: tv.humidity,
-                continentalness: tv.continentalness,
-                erosion: tv.erosion,
-                weirdness: tv.weirdness,
-                depth: tv.peaksValleys,
-            };
-
-            let selected = chooseBiomeByClimate(climateVec);
+            let selected = chooseBiomeByClimate(climate);
 
             if (selected === 'Desert') {
                 const isDesert = TerrainModules['desert'].isBiome({
-                    climateNoise,
-                    moistureNoise: Math.min(moistureNoise, tv.humidity),
+                    climateNoise: climate.temp,
+                    moistureNoise: Math.min(climate.humidity, octaveNoise2D(wx, wz, 3, 0.55, 2.0, 0.0007, 1000, 1000)),
                     continentalNoise,
                 });
                 if (!isDesert || riverMask < 0.35) selected = 'Plains';
             }
 
-            const shouldForceForest = tv.humidity > 0.18 && detailNoise > -0.22 && distFromCenter < ISLAND_RADIUS + 40;
-            if (selected === 'Forest' && !TerrainModules['oakForest'].isBiome({ detailNoise, humidityNoise: tv.humidity, distFromCenter, ISLAND_RADIUS }) && !shouldForceForest) {
+            const shouldForceForest = climate.humidity > 0.18 && detailNoise > -0.22 && distFromCenter < ISLAND_RADIUS + 48;
+            if (selected === 'Forest' && !TerrainModules['oakForest'].isBiome({ detailNoise, humidityNoise: climate.humidity, distFromCenter, ISLAND_RADIUS }) && !shouldForceForest) {
                 selected = 'Plains';
-            } else if (selected === 'Plains' && shouldForceForest && climateNoise > -0.35) {
+            } else if (selected === 'Plains' && shouldForceForest && climate.temp > -0.35) {
                 selected = 'Forest';
             }
 
@@ -1409,6 +1408,20 @@
             let norm = 0;
             for (let i = 0; i < octaves; i++) {
                 sum += perlin.noise2D((x + offsetX) * scale * freq, (z + offsetZ) * scale * freq) * amp;
+                norm += amp;
+                amp *= persistence;
+                freq *= lacunarity;
+            }
+            return norm > 0 ? (sum / norm) : 0;
+        }
+
+        function octaveNoise3D(x, y, z, octaves, persistence, lacunarity, scale, offsetX = 0, offsetY = 0, offsetZ = 0) {
+            let amp = 1;
+            let freq = 1;
+            let sum = 0;
+            let norm = 0;
+            for (let i = 0; i < octaves; i++) {
+                sum += perlin.noise3D((x + offsetX) * scale * freq, (y + offsetY) * scale * freq, (z + offsetZ) * scale * freq) * amp;
                 norm += amp;
                 amp *= persistence;
                 freq *= lacunarity;
@@ -1720,7 +1733,7 @@
                          data[x + y*CHUNK_SIZE + z*CHUNK_SIZE*CHUNK_HEIGHT] = t;
                      }
                   
-                     // --- Tree Generation (Minecraft-like oak trees) ---
+                     // --- Tree Generation (classic oak algorithm with validity + obstruction checks) ---
                      if (!isRiver && (biome === 'Forest' || biome === 'Plains')) {
                          let topY = -1;
                          let topType = 0;
@@ -1739,42 +1752,57 @@
                              const scatter = hashRand2D(wx, wz, 99);
                              const localScore = densityNoise * 0.65 + scatter * 0.35;
 
-                             // Deterministic cell fallback prevents "no trees" streaks in forests.
                              const cell = biome === 'Forest' ? 3 : 5;
                              const cellKeyX = Math.floor(wx / cell);
                              const cellKeyZ = Math.floor(wz / cell);
                              const cellRoll = hashRand2D(cellKeyX, cellKeyZ, biome === 'Forest' ? 611 : 619);
 
-                             const threshold = biome === 'Forest' ? 0.72 : 0.91;
-                             const canSpawn = (localScore > threshold) || (biome === 'Forest' && cellRoll > 0.78 && localScore > 0.58);
+                             const threshold = biome === 'Forest' ? 0.70 : 0.90;
+                             const canSpawn = (localScore > threshold) || (biome === 'Forest' && cellRoll > 0.76 && localScore > 0.56);
 
                              if (canSpawn) {
-                                 const th = 4 + Math.floor(hashRand2D(wx, wz, 157) * 3); // 4-6 (classic oak feel)
-                                 const baseIdx = x + topY * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
-                                 if (data[baseIdx] === 2) data[baseIdx] = 1; // convert exposed dirt to grass-like top
+                                 const heightLimit = 5 + Math.floor(hashRand2D(wx, wz, 157) * 4); // 5-8
 
-                                 // Trunk
-                                 for (let i = 1; i <= th; i++) {
-                                     const ty = topY + i;
-                                     if (ty >= CHUNK_HEIGHT) break;
-                                     const idx = x + ty * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
-                                     if (data[idx] === 0) data[idx] = 5;
+                                 // Obstruction check (only allow air/leaves in intended volume)
+                                 let obstructed = false;
+                                 for (let ty = topY + 1; ty <= Math.min(CHUNK_HEIGHT - 2, topY + heightLimit + 2) && !obstructed; ty++) {
+                                     const canopyRadius = ty >= topY + heightLimit - 2 ? 2 : 0;
+                                     for (let ox = -canopyRadius; ox <= canopyRadius && !obstructed; ox++) {
+                                         for (let oz = -canopyRadius; oz <= canopyRadius && !obstructed; oz++) {
+                                             const tx = x + ox;
+                                             const tz = z + oz;
+                                             if (tx < 0 || tx >= CHUNK_SIZE || tz < 0 || tz >= CHUNK_SIZE) continue;
+                                             const idx = tx + ty * CHUNK_SIZE + tz * CHUNK_SIZE * CHUNK_HEIGHT;
+                                             const b = data[idx];
+                                             if (b !== 0 && b !== 6) obstructed = true;
+                                         }
+                                     }
                                  }
 
-                                 // Classic-ish oak canopy: dense top blob + cross shoulders.
-                                 for (let lx = -2; lx <= 2; lx++) {
-                                     for (let lz = -2; lz <= 2; lz++) {
-                                         for (let ly = th - 3; ly <= th + 1; ly++) {
-                                             const manhattan = Math.abs(lx) + Math.abs(lz);
-                                             if (ly === th + 1 && manhattan > 1) continue;
-                                             if (ly === th - 3 && manhattan > 2) continue;
-                                             if (manhattan > 3) continue;
+                                 if (!obstructed) {
+                                     const baseIdx = x + topY * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
+                                     if (data[baseIdx] === 2) data[baseIdx] = 1;
 
-                                             const tx = x + lx;
-                                             const tz = z + lz;
-                                             const ty = topY + ly;
-                                             if (tx >= 0 && tx < CHUNK_SIZE && tz >= 0 && tz < CHUNK_SIZE && ty < CHUNK_HEIGHT) {
-                                                 const lidx = tx + ty * CHUNK_SIZE + tz * CHUNK_SIZE * CHUNK_HEIGHT;
+                                     // Straight trunk placer
+                                     for (let i = 1; i <= heightLimit; i++) {
+                                         const ty = topY + i;
+                                         if (ty >= CHUNK_HEIGHT) break;
+                                         const idx = x + ty * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
+                                         if (data[idx] === 0 || data[idx] === 6) data[idx] = 5;
+                                     }
+
+                                     // Blob foliage placer (rounded canopy layers)
+                                     for (let ly = -3; ly <= 1; ly++) {
+                                         const yAbs = topY + heightLimit + ly;
+                                         if (yAbs < 1 || yAbs >= CHUNK_HEIGHT) continue;
+                                         const radius = ly >= 0 ? 1 : (ly === -1 ? 2 : (ly === -2 ? 2 : 1));
+                                         for (let lx = -radius; lx <= radius; lx++) {
+                                             for (let lz = -radius; lz <= radius; lz++) {
+                                                 if (Math.abs(lx) + Math.abs(lz) > radius + 1) continue;
+                                                 const tx = x + lx;
+                                                 const tz = z + lz;
+                                                 if (tx < 0 || tx >= CHUNK_SIZE || tz < 0 || tz >= CHUNK_SIZE) continue;
+                                                 const lidx = tx + yAbs * CHUNK_SIZE + tz * CHUNK_SIZE * CHUNK_HEIGHT;
                                                  if (data[lidx] === 0) data[lidx] = 6;
                                              }
                                          }
