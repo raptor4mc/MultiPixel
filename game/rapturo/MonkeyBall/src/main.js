@@ -1,5 +1,4 @@
 import { mat4, vec3, vec4 } from 'gl-matrix';
-import { Game, type MultiplayerGameMode } from './game.js';
 import { AudioManager } from './audio.js';
 import { GAME_SOURCES, S16_TO_RAD, STAGE_BASE_PATHS, type GameSource } from './constants.js';
 import { getStageListForDifficulty } from './course.js';
