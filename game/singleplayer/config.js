@@ -49,6 +49,7 @@
     COAL_ORE_BLOCK: getAssetPath('textures/coal_ore_block.png'),
     COAL_BLOCK: getAssetPath('textures/coal_block.png'),
     STONE_BRICK_BLOCK: getAssetPath('textures/stone_brick_block.png'),
+    TORCH: getAssetPath('textures/torch.png'),
   };
 
   const blockMaterials = {
@@ -74,6 +75,7 @@
     19: { name: 'Coal', id: 19, textured: true, textureKey: 'COAL' },
     20: { name: 'Coal Block', id: 20, textured: true, textureKey: 'COAL_BLOCK' },
     21: { name: 'Stone Brick', id: 21, textured: true, textureKey: 'STONE_BRICK_BLOCK' },
+    22: { name: 'torch', id: 22, textured: true, textureKey: 'TORCH' },
   };
 
   window.SingleplayerConfig = {
