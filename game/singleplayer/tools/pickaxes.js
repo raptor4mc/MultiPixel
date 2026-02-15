@@ -4,7 +4,7 @@
     12: { name: 'Stone Pickaxe', tier: 2, hardBlockSpeed: 0.38, softBlockPenalty: 1.02 },
   };
 
-  const HARD_BLOCKS = new Set([3, 13, 17, 14, 20]);
+  const HARD_BLOCKS = new Set([3, 13, 17, 14, 20, 30]);
 
   function getEquippedPickaxe(item) {
     if (!item) return null;
@@ -29,6 +29,7 @@
     if (blockId === 3) return { id: 17, count: 1 };      // Stone -> Cobblestone
     if (blockId === 15) return { id: 16, count: 2 };     // Snow block -> Snowballs
     if (blockId === 18) return { id: 19, count: 1 };     // Coal ore -> Coal
+    if (blockId === 30) return { id: 31, count: 1 };     // Steel ore -> iron
     return { id: blockId, count: 1 };
   }
 
