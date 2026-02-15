@@ -55,6 +55,7 @@
     CHARCOAL: getAssetPath('textures/charcoal.png'),
     GLASS_BLOCK: getAssetPath('textures/glass_block.png'),
     SMOOTH_STONE_BLOCK: getAssetPath('textures/smooth_stone_block.png'),
+    GRAVEL: getAssetPath('texxtures/gravel_block.png'),
   };
 
   const blockMaterials = {
@@ -86,6 +87,7 @@
     25: { name: 'Charcoal', id: 25, textured: true, textureKey: 'CHARCOAL' },
     26: { name: 'Glass', id: 26, textured: true, textureKey: 'GLASS_BLOCK' },
     27: { name: 'Smooth Stone', id: 27, textured: true, textureKey: 'SMOOTH_STONE_BLOCK' }, 
+    28: { name: 'gravel', id: 28, textured: true, textureKey: 'GRAVEL' },
   };
 
   window.SingleplayerConfig = {
