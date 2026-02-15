@@ -302,6 +302,9 @@
             addToInventory(5, 5); // Wood Log (for crafting)
             addToInventory(6, 1); // Leaves
             addToInventory(7, 32); // Sand
+            addToInventory(26, 32);
+            addToInventory(27, 32);
+            addToInventory(28, 32);
             
             // Set initial sky state
             updateSkyAndSun(); 
