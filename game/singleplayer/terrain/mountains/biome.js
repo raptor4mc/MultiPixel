@@ -1,28 +1,29 @@
 (function () {
   function lerp(a, b, t) { return a + (b - a) * t; }
 
-  // Approximate cubic-spline-style response for mountain uplift.
-  function mountainFactor(continentalness, erosion, ridges) {
-    const inland = Math.max(0, (continentalness + 0.15) / 0.85);
-    const erodeInv = Math.max(0, 1 - (erosion + 1) * 0.5);
-    const ridgeBoost = Math.max(0, ridges);
+  // Piecewise curve approximating Minecraft-like spline mapping.
+  function splineMountainFactor(continentalness, erosion, ridges) {
+    const inland = Math.max(0, Math.min(1, (continentalness + 0.2) / 0.9));
+    const erosionInv = Math.max(0, Math.min(1, 1 - (erosion + 1) * 0.5));
+    const ridgeShape = Math.max(0, Math.min(1, ridges));
 
-    const broadUplift = lerp(6, 28, inland);
-    const steepness = lerp(0.4, 1.0, erodeInv);
-    const peakGain = lerp(4, 46, Math.pow(ridgeBoost, 1.7));
-    return broadUplift * steepness + peakGain;
+    const continentalLift = lerp(8, 34, Math.pow(inland, 1.15));
+    const erosionSharpness = lerp(0.35, 1.35, Math.pow(erosionInv, 1.2));
+    const ridgeLift = lerp(2, 54, Math.pow(ridgeShape, 1.85));
+    return continentalLift * erosionSharpness + ridgeLift;
   }
 
   const MountainsTerrain = {
     isBiome({ mountainNoise, continentalNoise, climateNoise }) {
-      return mountainNoise > 0.6 && continentalNoise > 0.42 && climateNoise > -0.45;
+      return mountainNoise > 0.62 && continentalNoise > 0.43 && climateNoise > -0.45;
     },
-    getHeight({ BASE_LAND_Y, continentalness, erosion, ridges, terrainNoise, cliffNoise, peakNoise }) {
-      const uplift = mountainFactor(continentalness, erosion, ridges);
-      const cliffFaces = Math.max(0, cliffNoise - 0.56) * 16;
-      const needlePeaks = Math.max(0, peakNoise - 0.52) * 44;
-      const roughness = terrainNoise * 4;
-      return BASE_LAND_Y + uplift + cliffFaces + needlePeaks + roughness;
+    getHeight({ BASE_LAND_Y, continentalness, erosion, ridges, terrainNoise, cliffNoise, peakNoise, peaksValleys }) {
+      const uplift = splineMountainFactor(continentalness, erosion, ridges);
+      const ridgeWalls = Math.max(0, Math.abs(peaksValleys) - 0.42) * 20;
+      const cliffFaces = Math.max(0, cliffNoise - 0.55) * 26;
+      const alpinePeaks = Math.pow(Math.max(0, peakNoise - 0.48), 1.75) * 68;
+      const roughness = terrainNoise * 5.2;
+      return BASE_LAND_Y + uplift + ridgeWalls + cliffFaces + alpinePeaks + roughness;
     },
   };
 

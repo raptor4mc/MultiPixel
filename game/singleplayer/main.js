@@ -27,8 +27,9 @@
 
         const { checkCraftingRecipe, consumeCraftingInputForOne } = window.CraftingSystem;
         const PickaxeSystem = window.PickaxeSystem || {};
+        const SpawnLighting = window.SpawnLighting || {};
 
-        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-14-6';
+        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-14-7';
         console.info('[Singleplayer build]', window.__SINGLEPLAYER_BUILD__);
 
         const TerrainModules = {};
@@ -128,6 +129,7 @@
       
         let scene, camera, renderer, perlin, raycaster;
         let worldSeed = 0;
+        let lightingSystem = null;
         const chunks = new Map();
         const worldGroup = new THREE.Group();
         let yawObject, pitchObject; 
@@ -226,6 +228,7 @@
                 worldSeed = Math.floor(Math.random() * 2147483647);
                 perlin = new PerlinNoise(worldSeed);
                 console.info('[World seed]', worldSeed);
+                lightingSystem = SpawnLighting.create ? SpawnLighting.create({ getBlockType, isLiquid, CHUNK_HEIGHT }) : null;
             } else {
                 console.error("PerlinNoise library failed to load.");
                 return;
@@ -1325,43 +1328,69 @@
             return false;
         }
 
+        const BIOME_CLIMATE_TARGETS = [
+            { name: 'Desert', temp: 0.78, humidity: -0.62, continentalness: 0.55, erosion: 0.05, weirdness: 0.1, depth: 0.24 },
+            { name: 'Forest', temp: 0.42, humidity: 0.62, continentalness: 0.46, erosion: 0.12, weirdness: -0.08, depth: 0.2 },
+            { name: 'Plains', temp: 0.52, humidity: 0.1, continentalness: 0.42, erosion: 0.38, weirdness: 0.02, depth: 0.14 },
+        ];
+
+        function chooseBiomeByClimate(vec) {
+            let best = 'Plains';
+            let bestDist = Infinity;
+            for (const t of BIOME_CLIMATE_TARGETS) {
+                const dTemp = vec.temp - t.temp;
+                const dHum = vec.humidity - t.humidity;
+                const dCont = vec.continentalness - t.continentalness;
+                const dEro = vec.erosion - t.erosion;
+                const dWeird = vec.weirdness - t.weirdness;
+                const dDepth = vec.depth - t.depth;
+                const dist = dTemp*dTemp + dHum*dHum + dCont*dCont + dEro*dEro + dWeird*dWeird + dDepth*dDepth;
+                if (dist < bestDist) {
+                    bestDist = dist;
+                    best = t.name;
+                }
+            }
+            return best;
+        }
+
         function getBiome(wx, wz) {
-            const continentalNoise = (perlin.noise2D(wx * 0.0016 + 200, wz * 0.0016 + 200) + 1) * 0.5;
-            const climateNoise = perlin.noise2D(wx * 0.00045 - 600, wz * 0.00045 + 300);
-            const moistureNoise = perlin.noise2D(wx * 0.0007 + 1000, wz * 0.0007 + 1000);
             const tv = sampleTerrainVector(wx, wz);
-            const humidityNoise = tv.humidity;
-            const detailNoise = perlin.noise2D(wx * 0.003, wz * 0.003);
-            const mountainNoise = (Math.abs(perlin.noise2D(wx * 0.0013 - 400, wz * 0.0013 + 750)) + 1) * 0.5;
+            const climateNoise = octaveNoise2D(wx, wz, 3, 0.52, 2.0, 0.00045, -600, 300);
+            const moistureNoise = octaveNoise2D(wx, wz, 3, 0.55, 2.0, 0.0007, 1000, 1000);
+            const detailNoise = octaveNoise2D(wx, wz, 3, 0.6, 2.0, 0.003, 0, 0);
+            const mountainNoise = (Math.abs(octaveNoise2D(wx, wz, 3, 0.56, 2.0, 0.0013, -400, 750)) + 1) * 0.5;
+            const continentalNoise = (tv.continentalness + 1) * 0.5;
             const distFromCenter = Math.sqrt(wx * wx + wz * wz);
             const riverMask = getRiverMask(wx, wz);
 
             if (TerrainModules['mountains'].isBiome({ mountainNoise, continentalNoise, climateNoise })) return 'Mountains';
             if (TerrainModules['ocean'].isBiome({ continentalNoise, climateNoise })) return 'Ocean';
 
-            const isDesert = TerrainModules['desert'].isBiome({ climateNoise, moistureNoise: Math.min(moistureNoise, humidityNoise), continentalNoise });
-            if (isDesert) {
-                if (riverMask >= 0.35) return 'Desert';
+            const climateVec = {
+                temp: climateNoise,
+                humidity: tv.humidity,
+                continentalness: tv.continentalness,
+                erosion: tv.erosion,
+                weirdness: tv.weirdness,
+                depth: tv.peaksValleys,
+            };
 
-                // If desert would touch greener biomes, force a plains transition unless there's a river crossing.
-                const neighborOffsets = [[48, 0], [-48, 0], [0, 48], [0, -48], [48, 48], [-48, -48]];
-                for (const [ox, oz] of neighborOffsets) {
-                    const nDetail = perlin.noise2D((wx + ox) * 0.003, (wz + oz) * 0.003);
-                    const nHumidity = perlin.noise2D((wx + ox) * 0.001 + 320, (wz + oz) * 0.001 - 130);
-                    const nMountain = (Math.abs(perlin.noise2D((wx + ox) * 0.0013 - 400, (wz + oz) * 0.0013 + 750)) + 1) * 0.5;
-                    const nContinental = (perlin.noise2D((wx + ox) * 0.0016 + 200, (wz + oz) * 0.0016 + 200) + 1) * 0.5;
-                    if (TerrainModules['mountains'].isBiome({ mountainNoise: nMountain, continentalNoise: nContinental, climateNoise }) ||
-                        TerrainModules['oakForest'].isBiome({ detailNoise: nDetail, humidityNoise: nHumidity, distFromCenter, ISLAND_RADIUS }) ||
-                        TerrainModules['plains'].isBiome({ humidityNoise: nHumidity, mountainNoise: nMountain })) {
-                        return 'Plains';
-                    }
-                }
-                return 'Desert';
+            let selected = chooseBiomeByClimate(climateVec);
+
+            if (selected === 'Desert') {
+                const isDesert = TerrainModules['desert'].isBiome({
+                    climateNoise,
+                    moistureNoise: Math.min(moistureNoise, tv.humidity),
+                    continentalNoise,
+                });
+                if (!isDesert || riverMask < 0.35) selected = 'Plains';
             }
 
-            if (humidityNoise > 0.12 && TerrainModules['oakForest'].isBiome({ detailNoise, humidityNoise, distFromCenter, ISLAND_RADIUS })) return 'Forest';
-            if (TerrainModules['plains'].isBiome({ humidityNoise, mountainNoise })) return 'Plains';
-            return 'Forest';
+            if (selected === 'Forest' && !TerrainModules['oakForest'].isBiome({ detailNoise, humidityNoise: tv.humidity, distFromCenter, ISLAND_RADIUS })) {
+                selected = 'Plains';
+            }
+
+            return selected;
         }
 
         function getRavineMask(wx, wz) {
@@ -1420,6 +1449,7 @@
                     continentalness: tv.continentalness,
                     erosion: tv.erosion,
                     ridges: tv.ridges,
+                    peaksValleys: tv.peaksValleys,
                     terrainNoise,
                     cliffNoise,
                     peakNoise,
@@ -1866,38 +1896,7 @@
             }
         }
 
-        const SPAWN_MIN_LIGHT_LEVEL = 9;
-        const EMISSIVE_BLOCK_LIGHT = { 4: 2, 9: 4 };
-
-        function getSkyLightLevel(wx, wy, wz) {
-            let light = 15;
-            for (let y = CHUNK_HEIGHT - 1; y > wy; y--) {
-                const b = getBlockType(wx, y, wz);
-                if (b !== 0 && !isLiquid(b)) {
-                    light = Math.max(0, light - 3);
-                    if (light <= 0) break;
-                }
-            }
-            return light;
-        }
-
-        function getBlockLightLevel(wx, wy, wz) {
-            let best = 0;
-            const r = 4;
-            for (let dx = -r; dx <= r; dx++) {
-                for (let dy = -r; dy <= r; dy++) {
-                    for (let dz = -r; dz <= r; dz++) {
-                        const b = getBlockType(wx + dx, wy + dy, wz + dz);
-                        const emit = EMISSIVE_BLOCK_LIGHT[b] || 0;
-                        if (!emit) continue;
-                        const dist = Math.abs(dx) + Math.abs(dy) + Math.abs(dz);
-                        const val = Math.max(0, emit - dist);
-                        if (val > best) best = val;
-                    }
-                }
-            }
-            return best;
-        }
+        const SPAWN_MIN_LIGHT_LEVEL = 11;
 
         function isSafeSpawnSpot(x, z) {
             const wx = Math.floor(x);
@@ -1908,7 +1907,7 @@
                 const feet = getBlockType(wx, y, wz);
                 const head = getBlockType(wx, y + 1, wz);
 
-                if (!isSolid(under) || isLiquid(under)) continue;
+                if (!isSolid(under) || isLiquid(under) || under === 6) continue;
                 if (feet !== 0 || head !== 0) continue;
 
                 let blocked = false;
@@ -1922,9 +1921,8 @@
                 }
                 if (blocked) continue;
 
-                const skyLight = getSkyLightLevel(wx, y, wz);
-                const blockLight = getBlockLightLevel(wx, y, wz);
-                const lightLevel = Math.max(skyLight, blockLight);
+                if (lightingSystem && !lightingSystem.isOpenToSky(wx, y, wz)) continue;
+                const lightLevel = lightingSystem ? lightingSystem.getCombinedLight(wx, y, wz) : 15;
                 if (lightLevel < SPAWN_MIN_LIGHT_LEVEL) continue;
 
                 return { y, lightLevel };
