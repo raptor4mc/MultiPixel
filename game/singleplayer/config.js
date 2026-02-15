@@ -32,7 +32,7 @@
   const ASSET_FILEPATHS = {
     DIRT: getAssetPath('textures/natural/dirt_block.png'),
     STONE: getAssetPath('textures/natural/stone_block.png'),
-    LEAVES: getAssetPath('textures/leaf/leaf_oak.png'),
+    LEAVES: getAssetPath('textures/natural/oak/leaf_oak.png'),
     SAND: getAssetPath('textures/natural/sand_block.png'),
     HEART: getAssetPath('ui/heart_full.png'),
     FOOD: getAssetPath('ui/food_full.png'),
