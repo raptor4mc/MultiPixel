@@ -48,6 +48,7 @@
     COAL: getAssetPath('textures/coal.png'),
     COAL_ORE_BLOCK: getAssetPath('textures/coal_ore_block.png'),
     COAL_BLOCK: getAssetPath('textures/coal_block.png'),
+    STONE_BRICK_BLOCK: getAssetPath('textures/stone_brick_block.png'),
   };
 
   const blockMaterials = {
@@ -72,6 +73,7 @@
     18: { name: 'Coal Ore', id: 18, textured: true, textureKey: 'COAL_ORE_BLOCK' },
     19: { name: 'Coal', id: 19, textured: true, textureKey: 'COAL' },
     20: { name: 'Coal Block', id: 20, textured: true, textureKey: 'COAL_BLOCK' },
+    21: { name: 'Stone Brick', id: 21, textured: true, textureKey: 'STONE_BRICK_BLOCK' },
   };
 
   window.SingleplayerConfig = {
@@ -81,7 +83,7 @@
     INV_COLS, INV_ROWS, HOTBAR_SLOTS, TOTAL_INV_SIZE,
     REPO_BASE_PREFIX,
     ASSET_FILEPATHS, blockMaterials,
-    SOLID_BLOCKS: [1, 2, 3, 5, 6, 7, 8, 9, 13, 14, 15, 17, 18, 20],
+    SOLID_BLOCKS: [1, 2, 3, 5, 6, 7, 8, 9, 13, 14, 15, 17, 18, 20, 21],
     LIQUID_BLOCKS: [4],
     DEFAULT_PLAYER: {
       moveSpeed: 0.12,
