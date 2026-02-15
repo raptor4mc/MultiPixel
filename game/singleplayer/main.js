@@ -1329,9 +1329,9 @@
         }
 
         const BIOME_CLIMATE_TARGETS = [
-            { name: 'Desert', temp: 0.48, humidity: -0.34, continentalness: 0.2, erosion: 0.08, weirdness: 0.06 },
-            { name: 'Forest', temp: 0.16, humidity: 0.26, continentalness: 0.15, erosion: 0.04, weirdness: -0.05 },
-            { name: 'Plains', temp: 0.1, humidity: -0.02, continentalness: 0.08, erosion: 0.22, weirdness: 0.02 },
+            { name: 'Desert', temp: 0.09, humidity: -0.12, continentalness: 0.18, erosion: 0.08, weirdness: 0.06 },
+            { name: 'Forest', temp: 0.0, humidity: 0.16, continentalness: 0.14, erosion: 0.06, weirdness: -0.04 },
+            { name: 'Plains', temp: -0.02, humidity: 0.02, continentalness: 0.1, erosion: 0.2, weirdness: 0.02 },
         ];
 
         function sampleClimateVector(wx, wz, y = SEA_LEVEL) {
@@ -1374,7 +1374,14 @@
             if (TerrainModules['mountains'].isBiome({ mountainNoise, continentalNoise, climateNoise: climate.temp })) return 'Mountains';
             if (TerrainModules['ocean'].isBiome({ continentalNoise, climateNoise: climate.temp })) return 'Ocean';
 
+            const aridNoise = octaveNoise2D(wx, wz, 3, 0.54, 2.0, 0.0016, 1400, -900);
+            const heatNoise = octaveNoise2D(wx, wz, 2, 0.58, 2.0, 0.0022, -1700, 500);
+            const likelyDesert = aridNoise > 0.18 && heatNoise > -0.05 && continentalNoise > 0.35 && mountainNoise < 0.72 && riverMask < 0.28;
+            const likelyForest = climate.humidity > 0.16 && climate.temp > -0.35 && climate.temp < 0.38;
+
             let selected = chooseBiomeByClimate(climate);
+            if (likelyDesert) selected = 'Desert';
+            else if (likelyForest && selected !== 'Desert') selected = 'Forest';
 
             if (selected === 'Desert') {
                 const isDesert = TerrainModules['desert'].isBiome({
@@ -1382,7 +1389,7 @@
                     moistureNoise: Math.min(climate.humidity, octaveNoise2D(wx, wz, 3, 0.55, 2.0, 0.0007, 1000, 1000)),
                     continentalNoise,
                 });
-                if (!isDesert || riverMask < 0.35) selected = 'Plains';
+                if (!isDesert || riverMask > 0.35) selected = 'Plains';
             }
 
             const shouldForceForest = climate.humidity > 0.14 && detailNoise > -0.22 && climate.temp > -0.35;
@@ -1757,8 +1764,8 @@
                              const cellKeyZ = Math.floor(wz / cell);
                              const cellRoll = hashRand2D(cellKeyX, cellKeyZ, biome === 'Forest' ? 611 : 619);
 
-                             const threshold = biome === 'Forest' ? 0.62 : 0.82;
-                             const canSpawn = (localScore > threshold) || (biome === 'Forest' && cellRoll > 0.68 && localScore > 0.48);
+                             const threshold = biome === 'Forest' ? 0.5 : 0.82;
+                             const canSpawn = (localScore > threshold) || (biome === 'Forest' && cellRoll > 0.52 && localScore > 0.38);
 
                              if (canSpawn) {
                                  const heightLimit = 5 + Math.floor(hashRand2D(wx, wz, 157) * 4); // 5-8
