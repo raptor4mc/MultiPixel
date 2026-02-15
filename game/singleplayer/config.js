@@ -56,6 +56,7 @@
     GLASS_BLOCK: getAssetPath('textures/glass_block.png'),
     SMOOTH_STONE_BLOCK: getAssetPath('textures/smooth_stone_block.png'),
     GRAVEL: getAssetPath('textures/gravel_block.png'),
+    SMOOTH_SANDSTONE_BLOCK: getAssetPath('textures/smooth_sandstone_block.png'),
   };
 
   const blockMaterials = {
@@ -88,6 +89,7 @@
     26: { name: 'Glass', id: 26, textured: true, textureKey: 'GLASS_BLOCK' },
     27: { name: 'Smooth Stone', id: 27, textured: true, textureKey: 'SMOOTH_STONE_BLOCK' }, 
     28: { name: 'gravel', id: 28, textured: true, textureKey: 'GRAVEL' },
+    29: { name: 'Smooth SandStone', id: 29, textured: true, textureKey: 'SMOOTH_SANDSTONE_BLOCK' },
   };
 
   window.SingleplayerConfig = {
@@ -97,7 +99,7 @@
     INV_COLS, INV_ROWS, HOTBAR_SLOTS, TOTAL_INV_SIZE,
     REPO_BASE_PREFIX,
     ASSET_FILEPATHS, blockMaterials,
-    SOLID_BLOCKS: [1, 2, 3, 5, 6, 7, 8, 9, 13, 14, 15, 17, 18, 20, 21, 22, 23, 24, 26, 27, 28],
+    SOLID_BLOCKS: [1, 2, 3, 5, 6, 7, 8, 9, 13, 14, 15, 17, 18, 20, 21, 22, 23, 24, 26, 27, 28, 29],
     LIQUID_BLOCKS: [4],
     DEFAULT_PLAYER: {
       moveSpeed: 0.12,
