@@ -13,6 +13,8 @@
     { name: 'Coal Block', output: { id: 19, count: 9 }, shape: [[20]] },
     { name: 'Snow Block', output: { id: 16, count: 4 }, shape: [[15]] },
     { name: 'torch', output: { id: 22, count: 4 }, shape: [[19], [10]] },
+    { name: 'furnace', output: { id: 23, count: 1 }, shape: [[3, 3, 3], [3, 0, 3], [3, 3, 3]] },
+    { name: 'furnace', output: { id: 23, count: 1 }, shape: [[17, 17, 17], [17, 0, 17], [17, 17, 17]] },
   ];
 
   function checkCraftingRecipe(inputSlots, gridWidth) {
