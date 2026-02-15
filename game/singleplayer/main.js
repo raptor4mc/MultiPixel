@@ -29,7 +29,7 @@
         const PickaxeSystem = window.PickaxeSystem || {};
         const SpawnLighting = window.SpawnLighting || {};
 
-        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-14-10';
+        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-14-11';
         console.info('[Singleplayer build]', window.__SINGLEPLAYER_BUILD__);
 
         const TerrainModules = {};
@@ -1719,20 +1719,25 @@
                   
                      // --- Tree Generation (Forest often, Plains occasionally) ---
                      if (surfaceBlockType === 1 && (biome === 'Forest' || biome === 'Plains') && !isRiver) { 
-                         // Position randomness from layered noise + seeded hash so trees are naturally scattered.
-                         const forestBase = biome === 'Forest' ? 0.20 : 0.085;
-                         const densityNoise = octaveNoise2D(wx, wz, 3, 0.55, 2.0, 0.055, 700, -350) * 0.5 + 0.5;
+                         const densityNoise = octaveNoise2D(wx, wz, 3, 0.55, 2.0, 0.045, 700, -350) * 0.5 + 0.5;
                          const jitter = hashRand2D(wx, wz, 99);
-                         const spawnScore = densityNoise * 0.72 + jitter * 0.28;
+                         const localScore = densityNoise * 0.68 + jitter * 0.32;
 
-                         if (spawnScore > (1.0 - forestBase)) {
+                         // Cell gating keeps distribution natural while guaranteeing regular spawn opportunities.
+                         const cell = biome === 'Forest' ? 3 : 4;
+                         const cellKeyX = Math.floor(wx / cell);
+                         const cellKeyZ = Math.floor(wz / cell);
+                         const cellRoll = hashRand2D(cellKeyX, cellKeyZ, biome === 'Forest' ? 211 : 223);
+                         const chance = biome === 'Forest' ? 0.58 : 0.24;
+
+                         if (localScore > (1.0 - chance) && cellRoll > 0.56) {
                              const th = 4 + Math.floor(hashRand2D(wx, wz, 157) * 4); // Tree height 4-7
                              // Trunk
                              for(let i=1; i<=th; i++) {
                                  const idx = x + (h-1+i)*CHUNK_SIZE + z*CHUNK_SIZE*CHUNK_HEIGHT;
                                  if ((h-1+i) < CHUNK_HEIGHT) data[idx] = 5; // Wood Log
                              }
-                            
+
                              // Leaves
                              for(let lx=-2; lx<=2; lx++){
                                  for(let lz=-2; lz<=2; lz++){
