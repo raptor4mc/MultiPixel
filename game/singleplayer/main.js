@@ -29,7 +29,7 @@
         const PickaxeSystem = window.PickaxeSystem || {};
         const SpawnLighting = window.SpawnLighting || {};
 
-        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-14-9';
+        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-14-10';
         console.info('[Singleplayer build]', window.__SINGLEPLAYER_BUILD__);
 
         const TerrainModules = {};
@@ -116,7 +116,7 @@
 
         // Mining / breaking state
         const BREAKING_TEXTURE_BASE = `${window.SingleplayerConfig?.REPO_BASE_PREFIX || '/MultiPixel'}/game/singleplayer/assets/breaking`;
-        const BLOCK_HARDNESS = { 1: 1.2, 2: 1.0, 3: 2.6, 5: 1.8, 6: 0.25, 7: 1.0, 8: 1.2, 9: 2.0, 13: 2.2, 14: Infinity, 15: 0.35, 17: 2.1 };
+        const BLOCK_HARDNESS = { 1: 1.2, 2: 1.0, 3: 2.6, 5: 1.8, 6: 0.25, 7: 1.0, 8: 1.2, 9: 2.0, 13: 2.2, 14: Infinity, 15: 0.35, 17: 2.1, 18: 2.2, 20: 3.1 };
         let miningState = { active: false, key: null, blockPos: null, targetType: 0, elapsedMs: 0, neededMs: 0, missMs: 0 };
         let isLeftMouseDown = false;
         const breakingStageTextures = new Array(10).fill(null);
@@ -1697,6 +1697,16 @@
                              if (y <= ravineTop && y >= ravineBottom) {
                                  if (y < SEA_LEVEL - 2) t = 4;
                                  else t = 0;
+                             }
+                         }
+
+                         // Coal ore pass: mineable by hand, faster with pickaxe.
+                         if (t === 3 && y > 6 && y < Math.min(CHUNK_HEIGHT - 6, h - 2)) {
+                             const veinNoise = octaveNoise2D(wx, wz, 3, 0.5, 2.0, 0.09, 1450, -870);
+                             const depthBias = 1 - (y / CHUNK_HEIGHT);
+                             const oreRoll = hashRand2D(wx + y * 13, wz - y * 7, 301);
+                             if (veinNoise > 0.12 && oreRoll < (0.06 + depthBias * 0.08)) {
+                                 t = 18;
                              }
                          }
 

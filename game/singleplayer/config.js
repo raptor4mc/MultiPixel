@@ -45,6 +45,9 @@
     SNOWBALL: getAssetPath('textures/snowball_item.png'),
     WOODEN_PICKAXE: getAssetPath('textures/wooden_pickaxe.png'),
     BEDROCK: getAssetPath('textures/bedrock.png'),
+    COAL: getAssetPath('textures/coal.png'),
+    COAL_ORE_BLOCK: getAssetPath('textures/coal_ore_block.png'),
+    COAL_BLOCK: getAssetPath('textures/coal_block.png'),
   };
 
   const blockMaterials = {
@@ -66,6 +69,9 @@
     15: { name: 'Snow Block', id: 15, textured: true, textureKey: 'SNOW_BLOCK', color: 0xf2f7ff },
     16: { name: 'Snowball', id: 16, textured: true, textureKey: 'SNOWBALL', color: 0xe7eefc },
     17: { name: 'Cobblestone', id: 17, textured: true, textureKey: 'COBBLESTONE' },
+    18: { name: 'Coal Ore', id: 18, textured: true, textureKey: 'COAL_ORE_BLOCK' },
+    19: { name: 'Coal', id: 19, textured: true, textureKey: 'COAL' },
+    20: { name: 'Coal Block', id: 20, textured: true, textureKey: 'COAL_BLOCK' },
   };
 
   window.SingleplayerConfig = {
@@ -75,7 +81,7 @@
     INV_COLS, INV_ROWS, HOTBAR_SLOTS, TOTAL_INV_SIZE,
     REPO_BASE_PREFIX,
     ASSET_FILEPATHS, blockMaterials,
-    SOLID_BLOCKS: [1, 2, 3, 5, 6, 7, 8, 9, 13, 14, 15, 17],
+    SOLID_BLOCKS: [1, 2, 3, 5, 6, 7, 8, 9, 13, 14, 15, 17, 18, 20],
     LIQUID_BLOCKS: [4],
     DEFAULT_PLAYER: {
       moveSpeed: 0.12,
