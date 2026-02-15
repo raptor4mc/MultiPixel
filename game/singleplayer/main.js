@@ -1863,7 +1863,7 @@
                 const key = mat.textureKey;
                 // Use the loaded material key if it exists, otherwise use a colored fallback key
                 if (materials[key] && materials[key].map) return key; 
-                return `${key}_FALLBACK`;
+                return `textures/Fallback.png`;
             }
             if (id === 4) return 'WATER'; 
             if (id === 5) return 'WOOD';  
