@@ -55,7 +55,7 @@
     CHARCOAL: getAssetPath('textures/charcoal.png'),
     GLASS_BLOCK: getAssetPath('textures/glass_block.png'),
     SMOOTH_STONE_BLOCK: getAssetPath('textures/smooth_stone_block.png'),
-    GRAVEL: getAssetPath('texxtures/gravel_block.png'),
+    GRAVEL: getAssetPath('textures/gravel_block.png'),
   };
 
   const blockMaterials = {
