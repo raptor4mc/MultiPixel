@@ -11,7 +11,7 @@
     { name: 'Stone Brick', output: { id: 21, count: 4 }, shape: [[3, 3], [3, 3]] },
     { name: 'Sand Stone', output: { id: 7, count: 4 }, shape: [[13]] },
     { name: 'Coal Block', output: { id: 19, count: 9 }, shape: [[20]] },
-    { name: 'Snow Block', output: { id: 16, count: 4 }, shape [[15]] },
+    { name: 'Snow Block', output: { id: 16, count: 4 }, shape: [[15]] },
   ];
 
   function checkCraftingRecipe(inputSlots, gridWidth) {
