@@ -29,7 +29,7 @@
         const PickaxeSystem = window.PickaxeSystem || {};
         const SpawnLighting = window.SpawnLighting || {};
 
-        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-14-12';
+        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-14-13';
         console.info('[Singleplayer build]', window.__SINGLEPLAYER_BUILD__);
 
         const TerrainModules = {};
@@ -1386,8 +1386,11 @@
                 if (!isDesert || riverMask < 0.35) selected = 'Plains';
             }
 
-            if (selected === 'Forest' && !TerrainModules['oakForest'].isBiome({ detailNoise, humidityNoise: tv.humidity, distFromCenter, ISLAND_RADIUS })) {
+            const shouldForceForest = tv.humidity > 0.18 && detailNoise > -0.22 && distFromCenter < ISLAND_RADIUS + 40;
+            if (selected === 'Forest' && !TerrainModules['oakForest'].isBiome({ detailNoise, humidityNoise: tv.humidity, distFromCenter, ISLAND_RADIUS }) && !shouldForceForest) {
                 selected = 'Plains';
+            } else if (selected === 'Plains' && shouldForceForest && climateNoise > -0.35) {
+                selected = 'Forest';
             }
 
             return selected;
@@ -1717,8 +1720,7 @@
                          data[x + y*CHUNK_SIZE + z*CHUNK_SIZE*CHUNK_HEIGHT] = t;
                      }
                   
-                     // --- Tree Generation (Forest often, Plains occasionally) ---
-                     // Re-scan final column top so trees still spawn even after cave/ravine/ore passes changed surface.
+                     // --- Tree Generation (Minecraft-like oak trees) ---
                      if (!isRiver && (biome === 'Forest' || biome === 'Plains')) {
                          let topY = -1;
                          let topType = 0;
@@ -1732,19 +1734,16 @@
                              }
                          }
 
-                         if (topY > SEA_LEVEL + 1 && topType === 1) {
-                             const densityNoise = octaveNoise2D(wx, wz, 3, 0.55, 2.0, 0.045, 700, -350) * 0.5 + 0.5;
-                             const jitter = hashRand2D(wx, wz, 99);
-                             const localScore = densityNoise * 0.68 + jitter * 0.32;
+                         if (topY > SEA_LEVEL && (topType === 1 || topType === 2)) {
+                             const densityNoise = octaveNoise2D(wx, wz, 3, 0.55, 2.0, 0.04, 700, -350) * 0.5 + 0.5;
+                             const scatter = hashRand2D(wx, wz, 99);
+                             const spawnProb = biome === 'Forest' ? 0.12 : 0.03;
+                             const canSpawn = (densityNoise * 0.65 + scatter * 0.35) > (1.0 - spawnProb);
 
-                             const cell = biome === 'Forest' ? 3 : 5;
-                             const cellKeyX = Math.floor(wx / cell);
-                             const cellKeyZ = Math.floor(wz / cell);
-                             const cellRoll = hashRand2D(cellKeyX, cellKeyZ, biome === 'Forest' ? 211 : 223);
-                             const chance = biome === 'Forest' ? 0.68 : 0.30;
-
-                             if (localScore > (1.0 - chance) && cellRoll > 0.42) {
-                                 const th = 4 + Math.floor(hashRand2D(wx, wz, 157) * 4); // Tree height 4-7
+                             if (canSpawn) {
+                                 const th = 4 + Math.floor(hashRand2D(wx, wz, 157) * 3); // 4-6 (classic oak feel)
+                                 const baseIdx = x + topY * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
+                                 if (data[baseIdx] === 2) data[baseIdx] = 1; // convert exposed dirt to grass-like top
 
                                  // Trunk
                                  for (let i = 1; i <= th; i++) {
@@ -1754,11 +1753,15 @@
                                      if (data[idx] === 0) data[idx] = 5;
                                  }
 
-                                 // Leaves
+                                 // Classic-ish oak canopy: dense top blob + cross shoulders.
                                  for (let lx = -2; lx <= 2; lx++) {
                                      for (let lz = -2; lz <= 2; lz++) {
-                                         for (let ly = th - 2; ly <= th + 1; ly++) {
-                                             if (Math.abs(lx) + Math.abs(lz) + Math.abs(ly - th) > 3) continue;
+                                         for (let ly = th - 3; ly <= th + 1; ly++) {
+                                             const manhattan = Math.abs(lx) + Math.abs(lz);
+                                             if (ly === th + 1 && manhattan > 1) continue;
+                                             if (ly === th - 3 && manhattan > 2) continue;
+                                             if (manhattan > 3) continue;
+
                                              const tx = x + lx;
                                              const tz = z + lz;
                                              const ty = topY + ly;
