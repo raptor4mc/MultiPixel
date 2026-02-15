@@ -51,6 +51,10 @@
     STONE_BRICK_BLOCK: getAssetPath('textures/stone_brick_block.png'),
     TORCH: getAssetPath('textures/torch.png'),
     FURNACE: getAssetPath('textures/furnace_off.png'),
+    CRACKED_STONE_BRICK: getAssetPath('textures/cracked_stone_brick.png'),
+    CHARCOAL: getAssetPath('textures/charcoal.png'),
+    GLASS_BLOCK: getAssetPath('textures/glass_block.png'),
+    SMOOTH_STONE_BLOCK: getAssetPath('textures/smooth_stone_block.png'),
   };
 
   const blockMaterials = {
@@ -78,6 +82,10 @@
     21: { name: 'Stone Brick', id: 21, textured: true, textureKey: 'STONE_BRICK_BLOCK' },
     22: { name: 'torch', id: 22, textured: true, textureKey: 'TORCH' },
     23: { name: 'Furnace', id: 23, textured: true, textureKey: 'FURNACE' },
+    24: { name: 'Cracked Stone Brick', id: 24, textured: true, textureKey: 'CRACKED_STONE_BRICK' },
+    25: { name: 'Charcoal', id: 25, textured: true, textureKey: 'CHARCOAL' },
+    26: { name: 'Glass', id: 26, textured: true, textureKey: 'GLASS_BLOCK' },
+    27: { name: 'Smooth Stone', id: 27, textured: true, textureKey: 'SMOOTH_STONE_BLOCK' }, 
   };
 
   window.SingleplayerConfig = {
@@ -87,7 +95,7 @@
     INV_COLS, INV_ROWS, HOTBAR_SLOTS, TOTAL_INV_SIZE,
     REPO_BASE_PREFIX,
     ASSET_FILEPATHS, blockMaterials,
-    SOLID_BLOCKS: [1, 2, 3, 5, 6, 7, 8, 9, 13, 14, 15, 17, 18, 20, 21, 22, 23],
+    SOLID_BLOCKS: [1, 2, 3, 5, 6, 7, 8, 9, 13, 14, 15, 17, 18, 20, 21, 22, 23, 24, 26, 27],
     LIQUID_BLOCKS: [4],
     DEFAULT_PLAYER: {
       moveSpeed: 0.12,
