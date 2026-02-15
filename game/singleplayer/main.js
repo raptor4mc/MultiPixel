@@ -29,7 +29,7 @@
         const PickaxeSystem = window.PickaxeSystem || {};
         const SpawnLighting = window.SpawnLighting || {};
 
-        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-14-13';
+        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-14-14';
         console.info('[Singleplayer build]', window.__SINGLEPLAYER_BUILD__);
 
         const TerrainModules = {};
@@ -1737,8 +1737,16 @@
                          if (topY > SEA_LEVEL && (topType === 1 || topType === 2)) {
                              const densityNoise = octaveNoise2D(wx, wz, 3, 0.55, 2.0, 0.04, 700, -350) * 0.5 + 0.5;
                              const scatter = hashRand2D(wx, wz, 99);
-                             const spawnProb = biome === 'Forest' ? 0.12 : 0.03;
-                             const canSpawn = (densityNoise * 0.65 + scatter * 0.35) > (1.0 - spawnProb);
+                             const localScore = densityNoise * 0.65 + scatter * 0.35;
+
+                             // Deterministic cell fallback prevents "no trees" streaks in forests.
+                             const cell = biome === 'Forest' ? 3 : 5;
+                             const cellKeyX = Math.floor(wx / cell);
+                             const cellKeyZ = Math.floor(wz / cell);
+                             const cellRoll = hashRand2D(cellKeyX, cellKeyZ, biome === 'Forest' ? 611 : 619);
+
+                             const threshold = biome === 'Forest' ? 0.72 : 0.91;
+                             const canSpawn = (localScore > threshold) || (biome === 'Forest' && cellRoll > 0.78 && localScore > 0.58);
 
                              if (canSpawn) {
                                  const th = 4 + Math.floor(hashRand2D(wx, wz, 157) * 3); // 4-6 (classic oak feel)
