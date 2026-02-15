@@ -57,6 +57,8 @@
     SMOOTH_STONE_BLOCK: getAssetPath('textures/stone/smooth_stone_block.png'),
     GRAVEL: getAssetPath('textures/natural/gravel_block.png'),
     SMOOTH_SANDSTONE_BLOCK: getAssetPath('textures/sand/normal/smooth_sandstone_block.png'),
+    IRON_ORE_BLOCK: GetAssetPath('textures/natural/ore/iron_ore_block.png'),
+    IRON_ORE: GetAssetPath('textures/item/iron_ore.png'),
   };
 
   const blockMaterials = {
@@ -90,6 +92,8 @@
     27: { name: 'Smooth Stone', id: 27, textured: true, textureKey: 'SMOOTH_STONE_BLOCK' }, 
     28: { name: 'gravel', id: 28, textured: true, textureKey: 'GRAVEL' },
     29: { name: 'Smooth SandStone', id: 29, textured: true, textureKey: 'SMOOTH_SANDSTONE_BLOCK' },
+    30: { name: 'Iron Ore Block', id: 30, textured: true, textureKey: 'IRON_ORE_BLOCK' },
+    31: { name: 'Iron Ore', id: 31, textured: true, textureKey: 'IRON_ORE' },
   };
 
   window.SingleplayerConfig = {
@@ -99,7 +103,7 @@
     INV_COLS, INV_ROWS, HOTBAR_SLOTS, TOTAL_INV_SIZE,
     REPO_BASE_PREFIX,
     ASSET_FILEPATHS, blockMaterials,
-    SOLID_BLOCKS: [1, 2, 3, 5, 6, 7, 8, 9, 13, 14, 15, 17, 18, 20, 21, 22, 23, 24, 26, 27, 28, 29],
+    SOLID_BLOCKS: [1, 2, 3, 5, 6, 7, 8, 9, 13, 14, 15, 17, 18, 20, 21, 22, 23, 24, 26, 27, 28, 29, 30],
     LIQUID_BLOCKS: [4],
     DEFAULT_PLAYER: {
       moveSpeed: 0.12,
