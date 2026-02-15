@@ -29,7 +29,7 @@
         const PickaxeSystem = window.PickaxeSystem || {};
         const SpawnLighting = window.SpawnLighting || {};
 
-        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-14-11';
+        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-14-12';
         console.info('[Singleplayer build]', window.__SINGLEPLAYER_BUILD__);
 
         const TerrainModules = {};
@@ -1718,35 +1718,54 @@
                      }
                   
                      // --- Tree Generation (Forest often, Plains occasionally) ---
-                     if (surfaceBlockType === 1 && (biome === 'Forest' || biome === 'Plains') && !isRiver) { 
-                         const densityNoise = octaveNoise2D(wx, wz, 3, 0.55, 2.0, 0.045, 700, -350) * 0.5 + 0.5;
-                         const jitter = hashRand2D(wx, wz, 99);
-                         const localScore = densityNoise * 0.68 + jitter * 0.32;
-
-                         // Cell gating keeps distribution natural while guaranteeing regular spawn opportunities.
-                         const cell = biome === 'Forest' ? 3 : 4;
-                         const cellKeyX = Math.floor(wx / cell);
-                         const cellKeyZ = Math.floor(wz / cell);
-                         const cellRoll = hashRand2D(cellKeyX, cellKeyZ, biome === 'Forest' ? 211 : 223);
-                         const chance = biome === 'Forest' ? 0.58 : 0.24;
-
-                         if (localScore > (1.0 - chance) && cellRoll > 0.56) {
-                             const th = 4 + Math.floor(hashRand2D(wx, wz, 157) * 4); // Tree height 4-7
-                             // Trunk
-                             for(let i=1; i<=th; i++) {
-                                 const idx = x + (h-1+i)*CHUNK_SIZE + z*CHUNK_SIZE*CHUNK_HEIGHT;
-                                 if ((h-1+i) < CHUNK_HEIGHT) data[idx] = 5; // Wood Log
+                     // Re-scan final column top so trees still spawn even after cave/ravine/ore passes changed surface.
+                     if (!isRiver && (biome === 'Forest' || biome === 'Plains')) {
+                         let topY = -1;
+                         let topType = 0;
+                         for (let yy = CHUNK_HEIGHT - 2; yy >= 1; yy--) {
+                             const tidx = x + yy * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
+                             const ttype = data[tidx];
+                             if (ttype !== 0 && ttype !== 4) {
+                                 topY = yy;
+                                 topType = ttype;
+                                 break;
                              }
+                         }
 
-                             // Leaves
-                             for(let lx=-2; lx<=2; lx++){
-                                 for(let lz=-2; lz<=2; lz++){
-                                     for(let ly=th-2; ly<=th+1; ly++){
-                                         if(Math.abs(lx)+Math.abs(lz)+Math.abs(ly-th) > 3) continue;
-                                         const tx = x+lx; const tz = z+lz; const ty = h-1+ly;
-                                         if(tx>=0 && tx<CHUNK_SIZE && tz>=0 && tz<CHUNK_SIZE && ty<CHUNK_HEIGHT) {
-                                             const lidx = tx + ty*CHUNK_SIZE + tz*CHUNK_SIZE*CHUNK_HEIGHT;
-                                             if(data[lidx]===0) data[lidx] = 6; // Leaves
+                         if (topY > SEA_LEVEL + 1 && topType === 1) {
+                             const densityNoise = octaveNoise2D(wx, wz, 3, 0.55, 2.0, 0.045, 700, -350) * 0.5 + 0.5;
+                             const jitter = hashRand2D(wx, wz, 99);
+                             const localScore = densityNoise * 0.68 + jitter * 0.32;
+
+                             const cell = biome === 'Forest' ? 3 : 5;
+                             const cellKeyX = Math.floor(wx / cell);
+                             const cellKeyZ = Math.floor(wz / cell);
+                             const cellRoll = hashRand2D(cellKeyX, cellKeyZ, biome === 'Forest' ? 211 : 223);
+                             const chance = biome === 'Forest' ? 0.68 : 0.30;
+
+                             if (localScore > (1.0 - chance) && cellRoll > 0.42) {
+                                 const th = 4 + Math.floor(hashRand2D(wx, wz, 157) * 4); // Tree height 4-7
+
+                                 // Trunk
+                                 for (let i = 1; i <= th; i++) {
+                                     const ty = topY + i;
+                                     if (ty >= CHUNK_HEIGHT) break;
+                                     const idx = x + ty * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
+                                     if (data[idx] === 0) data[idx] = 5;
+                                 }
+
+                                 // Leaves
+                                 for (let lx = -2; lx <= 2; lx++) {
+                                     for (let lz = -2; lz <= 2; lz++) {
+                                         for (let ly = th - 2; ly <= th + 1; ly++) {
+                                             if (Math.abs(lx) + Math.abs(lz) + Math.abs(ly - th) > 3) continue;
+                                             const tx = x + lx;
+                                             const tz = z + lz;
+                                             const ty = topY + ly;
+                                             if (tx >= 0 && tx < CHUNK_SIZE && tz >= 0 && tz < CHUNK_SIZE && ty < CHUNK_HEIGHT) {
+                                                 const lidx = tx + ty * CHUNK_SIZE + tz * CHUNK_SIZE * CHUNK_HEIGHT;
+                                                 if (data[lidx] === 0) data[lidx] = 6;
+                                             }
                                          }
                                      }
                                  }
