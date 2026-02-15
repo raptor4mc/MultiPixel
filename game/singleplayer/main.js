@@ -29,7 +29,7 @@
         const PickaxeSystem = window.PickaxeSystem || {};
         const SpawnLighting = window.SpawnLighting || {};
 
-        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-14-8';
+        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-14-9';
         console.info('[Singleplayer build]', window.__SINGLEPLAYER_BUILD__);
 
         const TerrainModules = {};
@@ -1413,6 +1413,14 @@
             return norm > 0 ? (sum / norm) : 0;
         }
 
+        function hashRand2D(wx, wz, salt = 0) {
+            let h = (Math.imul(wx | 0, 374761393) ^ Math.imul(wz | 0, 668265263) ^ Math.imul((worldSeed + salt) | 0, 2246822519)) >>> 0;
+            h ^= h >>> 13;
+            h = Math.imul(h, 1274126177) >>> 0;
+            h ^= h >>> 16;
+            return h / 4294967295;
+        }
+
         function sampleTerrainVector(wx, wz) {
             // Multi-noise vector: continentalness/erosion/weirdness/humidity.
             const continentalness = octaveNoise2D(wx, wz, 3, 0.52, 2.0, 0.00145, 200, 200);
@@ -1701,14 +1709,16 @@
                   
                      // --- Tree Generation (Forest often, Plains occasionally) ---
                      if (surfaceBlockType === 1 && (biome === 'Forest' || biome === 'Plains') && !isRiver) { 
-                        
-                         const treeChance = biome === 'Forest' ? 6 : 2;
-                         if (Math.abs((wx * 1327 + wz * 9283) % 100) < treeChance) {
-                            
-                             const th = 5 + Math.floor(Math.random() * 2); // Tree height 5-6
+                         // Position randomness from layered noise + seeded hash so trees are naturally scattered.
+                         const forestBase = biome === 'Forest' ? 0.20 : 0.085;
+                         const densityNoise = octaveNoise2D(wx, wz, 3, 0.55, 2.0, 0.055, 700, -350) * 0.5 + 0.5;
+                         const jitter = hashRand2D(wx, wz, 99);
+                         const spawnScore = densityNoise * 0.72 + jitter * 0.28;
+
+                         if (spawnScore > (1.0 - forestBase)) {
+                             const th = 4 + Math.floor(hashRand2D(wx, wz, 157) * 4); // Tree height 4-7
                              // Trunk
                              for(let i=1; i<=th; i++) {
-                                 
                                  const idx = x + (h-1+i)*CHUNK_SIZE + z*CHUNK_SIZE*CHUNK_HEIGHT;
                                  if ((h-1+i) < CHUNK_HEIGHT) data[idx] = 5; // Wood Log
                              }
