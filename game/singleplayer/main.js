@@ -26,8 +26,9 @@
         } = window.SingleplayerConfig;
 
         const { checkCraftingRecipe, consumeCraftingInputForOne } = window.CraftingSystem;
+        const PickaxeSystem = window.PickaxeSystem || {};
 
-        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-14-5';
+        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-14-6';
         console.info('[Singleplayer build]', window.__SINGLEPLAYER_BUILD__);
 
         const TerrainModules = {};
@@ -845,21 +846,12 @@
 
         function getMiningDurationMs(blockId) {
             const hardness = BLOCK_HARDNESS[blockId] ?? 1.5;
-            if (!isFinite(hardness)) return Infinity;
-
             const held = inventory[selectedHotbarIndex];
-            const pickaxeTier = held && held.id === 12 ? 2 : (held && held.id === 11 ? 1 : 0);
-            const prefersPickaxe = blockId === 3 || blockId === 13 || blockId === 14 || blockId === 17;
-
-            const baseMs = hardness * 950;
-            if (prefersPickaxe) {
-                if (pickaxeTier === 2) return baseMs * 0.36;
-                if (pickaxeTier === 1) return baseMs * 0.55;
-                return baseMs * 3.0;
+            const equippedPickaxe = PickaxeSystem.getEquippedPickaxe ? PickaxeSystem.getEquippedPickaxe(held) : null;
+            if (PickaxeSystem.getMiningTimeMs) {
+                return PickaxeSystem.getMiningTimeMs(blockId, hardness, equippedPickaxe);
             }
-
-            if (pickaxeTier > 0) return baseMs * 1.05;
-            return baseMs;
+            return isFinite(hardness) ? hardness * 1000 : Infinity;
         }
 
         function preloadBreakingTextures() {
@@ -1154,18 +1146,8 @@
                 if (oldType === 0 || oldType === 4) return false;
                 if (blockMaterials[oldType]?.unbreakable) return false;
 
-                const held = inventory[selectedHotbarIndex];
-                const hasWoodPickaxe = held && (held.id === 11 || held.id === 12);
-                const isHardBlock = oldType === 3 || oldType === 13 || oldType === 17;
-                if (oldType === 15) {
-                    addToInventory(16, 2);
-                } else if (oldType === 3) {
-                    addToInventory(17, 1);
-                } else if (!isHardBlock || hasWoodPickaxe) {
-                    addToInventory(oldType, 1);
-                } else {
-                    showGameMessage('Need wooden pickaxe for proper drops.');
-                }
+                const drop = PickaxeSystem.getDrop ? PickaxeSystem.getDrop(oldType) : { id: oldType, count: 1 };
+                if (drop && drop.id > 0 && drop.count > 0) addToInventory(drop.id, drop.count);
                 chunkData[index] = 0;
             } else {
                
@@ -1347,7 +1329,8 @@
             const continentalNoise = (perlin.noise2D(wx * 0.0016 + 200, wz * 0.0016 + 200) + 1) * 0.5;
             const climateNoise = perlin.noise2D(wx * 0.00045 - 600, wz * 0.00045 + 300);
             const moistureNoise = perlin.noise2D(wx * 0.0007 + 1000, wz * 0.0007 + 1000);
-            const humidityNoise = perlin.noise2D(wx * 0.001 + 320, wz * 0.001 - 130);
+            const tv = sampleTerrainVector(wx, wz);
+            const humidityNoise = tv.humidity;
             const detailNoise = perlin.noise2D(wx * 0.003, wz * 0.003);
             const mountainNoise = (Math.abs(perlin.noise2D(wx * 0.0013 - 400, wz * 0.0013 + 750)) + 1) * 0.5;
             const distFromCenter = Math.sqrt(wx * wx + wz * wz);
@@ -1356,7 +1339,7 @@
             if (TerrainModules['mountains'].isBiome({ mountainNoise, continentalNoise, climateNoise })) return 'Mountains';
             if (TerrainModules['ocean'].isBiome({ continentalNoise, climateNoise })) return 'Ocean';
 
-            const isDesert = TerrainModules['desert'].isBiome({ climateNoise, moistureNoise, continentalNoise });
+            const isDesert = TerrainModules['desert'].isBiome({ climateNoise, moistureNoise: Math.min(moistureNoise, humidityNoise), continentalNoise });
             if (isDesert) {
                 if (riverMask >= 0.35) return 'Desert';
 
@@ -1376,7 +1359,7 @@
                 return 'Desert';
             }
 
-            if (TerrainModules['oakForest'].isBiome({ detailNoise, humidityNoise, distFromCenter, ISLAND_RADIUS })) return 'Forest';
+            if (humidityNoise > 0.12 && TerrainModules['oakForest'].isBiome({ detailNoise, humidityNoise, distFromCenter, ISLAND_RADIUS })) return 'Forest';
             if (TerrainModules['plains'].isBiome({ humidityNoise, mountainNoise })) return 'Plains';
             return 'Forest';
         }
@@ -1387,13 +1370,29 @@
             return 1.0 - Math.min(1.0, line / 0.043);
         }
 
+        function octaveNoise2D(x, z, octaves, persistence, lacunarity, scale, offsetX = 0, offsetZ = 0) {
+            let amp = 1;
+            let freq = 1;
+            let sum = 0;
+            let norm = 0;
+            for (let i = 0; i < octaves; i++) {
+                sum += perlin.noise2D((x + offsetX) * scale * freq, (z + offsetZ) * scale * freq) * amp;
+                norm += amp;
+                amp *= persistence;
+                freq *= lacunarity;
+            }
+            return norm > 0 ? (sum / norm) : 0;
+        }
+
         function sampleTerrainVector(wx, wz) {
-            const continentalness = perlin.noise2D(wx * 0.0016 + 200, wz * 0.0016 + 200);
-            const erosion = perlin.noise2D(wx * 0.0055 + 180, wz * 0.0055 - 90);
-            const weirdness = perlin.noise2D(wx * 0.0022 - 510, wz * 0.0022 + 140);
+            // Multi-noise vector: continentalness/erosion/weirdness/humidity.
+            const continentalness = octaveNoise2D(wx, wz, 3, 0.52, 2.0, 0.00145, 200, 200);
+            const erosion = octaveNoise2D(wx, wz, 4, 0.5, 2.05, 0.0039, 180, -90);
+            const weirdness = octaveNoise2D(wx, wz, 4, 0.5, 2.0, 0.0021, -510, 140);
+            const humidity = octaveNoise2D(wx, wz, 3, 0.55, 2.0, 0.0011, 320, -130);
             const peaksValleys = 1 - Math.abs(weirdness);
-            const ridges = Math.pow(Math.max(0, peaksValleys), 1.75);
-            return { continentalness, erosion, weirdness, peaksValleys, ridges };
+            const ridges = Math.pow(Math.max(0, peaksValleys), 1.8);
+            return { continentalness, erosion, weirdness, humidity, peaksValleys, ridges };
         }
 
         function getNoiseGroundHeight(wx, wz, biome) {
