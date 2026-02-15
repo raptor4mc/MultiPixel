@@ -17,13 +17,14 @@
     isBiome({ mountainNoise, continentalNoise, climateNoise }) {
       return mountainNoise > 0.62 && continentalNoise > 0.43 && climateNoise > -0.45;
     },
-    getHeight({ BASE_LAND_Y, continentalness, erosion, ridges, terrainNoise, cliffNoise, peakNoise, peaksValleys }) {
+    getHeight({ BASE_LAND_Y, continentalness, erosion, ridges, terrainNoise, cliffNoise, peakNoise, peaksValleys, jaggedNoise }) {
       const uplift = splineMountainFactor(continentalness, erosion, ridges);
       const ridgeWalls = Math.max(0, Math.abs(peaksValleys) - 0.42) * 20;
       const cliffFaces = Math.max(0, cliffNoise - 0.55) * 26;
-      const alpinePeaks = Math.pow(Math.max(0, peakNoise - 0.48), 1.75) * 68;
-      const roughness = terrainNoise * 5.2;
-      return BASE_LAND_Y + uplift + ridgeWalls + cliffFaces + alpinePeaks + roughness;
+      const alpinePeaks = Math.pow(Math.max(0, peakNoise - 0.48), 1.85) * 74;
+      const jaggedSpikes = Math.pow(Math.max(0, jaggedNoise - 0.52), 2.1) * 52;
+      const roughness = terrainNoise * 5.8;
+      return BASE_LAND_Y + uplift + ridgeWalls + cliffFaces + alpinePeaks + jaggedSpikes + roughness;
     },
   };
 
