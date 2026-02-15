@@ -1329,9 +1329,9 @@
         }
 
         const BIOME_CLIMATE_TARGETS = [
-            { name: 'Desert', temp: 0.78, humidity: -0.62, continentalness: 0.55, erosion: 0.05, weirdness: 0.1 },
-            { name: 'Forest', temp: 0.42, humidity: 0.62, continentalness: 0.46, erosion: 0.12, weirdness: -0.08 },
-            { name: 'Plains', temp: 0.52, humidity: 0.1, continentalness: 0.42, erosion: 0.38, weirdness: 0.02 },
+            { name: 'Desert', temp: 0.48, humidity: -0.34, continentalness: 0.2, erosion: 0.08, weirdness: 0.06 },
+            { name: 'Forest', temp: 0.16, humidity: 0.26, continentalness: 0.15, erosion: 0.04, weirdness: -0.05 },
+            { name: 'Plains', temp: 0.1, humidity: -0.02, continentalness: 0.08, erosion: 0.22, weirdness: 0.02 },
         ];
 
         function sampleClimateVector(wx, wz, y = SEA_LEVEL) {
@@ -1385,7 +1385,7 @@
                 if (!isDesert || riverMask < 0.35) selected = 'Plains';
             }
 
-            const shouldForceForest = climate.humidity > 0.18 && detailNoise > -0.22 && distFromCenter < ISLAND_RADIUS + 48;
+            const shouldForceForest = climate.humidity > 0.14 && detailNoise > -0.22 && climate.temp > -0.35;
             if (selected === 'Forest' && !TerrainModules['oakForest'].isBiome({ detailNoise, humidityNoise: climate.humidity, distFromCenter, ISLAND_RADIUS }) && !shouldForceForest) {
                 selected = 'Plains';
             } else if (selected === 'Plains' && shouldForceForest && climate.temp > -0.35) {
@@ -1431,10 +1431,10 @@
 
         function hashRand2D(wx, wz, salt = 0) {
             let h = (Math.imul(wx | 0, 374761393) ^ Math.imul(wz | 0, 668265263) ^ Math.imul((worldSeed + salt) | 0, 2246822519)) >>> 0;
-            h ^= h >>> 13;
+            h = (h ^ (h >>> 13)) >>> 0;
             h = Math.imul(h, 1274126177) >>> 0;
-            h ^= h >>> 16;
-            return h / 4294967295;
+            h = (h ^ (h >>> 16)) >>> 0;
+            return h / 4294967296;
         }
 
         function sampleTerrainVector(wx, wz) {
@@ -1757,8 +1757,8 @@
                              const cellKeyZ = Math.floor(wz / cell);
                              const cellRoll = hashRand2D(cellKeyX, cellKeyZ, biome === 'Forest' ? 611 : 619);
 
-                             const threshold = biome === 'Forest' ? 0.70 : 0.90;
-                             const canSpawn = (localScore > threshold) || (biome === 'Forest' && cellRoll > 0.76 && localScore > 0.56);
+                             const threshold = biome === 'Forest' ? 0.62 : 0.82;
+                             const canSpawn = (localScore > threshold) || (biome === 'Forest' && cellRoll > 0.68 && localScore > 0.48);
 
                              if (canSpawn) {
                                  const heightLimit = 5 + Math.floor(hashRand2D(wx, wz, 157) * 4); // 5-8
