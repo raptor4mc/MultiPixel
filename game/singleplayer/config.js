@@ -62,6 +62,7 @@
     IRON_ORE: getAssetPath('textures/item/iron_ore.png'),
     RAW_IRON_BLOCK: getAssetPath('textures/natural/ore/raw_iron_block.png'),
     LAVA_LIQUID: getAssetPath('textures/liquid/lava.png'),
+    WATER: getAssetPath('textures/liquid/water_still.png'),
   };
 
   const blockMaterials = {
@@ -69,7 +70,7 @@
     1: { name: 'Grass', id: 1, textured: true, textureKey: 'GRASS' },
     2: { name: 'Dirt', id: 2, textured: true, textureKey: 'DIRT' },
     3: { name: 'Stone', id: 3, textured: true, textureKey: 'STONE' },
-    4: { name: 'Water', id: 4, color: 0x1976D2, transparent: true, opacity: 0.7, textured: false },
+    4: { name: 'Water', id: 4, transparent: true, opacity: 0.7, textured: true, textureKey: 'WATER' },
     5: { name: 'Wood Log', id: 5, color: 0x8B4513, textured: false },
     6: { name: 'Leaves', id: 6, textured: true, textureKey: 'LEAVES', transparent: true, opacity: 0.8 },
     7: { name: 'Sand', id: 7, textured: true, textureKey: 'SAND' },
