@@ -97,7 +97,7 @@
     30: { name: 'Iron Ore Block', id: 30, textured: true, textureKey: 'IRON_ORE_BLOCK' },
     31: { name: 'Iron Ore', id: 31, textured: true, textureKey: 'IRON_ORE' },
     32: { name: 'Block of raw iron', id: 32, textured: true, textureKey: 'RAW_IRON_BLOCK' },
-    4: { name: 'Lava', id: 33, transparent: true, opacity: 0.7, textured: true, textureKey: 'LAVA_LIQUID' },
+    33: { name: 'Lava', id: 33, transparent: true, opacity: 0.7, textured: true, textureKey: 'LAVA_LIQUID' },
   };
 
   window.SingleplayerConfig = {
