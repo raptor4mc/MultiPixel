@@ -31,6 +31,7 @@
     if (blockId === 18) return { id: 19, count: 1 };     // Coal ore -> Coal
     if (blockId === 30) return { id: 31, count: 1 };     // Steel ore -> iron
     if (blockId === 1) return { id: 2, count: 1};
+    if (blockId === 35) return { id: 38, count: 3};
     return { id: blockId, count: 1 };
   }
 
