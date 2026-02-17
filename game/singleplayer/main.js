@@ -306,6 +306,10 @@
             addToInventory(27, 32);
             addToInventory(28, 32);
             addToInventory(30, 42);
+            addToInventory(35, 42);
+            addToInventory(34, 42);
+            addToInventory(37, 42);
+            addToInventory(33, 42);
             
             // Set initial sky state
             updateSkyAndSun(); 
