@@ -30,10 +30,10 @@
   };
 
   const ASSET_FILEPATHS = {
-    DIRT: getAssetPath('textures/natural/dirt_block.png'),
+    DIRT: getAssetPath('textures/dirt.png'),
     STONE: getAssetPath('textures/natural/stone_block.png'),
     LEAVES: getAssetPath('textures/natural/oak/leaf_oak.png'),
-    SAND: getAssetPath('textures/natural/sand_block.png'),
+    SAND: getAssetPath('textures/sand.png'),
     HEART: getAssetPath('ui/heart_full.png'),
     FOOD: getAssetPath('ui/food_full.png'),
     OAK_PLANK: getAssetPath('textures/wood/oak/oak_planks.png'),
@@ -46,7 +46,7 @@
     WOODEN_PICKAXE: getAssetPath('textures/item/tool/pickaxe/wooden_pickaxe.png'),
     BEDROCK: getAssetPath('textures/bedrock.png'),
     COAL: getAssetPath('textures/item/coal.png'),
-    COAL_ORE_BLOCK: getAssetPath('textures/natural/ore/coal_ore_block.png'),
+    COAL_ORE_BLOCK: getAssetPath('textures/coal_ore.png'),
     COAL_BLOCK: getAssetPath('textures/coal_block.png'),
     STONE_BRICK_BLOCK: getAssetPath('textures/stone/stone_brick_block.png'),
     TORCH: getAssetPath('textures/torch.png'),
