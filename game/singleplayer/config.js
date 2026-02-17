@@ -30,6 +30,7 @@
   };
 
   const ASSET_FILEPATHS = {
+    GRASS: getAssetPath('textures/grass.png'),
     DIRT: getAssetPath('textures/dirt.png'),
     STONE: getAssetPath('textures/natural/stone_block.png'),
     LEAVES: getAssetPath('textures/natural/oak/leaf_oak.png'),
@@ -65,7 +66,7 @@
 
   const blockMaterials = {
     0: { name: 'Air', id: 0, textured: false },
-    1: { name: 'Grass', id: 1, textured: true, textureKey: 'DIRT' },
+    1: { name: 'Grass', id: 1, textured: true, textureKey: 'GRASS' },
     2: { name: 'Dirt', id: 2, textured: true, textureKey: 'DIRT' },
     3: { name: 'Stone', id: 3, textured: true, textureKey: 'STONE' },
     4: { name: 'Water', id: 4, color: 0x1976D2, transparent: true, opacity: 0.7, textured: false },
