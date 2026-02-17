@@ -17,6 +17,8 @@
     { name: 'furnace', output: { id: 23, count: 1 }, shape: [[17, 17, 17], [17, 0, 17], [17, 17, 17]] },
     { name: 'raw iron block', output: { id: 32, count: 1 }, shape: [[31, 31, 31], [31, 31, 31], [31, 31, 31]] },
     { name: 'raw iron', output: { id: 31, count: 9 }, shape: [[32]] },
+    { name: 'Raw copper block', output: {id: 36, count: 1}, shape: [[38, 38, 38], [38, 38, 38], [38, 38, 38]] },
+    { name: 'Raw copper', output: {id: 38, count 9}, shape: [[36]] },
   ];
 
   function checkCraftingRecipe(inputSlots, gridWidth) {
