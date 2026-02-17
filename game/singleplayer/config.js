@@ -63,6 +63,10 @@
     RAW_IRON_BLOCK: getAssetPath('textures/natural/ore/raw_iron_block.png'),
     LAVA_LIQUID: getAssetPath('textures/liquid/lava.png'),
     WATER: getAssetPath('textures/liquid/water_still.png'),
+    COPPER_BLOCK: getAssetPath('textures/copper/copper_block.png'),
+    COPPER_ORE: getAssetPath('textures/copper/copper_ore.png'),
+    RAW_COPPER_BLOCK: getAssetPath('textures/copper/raw_copper_block.png'),
+    WEATHERED_COPPER_BLOCK: getAssetPath('textures/copper/weathered_copper.png'),
   };
 
   const blockMaterials = {
@@ -100,7 +104,11 @@
     31: { name: 'Iron Ore', id: 31, textured: true, textureKey: 'IRON_ORE' },
     32: { name: 'Block of raw iron', id: 32, textured: true, textureKey: 'RAW_IRON_BLOCK' },
     33: { name: 'Lava', id: 33, transparent: true, opacity: 0.7, textured: true, textureKey: 'LAVA_LIQUID' },
-  };
+    34: { name: 'Copper Block', id: 34, textured: true, textureKey: 'COPPER_BLOCK' },
+    35: { name: 'Copper ore', id: 35, textured: true, textureKey: 'COPPER_ORE' },
+    36: { name: 'Raw copper block', id: 36, textured: true, textureKey: 'RAW_COPPER_BLOCK' },
+    37: { name: 'Weathered Copper Block', id: 37, textured: true, textureKey: 'WEATHERED_COPPER_BLOCK' },
+  }; 
 
   window.SingleplayerConfig = {
     CHUNK_SIZE, CHUNK_HEIGHT, WORLD_RADIUS, BLOCK_SIZE, SEA_LEVEL, BASE_LAND_Y, ISLAND_RADIUS,
