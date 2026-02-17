@@ -67,6 +67,7 @@
     COPPER_ORE: getAssetPath('textures/copper/copper_ore.png'),
     RAW_COPPER_BLOCK: getAssetPath('textures/copper/raw_copper_block.png'),
     WEATHERED_COPPER_BLOCK: getAssetPath('textures/copper/weathered_copper.png'),
+    RAW_COPPER_ITEM: getAssetPath('textures/copper/copper.png'),
   };
 
   const blockMaterials = {
