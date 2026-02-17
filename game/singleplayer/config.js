@@ -31,7 +31,7 @@
 
   const ASSET_FILEPATHS = {
     DIRT: getAssetPath('textures/dirt.png'),
-    STONE: getAssetPath('textures/stone.png'),
+    STONE: getAssetPath('textures/natural/stone.png'),
     LEAVES: getAssetPath('textures/natural/oak/leaf_oak.png'),
     SAND: getAssetPath('textures/sand.png'),
     HEART: getAssetPath('ui/heart_full.png'),
