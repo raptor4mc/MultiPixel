@@ -56,7 +56,7 @@
     CHARCOAL: getAssetPath('textures/item/charcoal.png'),
     GLASS_BLOCK: getAssetPath('textures/building/glass_block.png'),
     SMOOTH_STONE_BLOCK: getAssetPath('textures/stone/smooth_stone_block.png'),
-    GRAVEL: getAssetPath('textures/natural/gravel_block.png'),
+    GRAVEL: getAssetPath('textures/gravel.png'),
     SMOOTH_SANDSTONE_BLOCK: getAssetPath('textures/sand/normal/smooth_sandstone_block.png'),
     IRON_ORE_BLOCK: getAssetPath('textures/natural/ore/iron_ore_block.png'),
     IRON_ORE: getAssetPath('textures/item/iron_ore.png'),
