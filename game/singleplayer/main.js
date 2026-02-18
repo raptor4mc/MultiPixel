@@ -1739,43 +1739,42 @@ window.perlin = perlinInstance;
                          }
 
                          // Coal ore pass: mineable by hand, faster with pickaxe.
-if (t === 3 && y > 6 && y < Math.min(CHUNK_HEIGHT - 6, h - 2)) {
-    const veinNoise = octaveNoise2D(wx, wz, 3, 0.5, 2.0, 0.09, 1450, -870);
-    const depthBias = 1 - (y / CHUNK_HEIGHT);
-    const oreRoll = hashRand2D(wx + y * 13, wz - y * 7, 301);
-    if (veinNoise > 0.12 && oreRoll < (0.06 + depthBias * 0.08)) {
-        t = 18; // coal
-    }
-}
+                         if (t === 3 && y > 6 && y < Math.min(CHUNK_HEIGHT - 6, h - 2)) {
+                             const veinNoise = octaveNoise2D(wx, wz, 3, 0.5, 2.0, 0.09, 1450, -870);
+                             const depthBias = 1 - (y / CHUNK_HEIGHT);
+                             const oreRoll = hashRand2D(wx + y * 13, wz - y * 7, 301);
+                             if (veinNoise > 0.12 && oreRoll < (0.06 + depthBias * 0.08)) {
+                                 t = 18;
+                             }
+                         }
+                                    // copper ore pass
+                        if (t === 3 && y > 7 && y < CHUNK_HEIGHT * 0.7) {
+                            const veinNoise = octaveNoise2D(wx, wz, 3, 0.5, 2.0, 0.07, 5555, -666);
+                            const depthBias = 1 - (y / CHUNK_HEIGHT);
+                            const oreRoll = hashRand2D(wx + y * 13, wz - y * 7, 302);
 
-// Copper ore pass (upper underground, mountain-aware)
-if (t === 3 && y > 20 && y < Math.max(SEA_LEVEL * 0.75, h - 8)) {
-    const veinNoise = octaveNoise2D(wx, wz, 3, 0.5, 2.0, 0.07, 5555, -666);
-    const depthBias = 1 - (y / CHUNK_HEIGHT);
-    const oreRoll = hashRand2D(wx + y * 13, wz - y * 7, 302);
-    if (veinNoise > 0.20 && oreRoll < (0.06 + depthBias * 0.10)) {
-        t = 35; // copper
-    }
-}
+                            if (veinNoise > 0.8 && oreRoll < (0.06 + depthBias * 0.10)) {
+                                   t = 35; // copper ore
+                                }
+                           }
+                             // Iron ore pass
+                        if (t === 3 && y > 4 && y < CHUNK_HEIGHT * 0.6) {
+                            const veinNoise = octaveNoise2D(wx, wz, 3, 0.5, 2.0, 0.07, 2222, -333);
+                            const depthBias = 1 - (y / CHUNK_HEIGHT);
+                            const oreRoll = hashRand2D(wx + y * 17, wz - y * 11, 777);
 
-// Iron ore pass (mid underground, mountain-aware)
-if (t === 3 && y > 10 && y < Math.max(SEA_LEVEL * 0.55, h - 20)) {
-    const veinNoise = octaveNoise2D(wx, wz, 3, 0.5, 2.0, 0.07, 2222, -333);
-    const depthBias = 1 - (y / CHUNK_HEIGHT);
-    const oreRoll = hashRand2D(wx + y * 17, wz - y * 11, 777);
-    if (veinNoise > 0.18 && oreRoll < (0.04 + depthBias * 0.06)) {
-        t = 30; // iron
-    }
-}
+                            if (veinNoise > 0.18 && oreRoll < (0.04 + depthBias * 0.06)) {
+                                   t = 30; // iron ore
+                                }
+                           }
 
-// Boundary fix (keeps edges filled)
-if (isNearBoundary && y < SEA_LEVEL && (t === 4 || t === 0)) {
-    t = 3;
-}
 
-// Write block to chunk
-data[x + y*CHUNK_SIZE + z*CHUNK_SIZE*CHUNK_HEIGHT] = t;
+                         if (isNearBoundary && y < SEA_LEVEL && (t === 4 || t === 0)) {
+                             t = 3; 
+                         } 
 
+                         data[x + y*CHUNK_SIZE + z*CHUNK_SIZE*CHUNK_HEIGHT] = t;
+                     }
                   
                      // --- Tree Generation (classic oak algorithm with validity + obstruction checks) ---
                      if (!isRiver && (biome === 'Forest' || biome === 'Plains')) {
