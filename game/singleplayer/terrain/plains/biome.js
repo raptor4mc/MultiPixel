@@ -11,7 +11,7 @@
       const terrainVariation = terrainNoise * 2.7;  // slightly more variation
       const erosionEffect = erosionNoise * 1.5;     // same as before
 
-      return BASE_LAND_Y + continentalHeight + terrainVariation - erosionEffect;
+      return BASE_LAND_Y + 3 + continentalHeight + terrainVariation - erosionEffect;
     },
   };
 
