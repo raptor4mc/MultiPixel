@@ -68,6 +68,7 @@
     RAW_COPPER_BLOCK: getAssetPath('textures/copper/raw_copper_block.png'),
     WEATHERED_COPPER_BLOCK: getAssetPath('textures/copper/weathered_copper.png'),
     RAW_COPPER_ITEM: getAssetPath('textures/copper/copper.png'),
+    OBSIDIAN_BLOCK: getAssetPath('textures/obsidian_block.png'),
   };
 
   const blockMaterials = {
@@ -110,6 +111,7 @@
     36: { name: 'Raw copper block', id: 36, textured: true, textureKey: 'RAW_COPPER_BLOCK' },
     37: { name: 'Weathered Copper Block', id: 37, textured: true, textureKey: 'WEATHERED_COPPER_BLOCK' },
     38: { name: 'raw copper', id: 38, textured: true, textureKey: 'RAW_COPPER_ITEM' },
+    39: { name: 'Obsidian Block', id: 39, textured: true, textureKey: 'OBSIDIAN_BLOCK' },
   }; 
 
   window.SingleplayerConfig = {
@@ -119,7 +121,7 @@
     INV_COLS, INV_ROWS, HOTBAR_SLOTS, TOTAL_INV_SIZE,
     REPO_BASE_PREFIX,
     ASSET_FILEPATHS, blockMaterials,
-    SOLID_BLOCKS: [1, 2, 3, 5, 6, 7, 8, 9, 13, 14, 15, 17, 18, 20, 21, 22, 23, 24, 26, 27, 28, 29, 30, 32, 34, 35, 36, 37],
+    SOLID_BLOCKS: [1, 2, 3, 5, 6, 7, 8, 9, 13, 14, 15, 17, 18, 20, 21, 22, 23, 24, 26, 27, 28, 29, 30, 32, 34, 35, 36, 37, 39],
     LIQUID_BLOCKS: [4],
     DEFAULT_PLAYER: {
       moveSpeed: 0.12,
