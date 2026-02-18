@@ -1747,6 +1747,17 @@ window.perlin = perlinInstance;
                                  t = 18;
                              }
                          }
+                             // Iron ore pass
+                        if (t === 3 && y > 4 && y < CHUNK_HEIGHT * 0.6) {
+                            const veinNoise = octaveNoise2D(wx, wz, 3, 0.5, 2.0, 0.07, 2222, -333);
+                            const depthBias = 1 - (y / CHUNK_HEIGHT);
+                            const oreRoll = hashRand2D(wx + y * 17, wz - y * 11, 777);
+
+                            if (veinNoise > 0.18 && oreRoll < (0.04 + depthBias * 0.06)) {
+                                   t = 30; // iron ore
+                                }
+                           }
+
 
                          if (isNearBoundary && y < SEA_LEVEL && (t === 4 || t === 0)) {
                              t = 3; 
