@@ -81,19 +81,9 @@
         // Three.js specific materials created after textures are loaded
         let materials = {};
 
-// main.js (early on, once)
-const perlin = new PerlinNoise(seed);
 
-// Later, when generating a block at (x, z):
-const { continentalMask, terrainNoise, erosionNoise } = getBaseTerrain(x, z, perlin);
 
-// Pass these values into a biome:
-const height = PlainsTerrain.getHeight({
-  BASE_LAND_Y,
-  continentalMask,
-  terrainNoise,
-  erosionNoise
-});
+
 
 
         // --- 2. GAME STATE & THREE.JS SETUP ---
