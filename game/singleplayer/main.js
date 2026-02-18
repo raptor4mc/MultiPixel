@@ -1826,39 +1826,35 @@ window.perlin = perlinInstance;
                                  if (!obstructed) {
                                      const baseIdx = x + topY * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
                                      if (data[baseIdx] === 2) data[baseIdx] = 1;
-                                         
-                                  // Trunk
-for (let i = 1; i <= heightLimit; i++) {
-    const ty = topY + i;
-    if (ty >= CHUNK_HEIGHT) break;
-    const idx = x + z * CHUNK_SIZE + ty * CHUNK_SIZE * CHUNK_SIZE;
-    if (data[idx] === 0 || data[idx] === 6) data[idx] = 5;
-}
 
-// Canopy
-const layerRadii = [2,2,2,2,1]; // bottom to top
-let layerIndex = 0;
-const canopyStart = topY + heightLimit - 3; // 3 blocks below trunk top
-const canopyEnd   = topY + heightLimit + 1; // 1 block above trunk top
+                                     // Straight trunk placer
+                                     for (let i = 1; i <= heightLimit; i++) {
+                                         const ty = topY + i;
+                                         if (ty >= CHUNK_HEIGHT) break;
+                                         const idx = x + ty * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
+                                         if (data[idx] === 0 || data[idx] === 6) data[idx] = 5;
+                                     }
 
-for (let y = canopyStart; y <= canopyEnd; y++, layerIndex++) {
-    const radius = layerRadii[layerIndex];
+    for (let ly = -3; ly <= 1; ly++) {
+    const yAbs = topY + heightLimit + ly;
+    if (yAbs < 1 || yAbs >= CHUNK_HEIGHT) continue;
+
+    const radius = ly >= 0 ? 1 : (ly === -1 ? 2 : (ly === -2 ? 2 : 1));
+
     for (let lx = -radius; lx <= radius; lx++) {
         for (let lz = -radius; lz <= radius; lz++) {
+            // True circle distance check
             if (lx*lx + lz*lz > radius*radius) continue;
 
             const tx = x + lx;
             const tz = z + lz;
             if (tx < 0 || tx >= CHUNK_SIZE || tz < 0 || tz >= CHUNK_SIZE) continue;
 
-            const lidx = tx + tz * CHUNK_SIZE + y * CHUNK_SIZE * CHUNK_SIZE;
+            const lidx = tx + yAbs * CHUNK_SIZE + tz * CHUNK_SIZE * CHUNK_HEIGHT;
             if (data[lidx] === 0) data[lidx] = 6;
         }
     }
 }
-
-
-
 
                                  }
                              }
