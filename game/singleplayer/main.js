@@ -1748,12 +1748,12 @@ window.perlin = perlinInstance;
                              }
                          }
                                     // copper ore pass
-                        if (t === 3 && y > 7 && y < CHUNK_HEIGHT * 0.7) {
+                       if (t === 3 && y > 6 && y < Math.min(CHUNK_HEIGHT - 6, h - 2)) {
                             const veinNoise = octaveNoise2D(wx, wz, 3, 0.5, 2.0, 0.07, 5555, -666);
                             const depthBias = 1 - (y / CHUNK_HEIGHT);
                             const oreRoll = hashRand2D(wx + y * 13, wz - y * 7, 302);
 
-                            if (veinNoise > 0.8 && oreRoll < (0.06 + depthBias * 0.10)) {
+                            if (veinNoise > 0.20 && oreRoll < (0.06 + depthBias * 0.08)) {
                                    t = 35; // copper ore
                                 }
                            }
