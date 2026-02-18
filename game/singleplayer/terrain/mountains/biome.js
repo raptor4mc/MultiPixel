@@ -53,7 +53,7 @@
       const roughness = terrainNoise * 4.5;
 
       // Optional: erosion effect lowering valleys
-      const erosionEffect = erosion * 10; // now defined here
+      const erosionEffect = erosion * 5; // now defined here
 
       // Final height
       const height =
