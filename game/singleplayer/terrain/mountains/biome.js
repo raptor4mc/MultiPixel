@@ -4,6 +4,7 @@
   function splineMountainFactor(continentalness, erosion, ridges) {
     const inland = Math.max(0, Math.min(1, (continentalness + 0.2) / 0.9));
     const erosionInv = Math.max(0, Math.min(1, 1 - (erosion + 1) * 0.5));
+    const erosionEffect = erosion * 10; // positive erosion lowers terrain
     const ridgeShape = Math.max(0, Math.min(1, ridges));
 
     const continentalLift = lerp(8, 34, Math.pow(inland, 1.15));
@@ -54,7 +55,8 @@
         (curvedUplift * (1 + peakFactor)) +
         ridgeShape +
         cliffs +
-        roughness;
+        roughness; -
+        erosionEffect;
 
       return height;
     },
