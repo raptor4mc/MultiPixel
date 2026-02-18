@@ -33,7 +33,7 @@
     GRASS: getAssetPath('textures/grass.png'),
     DIRT: getAssetPath('textures/dirt.png'),
     STONE: getAssetPath('textures/stone.png'),
-    LEAVES: getAssetPath('textures/oak_leaves.png'),
+    LEAVES: getAssetPath('textures/azalea_leaves.png'),
     SAND: getAssetPath('textures/sand.png'),
     HEART: getAssetPath('ui/heart_full.png'),
     FOOD: getAssetPath('ui/food_full.png'),
