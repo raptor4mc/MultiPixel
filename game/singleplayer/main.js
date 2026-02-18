@@ -1835,15 +1835,17 @@ window.perlin = perlinInstance;
                                          if (data[idx] === 0 || data[idx] === 6) data[idx] = 5;
                                      }
 
-    for (let ly = -3; ly <= 1; ly++) {
+// Layer radii from bottom (-3) to top (+1)
+const layerRadii = [2, 2, 2, 2, 1]; // -3,-2,-1,0,1
+for (let ly = -3; ly <= 1; ly++) {
     const yAbs = topY + heightLimit + ly;
     if (yAbs < 1 || yAbs >= CHUNK_HEIGHT) continue;
 
-    const radius = ly >= 0 ? 1 : (ly === -1 ? 2 : (ly === -2 ? 2 : 1));
+    const radius = layerRadii[ly + 3]; // offset index to 0..4
 
     for (let lx = -radius; lx <= radius; lx++) {
         for (let lz = -radius; lz <= radius; lz++) {
-            // True circle distance check
+            // True circle check for fully round canopy
             if (lx*lx + lz*lz > radius*radius) continue;
 
             const tx = x + lx;
@@ -1855,6 +1857,7 @@ window.perlin = perlinInstance;
         }
     }
 }
+
 
                                  }
                              }
