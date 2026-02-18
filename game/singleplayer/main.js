@@ -2183,3 +2183,4 @@ data[x + y*CHUNK_SIZE + z*CHUNK_SIZE*CHUNK_HEIGHT] = t;
         }
 
         window.onload = init;
+        }
