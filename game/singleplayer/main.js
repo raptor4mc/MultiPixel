@@ -81,10 +81,12 @@
         // Three.js specific materials created after textures are loaded
         let materials = {};
 
+// --- 2. CREATE PERLIN INSTANCE ---
+const seed = Math.random() * 65536; // or pick a fixed seed for consistent worlds
+const perlinInstance = new PerlinNoise(seed);
 
-
-
-
+// Make it globally accessible for biomes
+window.perlin = perlinInstance;
 
         // --- 2. GAME STATE & THREE.JS SETUP ---
 
