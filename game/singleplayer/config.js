@@ -69,6 +69,9 @@
     WEATHERED_COPPER_BLOCK: getAssetPath('textures/copper/weathered_copper.png'),
     RAW_COPPER_ITEM: getAssetPath('textures/copper/copper.png'),
     OBSIDIAN_BLOCK: getAssetPath('textures/obsidian.png'),
+    GOLD_ORE_BLOCK: getAssetPath('textures/gold_ore.png'),
+    RAW_GOLD_BLOCK: getAssetPath('textures/raw_gold_block.png'),
+    GOLD_ORE: getAssetPath('textures/item/gold_ore.png'),
   };
 
   const blockMaterials = {
@@ -112,6 +115,9 @@
     37: { name: 'Weathered Copper Block', id: 37, textured: true, textureKey: 'WEATHERED_COPPER_BLOCK' },
     38: { name: 'raw copper', id: 38, textured: true, textureKey: 'RAW_COPPER_ITEM' },
     39: { name: 'Obsidian Block', id: 39, textured: true, textureKey: 'OBSIDIAN_BLOCK' },
+    40: { name: 'Gold Ore', id: 40, textured: true, textureKey: 'GOLD_ORE_BLOCK' },
+    41: { name: 'Raw Gold Block', id: 41, textured: true, textureKey: 'RAW_GOLD_BLOCK' },
+    42: { name: 'Gold Ore', id: 42, textured: true, textureKey: 'GOLD_ORE' },
   }; 
 
   window.SingleplayerConfig = {
@@ -121,7 +127,7 @@
     INV_COLS, INV_ROWS, HOTBAR_SLOTS, TOTAL_INV_SIZE,
     REPO_BASE_PREFIX,
     ASSET_FILEPATHS, blockMaterials,
-    SOLID_BLOCKS: [1, 2, 3, 5, 6, 7, 8, 9, 13, 14, 15, 17, 18, 20, 21, 22, 23, 24, 26, 27, 28, 29, 30, 32, 34, 35, 36, 37, 39],
+    SOLID_BLOCKS: [1, 2, 3, 5, 6, 7, 8, 9, 13, 14, 15, 17, 18, 20, 21, 22, 23, 24, 26, 27, 28, 29, 30, 32, 34, 35, 36, 37, 39, 40, 41],
     LIQUID_BLOCKS: [4],
     DEFAULT_PLAYER: {
       moveSpeed: 0.12,
