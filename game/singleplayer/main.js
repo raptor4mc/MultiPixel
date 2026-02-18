@@ -1826,14 +1826,13 @@ window.perlin = perlinInstance;
                                  if (!obstructed) {
                                      const baseIdx = x + topY * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
                                      if (data[baseIdx] === 2) data[baseIdx] = 1;
-
-                                     // Straight trunk placer
-                                     for (let i = 1; i <= heightLimit; i++) {
-                                         const ty = topY + i;
-                                         if (ty >= CHUNK_HEIGHT) break;
-                                         const idx = x + ty * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
-                                         if (data[idx] === 0 || data[idx] === 6) data[idx] = 5;
-                                     }
+// Straight trunk placer
+for (let i = 1; i <= heightLimit; i++) {
+    const ty = topY + i;
+    if (ty >= CHUNK_HEIGHT) break;
+    const idx = x + z * CHUNK_SIZE + ty * CHUNK_SIZE * CHUNK_SIZE;
+    if (data[idx] === 0 || data[idx] === 6) data[idx] = 5;
+}
 
 // Layer radii from bottom (-3) to top (+1)
 const layerRadii = [2, 2, 2, 2, 1]; // -3,-2,-1,0,1
@@ -1852,11 +1851,12 @@ for (let ly = -3; ly <= 1; ly++) {
             const tz = z + lz;
             if (tx < 0 || tx >= CHUNK_SIZE || tz < 0 || tz >= CHUNK_SIZE) continue;
 
-            const lidx = tx + yAbs * CHUNK_SIZE + tz * CHUNK_SIZE * CHUNK_HEIGHT;
+            const lidx = tx + tz * CHUNK_SIZE + yAbs * CHUNK_SIZE * CHUNK_SIZE;
             if (data[lidx] === 0) data[lidx] = 6;
         }
     }
 }
+
 
 
                                  }
