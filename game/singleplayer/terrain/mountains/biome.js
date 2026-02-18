@@ -29,27 +29,27 @@
       peaksValleys,
       jaggedNoise
     }) {
-
       // Base mountain uplift
       const uplift = splineMountainFactor(continentalness, erosion, ridges);
 
-      // 🔥 1. Curve the uplift (THIS separates mountains from plains)
-      const curvedUplift = Math.pow(uplift / 60, 1.7) * 95;
+      // 1. Curved uplift for tall peaks
+      const curvedUplift = Math.pow(uplift / 60, 1.7) * 100; // slightly higher
 
-      // 🔥 2. Real ridge shaping (creates mountain spines)
+      // 2. Ridge shaping (mountain spines)
       let ridgeShape = 1 - Math.abs(peaksValleys);
-      ridgeShape = Math.pow(ridgeShape, 2.4) * 60;
+      ridgeShape = Math.pow(ridgeShape, 2.2) * 65; // stronger ridge effect
 
-      // 🔥 3. Peaks MULTIPLY instead of stack
-      const peakFactor = Math.pow(Math.max(0, peakNoise - 0.55), 2.2) * 1.8;
+      // 3. Peaks multiply to create sharp tops
+      const peakFactor = Math.pow(Math.max(0, peakNoise - 0.55), 2.3) * 2.2;
 
-      // 🔥 4. Light cliffs only where strong
-      const cliffs = Math.max(0, cliffNoise - 0.65) * 18;
+      // 4. Cliffs only where strong
+      const cliffs = Math.max(0, cliffNoise - 0.65) * 20;
 
-      // Minor surface variation
-      const roughness = terrainNoise * 4.2;
+      // Minor surface roughness
+      const roughness = terrainNoise * 4.5;
 
-      let height =
+      // Combine all factors
+      const height =
         BASE_LAND_Y +
         (curvedUplift * (1 + peakFactor)) +
         ridgeShape +
