@@ -1835,22 +1835,27 @@ window.perlin = perlinInstance;
                                          if (data[idx] === 0 || data[idx] === 6) data[idx] = 5;
                                      }
 
-                                     // Blob foliage placer (rounded canopy layers)
-                                     for (let ly = -3; ly <= 1; ly++) {
-                                         const yAbs = topY + heightLimit + ly;
-                                         if (yAbs < 1 || yAbs >= CHUNK_HEIGHT) continue;
-                                         const radius = ly >= 0 ? 1 : (ly === -1 ? 2 : (ly === -2 ? 2 : 1));
-                                         for (let lx = -radius; lx <= radius; lx++) {
-                                             for (let lz = -radius; lz <= radius; lz++) {
-                                                 if (Math.abs(lx) + Math.abs(lz) > radius + 1) continue;
-                                                 const tx = x + lx;
-                                                 const tz = z + lz;
-                                                 if (tx < 0 || tx >= CHUNK_SIZE || tz < 0 || tz >= CHUNK_SIZE) continue;
-                                                 const lidx = tx + yAbs * CHUNK_SIZE + tz * CHUNK_SIZE * CHUNK_HEIGHT;
-                                                 if (data[lidx] === 0) data[lidx] = 6;
-                                             }
-                                         }
-                                     }
+    for (let ly = -3; ly <= 1; ly++) {
+    const yAbs = topY + heightLimit + ly;
+    if (yAbs < 1 || yAbs >= CHUNK_HEIGHT) continue;
+
+    const radius = ly >= 0 ? 1 : (ly === -1 ? 2 : (ly === -2 ? 2 : 1));
+
+    for (let lx = -radius; lx <= radius; lx++) {
+        for (let lz = -radius; lz <= radius; lz++) {
+            // True circle distance check
+            if (lx*lx + lz*lz > radius*radius) continue;
+
+            const tx = x + lx;
+            const tz = z + lz;
+            if (tx < 0 || tx >= CHUNK_SIZE || tz < 0 || tz >= CHUNK_SIZE) continue;
+
+            const lidx = tx + yAbs * CHUNK_SIZE + tz * CHUNK_SIZE * CHUNK_HEIGHT;
+            if (data[lidx] === 0) data[lidx] = 6;
+        }
+    }
+}
+
                                  }
                              }
                          }
