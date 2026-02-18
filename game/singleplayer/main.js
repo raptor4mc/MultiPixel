@@ -81,12 +81,20 @@
         // Three.js specific materials created after textures are loaded
         let materials = {};
 
-// --- 2. CREATE PERLIN INSTANCE ---
-const seed = Math.random() * 65536; // or pick a fixed seed for consistent worlds
-const perlinInstance = new PerlinNoise(seed);
+// main.js (early on, once)
+const perlin = new PerlinNoise(seed);
 
-// Make it globally accessible for biomes
-window.perlin = perlinInstance;
+// Later, when generating a block at (x, z):
+const { continentalMask, terrainNoise, erosionNoise } = getBaseTerrain(x, z, perlin);
+
+// Pass these values into a biome:
+const height = PlainsTerrain.getHeight({
+  BASE_LAND_Y,
+  continentalMask,
+  terrainNoise,
+  erosionNoise
+});
+
 
         // --- 2. GAME STATE & THREE.JS SETUP ---
 
