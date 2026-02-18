@@ -3,8 +3,8 @@
   class PerlinNoise {
     constructor(seed = Math.random() * 65536) {
       this.p = new Uint8Array(512);
-      const permutation = new Uint8Array(256);
-      for (let i = 0; i < 256; i++) permutation[i] = i;
+      const perm = new Uint8Array(256);
+      for (let i = 0; i < 256; i++) perm[i] = i;
 
       let s = seed >>> 0;
       const rand = () => {
@@ -12,15 +12,18 @@
         return s / 4294967296;
       };
 
+      // Shuffle permutation array
       for (let i = 255; i > 0; i--) {
         const j = Math.floor(rand() * (i + 1));
-        [permutation[i], permutation[j]] = [permutation[j], permutation[i]];
+        [perm[i], perm[j]] = [perm[j], perm[i]];
       }
 
-      for (let i = 0; i < 512; i++) this.p[i] = permutation[i & 255];
+      for (let i = 0; i < 512; i++) this.p[i] = perm[i & 255];
     }
 
+    // ========================
     // Core Perlin functions
+    // ========================
     fade(t) { return t * t * t * (t * (t * 6 - 15) + 10); }
     lerp(t, a, b) { return a + t * (b - a); }
 
@@ -66,12 +69,16 @@
     noise2D(x, y) { return this.noise(x, y, 0); }
     noise3D(x, y, z) { return this.noise(x, y, z); }
 
+    // ========================
     // Utility helpers
-    normalize(n) { return (n + 1) * 0.5; } // -1..1 → 0..1
+    // ========================
+    normalize(n) { return (n + 1) * 0.5; }
     remap(value, min1, max1, min2, max2) { return min2 + (value - min1) * (max2 - min2) / (max1 - min1); }
     clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
 
+    // ========================
     // Fractal Brownian Motion
+    // ========================
     fbm2D(x, y, octaves = 4, lacunarity = 2.0, gain = 0.5) {
       let sum = 0, amplitude = 1, frequency = 1, max = 0;
       for (let i = 0; i < octaves; i++) {
@@ -83,7 +90,9 @@
       return sum / max;
     }
 
+    // ========================
     // Ridged noise for mountains
+    // ========================
     ridged2D(x, y, octaves = 4) {
       let result = 0, amplitude = 0.5, frequency = 1;
       for (let i = 0; i < octaves; i++) {
@@ -95,7 +104,9 @@
       return result;
     }
 
+    // ========================
     // Domain warping
+    // ========================
     warp2D(x, y, scale = 0.002, strength = 35) {
       const qx = this.noise2D(x * scale, y * scale);
       const qy = this.noise2D((x + 100) * scale, (y + 100) * scale);
@@ -109,8 +120,8 @@
   function getBaseTerrain(x, z, perlin) {
     const warped = perlin.warp2D(x, z, 0.002, 25);
     const continentalMask = perlin.fbm2D(warped.x * 0.0007, warped.y * 0.0007, 3);
-    const terrainNoise = perlin.fbm2D(warped.x * 0.004, warped.y * 0.004, 4);
-    const erosionNoise = perlin.fbm2D(warped.x * 0.008, warped.y * 0.008, 3);
+    const terrainNoise   = perlin.fbm2D(warped.x * 0.004,  warped.y * 0.004,  4);
+    const erosionNoise   = perlin.fbm2D(warped.x * 0.008,  warped.y * 0.008,  3);
     return { continentalMask, terrainNoise, erosionNoise, warped };
   }
 
