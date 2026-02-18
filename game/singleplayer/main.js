@@ -1747,6 +1747,17 @@ window.perlin = perlinInstance;
                                  t = 18;
                              }
                          }
+                               // copper ore pass
+                        if (t === 3 && y > 20 && y < SEA_LEVEL * 0.75) {
+                            const veinNoise = octaveNoise2D(wx * 0.6, wz * 0.6, 3, 0.5, 2.0, 0.07, 5555, -666);
+                            const depthBias = 1 - (y / SEA_LEVEL);
+                            const oreRoll = hashRand2D(wx + y * 13, wz - y * 7, 302);
+
+                            if (veinNoise > 0.20 && oreRoll < (0.06 + depthBias * 0.10)) {
+                                   t = 35; // copper ore
+                                }
+                           }
+                             
                              // Iron ore pass
                         if (t === 3 && y > 10 && y < SEA_LEVEL * 0.55) {
                             const veinNoise = octaveNoise2D(wx * 0.6, wz * 0.6, 3, 0.5, 2.0, 0.07, 2222, -333);
@@ -1755,16 +1766,6 @@ window.perlin = perlinInstance;
 
                             if (veinNoise > 0.18 && oreRoll < (0.04 + depthBias * 0.06)) {
                                    t = 30; // iron ore
-                                }
-                           }
-                                 // copper ore pass
-                        if (t === 3 && y > 20 && y < SEA_LEVEL * 0.75) {
-                            const veinNoise = octaveNoise2D(wx * 0.6, wz * 0.6, 3, 0.5, 2.0, 0.07, 5555, -666);
-                            const depthBias = 1 - (y / SEA_LEVEL);
-                            const oreRoll = hashRand2D(wx + y * 13, wz - y * 7, 302);
-
-                            if (veinNoise > 0.20 && oreRoll < (0.06 + depthBias * 0.10)) {
-                                   t = 35; // copper ore
                                 }
                            }
 
