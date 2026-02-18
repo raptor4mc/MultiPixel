@@ -1,19 +1,17 @@
 (function () {
   const PlainsTerrain = {
-    isBiome({ humidityNoise, mountainNoise, distFromCenter, ISLAND_RADIUS }) {
-      // Plains: moderately humid, mostly flat, extend close to center
-      if (distFromCenter < ISLAND_RADIUS * 0.9) return true;
-      return humidityNoise > -0.05 && mountainNoise < 0.55;
+    isBiome({ humidityNoise, mountainNoise }) {
+      // Plains: moderately humid, mostly flat
+      return humidityNoise > -0.2 && mountainNoise < 0.55;
     },
 
-    getHeight({ BASE_LAND_Y, continentalMask, terrainNoise, erosionNoise, detailNoise }) {
-      // Adjusted to align with OakForest height while keeping plains flatter
-      const continentalHeight = continentalMask * 9;       // closer to forest's 10
-      const terrainVariation = terrainNoise * 5;           // more like forest
-      const erosionEffect = erosionNoise * 1.3;            // smoother erosion
-      const smallBumps = detailNoise * 1.5;               // subtle randomness for realism
+    getHeight({ BASE_LAND_Y, continentalMask, terrainNoise, erosionNoise }) {
+      // Smoother height variation using slight weighted adjustments
+      const continentalHeight = continentalMask * 7;
+      const terrainVariation = terrainNoise * 2.5;  // slightly more variation
+      const erosionEffect = erosionNoise * 1.8;     // same as before
 
-      return BASE_LAND_Y + continentalHeight + terrainVariation - erosionEffect + smallBumps;
+      return BASE_LAND_Y + continentalHeight + terrainVariation - erosionEffect;
     },
   };
 
