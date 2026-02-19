@@ -1085,13 +1085,14 @@ window.perlin = perlinInstance;
 
         function applyBlockPhysics(nowMs) {
             if (!window.WaterPhysics || !window.SandPhysics) return;
-            if (nowMs - lastPhysicsTickMs < 90) return;
+            if (nowMs - lastPhysicsTickMs < 50) return;
             lastPhysicsTickMs = nowMs;
 
             const centerCx = Math.floor(yawObject.position.x / CHUNK_SIZE);
             const centerCz = Math.floor(yawObject.position.z / CHUNK_SIZE);
             const activeRadius = 3;
             const maxUpdates = 360;
+
             let updates = 0;
 
             const startY = physicsCursorY;
@@ -1105,13 +1106,17 @@ window.perlin = perlinInstance;
                     if (!group) continue;
                     const data = group.userData.chunkData;
 
-                    for (let y = startY; y <= endY && updates < maxUpdates; y++) {
+                   for (let y = endY; y >= startY && updates < maxUpdates; y--)
                         for (let i = 0; i < CHUNK_SIZE * CHUNK_SIZE && updates < maxUpdates; i++) {
                             const x = i % CHUNK_SIZE;
                             const z = (i * 7 + y * 3) % CHUNK_SIZE;
                             const idx = x + y * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
                             const type = data[idx];
-                            if (type !== 4 && type !== 7) continue;
+                            const isWater =
+                                    type === 4 ||
+                                    (type >= 47 && type <= 53);
+                                if (!isWater && type !== 7) continue;
+
 
                             const wx = cx * CHUNK_SIZE + x;
                             const wz = cz * CHUNK_SIZE + z;
@@ -1123,8 +1128,14 @@ window.perlin = perlinInstance;
                                 random: Math.random,
                             };
 
-                            const changed = type === 4 ? window.WaterPhysics.tryUpdate(ctx) : window.SandPhysics.tryUpdate(ctx);
-                            if (changed) updates++;
+                           let changed = false;
+                                
+                                if (isWater) {
+                                        changed = window.WaterPhysics.tryUpdate(ctx);
+                                } else if (type === 7) {
+                                        changed = window.SandPhysics.tryUpdate(ctx);
+                                }
+                                if (changed) updates++;
                         }
                     }
                 }
