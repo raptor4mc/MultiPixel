@@ -1728,41 +1728,77 @@ window.perlin = perlinInstance;
                             }
                         }
                          
-  const ravineMask = getRavineMask(wx, wz);
+// ===============================
+// MINECRAFT-STYLE RAVINE SYSTEM
+// ===============================
 
-if (ravineMask > 0.78) {
-    const strength = (ravineMask - 0.78) / 0.22;
+function applyRavineAtBlock(wx, wy, wz, t, data, seed) {
 
-    const ravineTop = Math.min(h + 8, CHUNK_HEIGHT - 1);
-    const maxDepth = 40 + Math.floor(strength * 40);
-    const ravineBottom = Math.max(3, ravineTop - maxDepth);
+    const r = seededRandom(wx >> 4, wz >> 4, seed);
 
-    if (y <= ravineTop && y >= ravineBottom) {
+    // 1 in ~35 chunks
+    if (r > 0.028) return t;
 
-        const mid = (ravineTop + ravineBottom) / 2;
-        const halfHeight = (ravineTop - ravineBottom) / 2;
-        const verticalFactor = 1 - Math.abs(y - mid) / halfHeight;
+    // Create long ravine direction per chunk
+    const baseX = (wx >> 4) << 4;
+    const baseZ = (wz >> 4) << 4;
 
-        const widthNoise = octaveNoise2D(wx, wz, 2, 0.5, 2.0, 0.06, 812, -245);
-        const widthFactor = strength * verticalFactor + widthNoise * 0.15;
+    const startX = baseX + Math.floor(seededRandom(baseX, baseZ, seed) * 16);
+    const startZ = baseZ + Math.floor(seededRandom(baseZ, baseX, seed) * 16);
+    const startY = 25 + Math.floor(seededRandom(baseX + 99, baseZ - 77, seed) * 35);
 
-        if (widthFactor > 0.25) {
+    let direction = seededRandom(baseX - 17, baseZ + 23, seed) * Math.PI * 2;
+    let pitch = (seededRandom(baseX + 44, baseZ - 12, seed) - 0.5) * 0.25;
 
-            // 🔥 Lava very deep underground
-            if (y < 12) {
-                t = 33;   // Lava
+    const length = 90;
+
+    for (let i = 0; i < length; i++) {
+
+        const cx = startX + Math.cos(direction) * i;
+        const cz = startZ + Math.sin(direction) * i;
+        const cy = startY + pitch * i;
+
+        direction += (seededRandom(i, baseX, seed) - 0.5) * 0.15;
+        pitch += (seededRandom(i, baseZ, seed) - 0.5) * 0.05;
+
+        const width = 2 + Math.sin((i / length) * Math.PI) * 4;
+        const height = width * 2;
+
+        const dx = (wx - cx) / width;
+        const dy = (wy - cy) / height;
+        const dz = (wz - cz) / width;
+
+        if (dx * dx + dy * dy + dz * dz < 1) {
+
+            // Lava logic
+            if (wy < 10) {
+
+                const lavaMode = seededRandom(baseX, baseZ, seed + 999) < 0.5;
+
+                if (lavaMode) {
+                    return 33; // full lava floor
+                } else {
+                    // sparse lava sources that spread down
+                    if (seededRandom(wx, wz, seed + 555) < 0.08) {
+                        return 33;
+                    }
+                    return 0;
+                }
             }
-            // 🌊 Water if below sea level
-            else if (y < SEA_LEVEL - 1) {
-                t = 4;    // Water
-            }
-            // 🌫 Air above sea level
-            else {
-                t = 0;    // Air
-            }
+
+            return 0; // air
         }
     }
+
+    return t;
 }
+
+// deterministic random
+function seededRandom(x, z, seed) {
+    const s = Math.sin(x * 374761393 + z * 668265263 + seed * 1446647) * 43758.5453;
+    return s - Math.floor(s);
+}
+
 
 
                          // Coal ore pass: mineable by hand, faster with pickaxe.
