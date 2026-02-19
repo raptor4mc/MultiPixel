@@ -128,6 +128,12 @@
     45: { name: 'Diamond Block', id: 45, textured: true, textureKey: 'DIAMOND_BLOCK' },
     46: { name: 'Flint', id: 46, id: 46, textured: true, textureKey: 'FLINT' },
     47: { name: 'Flowing Water', id: 47, transparent: true, opacity: 0.9, textured: true, textureKey: 'WATER' },
+    48: { name: 'Flowing Water', id: 48, transparent: true, opacity: 0.9, textured: true, textureKey: 'WATER' },
+    49: { name: 'Flowing Water', id: 49, transparent: true, opacity: 0.9, textured: true, textureKey: 'WATER' },
+    50: { name: 'Flowing Water', id: 50, transparent: true, opacity: 0.9, textured: true, textureKey: 'WATER' },
+    51: { name: 'Flowing Water', id: 51, transparent: true, opacity: 0.9, textured: true, textureKey: 'WATER' },
+    52: { name: 'Flowing Water', id: 52, transparent: true, opacity: 0.9, textured: true, textureKey: 'WATER' },
+    53: { name: 'Flowing Water', id: 53, transparent: true, opacity: 0.9, textured: true, textureKey: 'WATER' },
   }; 
 
   window.SingleplayerConfig = {
@@ -138,7 +144,7 @@
     REPO_BASE_PREFIX,
     ASSET_FILEPATHS, blockMaterials,
     SOLID_BLOCKS: [1, 2, 3, 5, 6, 7, 8, 9, 13, 14, 15, 17, 18, 20, 21, 22, 23, 24, 26, 27, 28, 29, 30, 32, 34, 35, 36, 37, 39, 40, 41, 43, 45],
-    LIQUID_BLOCKS: [4, 33, 47],
+    LIQUID_BLOCKS: [4, 33, 47, 48, 49, 50, 51, 52, 53],
     DEFAULT_PLAYER: {
       moveSpeed: 0.12,
       sprintMultiplier: 1.7,
