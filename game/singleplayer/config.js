@@ -133,7 +133,7 @@
     INV_COLS, INV_ROWS, HOTBAR_SLOTS, TOTAL_INV_SIZE,
     REPO_BASE_PREFIX,
     ASSET_FILEPATHS, blockMaterials,
-    SOLID_BLOCKS: [1, 2, 3, 5, 6, 7, 8, 9, 13, 14, 15, 17, 18, 20, 21, 22, 23, 24, 26, 27, 28, 29, 30, 32, 34, 35, 36, 37, 39, 40, 41, 43],
+    SOLID_BLOCKS: [1, 2, 3, 5, 6, 7, 8, 9, 13, 14, 15, 17, 18, 20, 21, 22, 23, 24, 26, 27, 28, 29, 30, 32, 34, 35, 36, 37, 39, 40, 41, 43, 45],
     LIQUID_BLOCKS: [4],
     DEFAULT_PLAYER: {
       moveSpeed: 0.12,
