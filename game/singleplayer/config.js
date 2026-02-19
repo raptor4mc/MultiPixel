@@ -112,7 +112,7 @@
     30: { name: 'Iron Ore Block', id: 30, textured: true, textureKey: 'IRON_ORE_BLOCK' },
     31: { name: 'Iron Ore', id: 31, textured: true, textureKey: 'IRON_ORE' },
     32: { name: 'Block of raw iron', id: 32, textured: true, textureKey: 'RAW_IRON_BLOCK' },
-    33: { name: 'Lava', id: 33, transparent: true, opacity: 0.7, textured: true, textureKey: 'LAVA_LIQUID' },
+    33: { name: 'Lava', id: 33, textured: true, textureKey: 'LAVA_LIQUID' },
     34: { name: 'Copper Block', id: 34, textured: true, textureKey: 'COPPER_BLOCK' },
     35: { name: 'Copper ore', id: 35, textured: true, textureKey: 'COPPER_ORE' },
     36: { name: 'Raw copper block', id: 36, textured: true, textureKey: 'RAW_COPPER_BLOCK' },
