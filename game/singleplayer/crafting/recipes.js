@@ -21,6 +21,8 @@
     { name: 'Raw copper', output: { id: 38, count: 9}, shape: [[36]] },
     { name: 'Raw Gold Block', output: { id: 41, count: 1}, shape: [[42, 42, 42], [42, 42, 42], [42, 42, 42]] },
     { name: 'Raw Gold', output: { id: 42, count: 9}, shape: [[41]] },
+    { name: 'Diamond Block', output: { id: 45, count: 1}, shape: [[44, 44, 44], [44, 44, 44], [44, 44, 44]] },
+    { name: 'Diamond', output: { id: 44, count: 9}, shape: [[45]] },
   ];
 
   function checkCraftingRecipe(inputSlots, gridWidth) {
