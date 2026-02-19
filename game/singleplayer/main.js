@@ -1148,7 +1148,6 @@ window.perlin = perlinInstance;
                 }
                 dirtyChunkKeys.clear();
             }
-        }
 
         function modifyWorld(posVector, newType) {
             const wx = Math.floor(posVector.x);
