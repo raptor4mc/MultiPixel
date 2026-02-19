@@ -76,6 +76,8 @@
     DIAMOND: getAssetPath('textures/item/diamond.png'),
     DIAMOND_BLOCK: getAssetPath('textures/diamond_block.png'),
     FLINT: getAssetPath('textures/item/flint.png'),
+    WOOD_LOG_TOP: getAssetPath('textures/oak/oak_log_top.png'),
+    WOOD_LOG_SIDE: getAssetPath('textures/oak/oak_log.png'),
   };
 
   const blockMaterials = {
@@ -84,7 +86,6 @@
     2: { name: 'Dirt', id: 2, textured: true, textureKey: 'DIRT' },
     3: { name: 'Stone', id: 3, textured: true, textureKey: 'STONE' },
     4: { name: 'Water', id: 4, transparent: true, opacity: 0.9, textured: true, textureKey: 'WATER' },
-    5: { name: 'Wood Log', id: 5, color: 0x8B4513, textured: false },
     6: { name: 'Leaves', id: 6, textured: true, textureKey: 'LEAVES', transparent: true, opacity: 0.8 },
     7: { name: 'Sand', id: 7, textured: true, textureKey: 'SAND' },
     8: { name: 'Oak Planks', id: 8, textured: true, textureKey: 'OAK_PLANK' },
@@ -125,7 +126,20 @@
     43: { name: 'Diamond Ore', id: 43, textured: true, textureKey: 'DIAMOND_ORE' },
     44: { name: 'Diamond', id: 44, textured: true, textureKey: 'DIAMOND' },
     45: { name: 'Diamond Block', id: 45, textured: true, textureKey: 'DIAMOND_BLOCK' },
-    46: { name: 'Flint', id: 46, id: 46, textured: true, textureKey: 'FLINT' },
+    46: { name: 'Flint', id: 46, textured: true, textureKey: 'FLINT' },
+
+    //unique blocks, like wood
+    5: {
+  name: 'Oak Log',
+  id: 5,
+  textured: true,
+  textureKeys: {
+    top: 'WOOD_LOG_TOP',
+    bottom: 'WOOD_LOG_TOP',
+    side: 'WOOD_LOG_SIDE'
+  }
+}
+
   }; 
 
   window.SingleplayerConfig = {
