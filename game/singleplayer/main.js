@@ -1728,31 +1728,30 @@ window.perlin = perlinInstance;
                             }
                         }
                          
-// ==========================================
-// PROPER 3D MINECRAFT-STYLE RAVINE SYSTEM
-// ==========================================
+                         
+// ===============================
+// MINECRAFT-STYLE RAVINE SYSTEM
+// ===============================
 
-function applyRavineAtBlock(wx, wy, wz, t, seed) {
+function applyRavineAtBlock(wx, wy, wz, t, data, seed) {
 
-    // Only generate ravines in rare chunks
-    const chunkX = wx >> 4;
-    const chunkZ = wz >> 4;
+    const r = seededRandom(wx >> 4, wz >> 4, seed);
 
-    const chunkRand = seededRandom(chunkX, chunkZ, seed);
-    if (chunkRand > 0.02) return t; // ~1 in 50 chunks
+    // 1 in ~35 chunks
+    if (r > 0.028) return t;
 
-    // Ravine starting position (per chunk)
-    const baseX = chunkX << 4;
-    const baseZ = chunkZ << 4;
+    // Create long ravine direction per chunk
+    const baseX = (wx >> 4) << 4;
+    const baseZ = (wz >> 4) << 4;
 
-    const startX = baseX + seededRandom(chunkX + 12, chunkZ - 7, seed) * 16;
-    const startZ = baseZ + seededRandom(chunkX - 5, chunkZ + 3, seed) * 16;
-    const startY = 20 + seededRandom(chunkX, chunkZ, seed + 99) * 40;
+    const startX = baseX + Math.floor(seededRandom(baseX, baseZ, seed) * 16);
+    const startZ = baseZ + Math.floor(seededRandom(baseZ, baseX, seed) * 16);
+    const startY = 25 + Math.floor(seededRandom(baseX + 99, baseZ - 77, seed) * 35);
 
-    let direction = seededRandom(chunkX + 3, chunkZ + 8, seed) * Math.PI * 2;
-    let pitch = (seededRandom(chunkX - 2, chunkZ - 9, seed) - 0.5) * 0.2;
+    let direction = seededRandom(baseX - 17, baseZ + 23, seed) * Math.PI * 2;
+    let pitch = (seededRandom(baseX + 44, baseZ - 12, seed) - 0.5) * 0.25;
 
-    const length = 120;
+    const length = 90;
 
     for (let i = 0; i < length; i++) {
 
@@ -1760,30 +1759,29 @@ function applyRavineAtBlock(wx, wy, wz, t, seed) {
         const cz = startZ + Math.sin(direction) * i;
         const cy = startY + pitch * i;
 
-        direction += (seededRandom(i, chunkX, seed) - 0.5) * 0.08;
-        pitch += (seededRandom(i, chunkZ, seed) - 0.5) * 0.02;
+        direction += (seededRandom(i, baseX, seed) - 0.5) * 0.15;
+        pitch += (seededRandom(i, baseZ, seed) - 0.5) * 0.05;
 
-        // THIS is what makes it Minecraft-like:
-        const horizontalRadius = 3 + Math.sin(i / length * Math.PI) * 6;  // 3–9 blocks wide
-        const verticalRadius = horizontalRadius * 2.2;                   // tall ravines
+        const width = 2 + Math.sin((i / length) * Math.PI) * 4;
+        const height = width * 2;
 
-        const dx = (wx - cx) / horizontalRadius;
-        const dy = (wy - cy) / verticalRadius;
-        const dz = (wz - cz) / horizontalRadius;
+        const dx = (wx - cx) / width;
+        const dy = (wy - cy) / height;
+        const dz = (wz - cz) / width;
 
         if (dx * dx + dy * dy + dz * dz < 1) {
 
-            // Lava floor
+            // Lava logic
             if (wy < 10) {
 
-                // Either full lava bottom OR sparse lava source blocks
-                const lavaMode = seededRandom(chunkX, chunkZ, seed + 777) < 0.5;
+                const lavaMode = seededRandom(baseX, baseZ, seed + 999) < 0.5;
 
                 if (lavaMode) {
-                    return 33; // full lava
+                    return 33; // full lava floor
                 } else {
-                    if (seededRandom(wx, wz, seed + 555) < 0.12) {
-                        return 33; // source blocks
+                    // sparse lava sources that spread down
+                    if (seededRandom(wx, wz, seed + 555) < 0.08) {
+                        return 33;
                     }
                     return 0;
                 }
@@ -1801,7 +1799,6 @@ function seededRandom(x, z, seed) {
     const s = Math.sin(x * 374761393 + z * 668265263 + seed * 1446647) * 43758.5453;
     return s - Math.floor(s);
 }
-
 
 
 
