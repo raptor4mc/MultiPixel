@@ -1,9 +1,12 @@
 (function () {
+
   const WATER_SOURCE = 4;
-  const FLOWING_WATER = 47;
+
+  const FLOW_START = 47;   // distance 1
+  const FLOW_END   = 53;   // distance 7
 
   const MAX_HORIZONTAL = 7;
-  const FLOW_DELAY = 5; // 1 move every 5 ticks
+  const FLOW_DELAY = 5;
 
   function shuffledDirs(randomFn) {
     const dirs = [
@@ -19,90 +22,68 @@
     return dirs;
   }
 
-  function countAdjacentSources(getBlock, x, y, z) {
-    let count = 0;
+  function isFlowing(id) {
+    return id >= FLOW_START && id <= FLOW_END;
+  }
 
-    if (getBlock(x + 1, y, z) === WATER_SOURCE) count++;
-    if (getBlock(x - 1, y, z) === WATER_SOURCE) count++;
-    if (getBlock(x, y, z + 1) === WATER_SOURCE) count++;
-    if (getBlock(x, y, z - 1) === WATER_SOURCE) count++;
-
-    return count;
+  function getDistance(id) {
+    if (id === WATER_SOURCE) return 0;
+    return id - FLOW_START + 1;
   }
 
   function tryUpdate(ctx) {
     const {
       wx, wy, wz,
       getBlock, setBlock, swapBlocks,
-      getMeta, setMeta,
       gameTick,
       random
     } = ctx;
 
-    const blockHere = getBlock(wx, wy, wz);
-    if (blockHere !== WATER_SOURCE && blockHere !== FLOWING_WATER)
+    const id = getBlock(wx, wy, wz);
+
+    if (id !== WATER_SOURCE && !isFlowing(id))
       return false;
 
-    // ---- FLOW DELAY CONTROL ----
-    const lastTick = getMeta(wx, wy, wz, "lastFlow") || 0;
-
-    if (gameTick - lastTick < FLOW_DELAY) {
+    // --- FLOW SPEED CONTROL ---
+    if ((gameTick + wx + wy + wz) % FLOW_DELAY !== 0)
       return false;
-    }
 
-    setMeta(wx, wy, wz, "lastFlow", gameTick);
-
-    // ---- INFINITE SOURCE ----
-    if (blockHere === FLOWING_WATER) {
-      const below = getBlock(wx, wy - 1, wz);
-
-      if (below !== 0) {
-        const sources = countAdjacentSources(getBlock, wx, wy, wz);
-        if (sources >= 2) {
-          setBlock(wx, wy, wz, WATER_SOURCE);
-          return true;
-        }
-      }
-    }
-
-    // ---- FLOW DOWN (UNLIMITED) ----
     const below = getBlock(wx, wy - 1, wz);
 
+    // --- FLOW DOWN (INFINITE) ---
     if (below === 0) {
       swapBlocks(wx, wy, wz, wx, wy - 1, wz);
 
-      // RESET horizontal distance when falling
-      setMeta(wx, wy - 1, wz, "distance", 0);
+      // Reset horizontal distance when falling
+      setBlock(wx, wy - 1, wz, FLOW_START);
 
       return true;
     }
 
-    // ---- HORIZONTAL SPREAD ----
-    let distance = getMeta(wx, wy, wz, "distance") || 0;
+    // --- HORIZONTAL SPREAD ---
+    const distance = getDistance(id);
 
-    if (blockHere === WATER_SOURCE) {
-      distance = 0;
-    }
-
-    if (distance >= MAX_HORIZONTAL) return false;
+    if (distance >= MAX_HORIZONTAL)
+      return false;
 
     const dirs = shuffledDirs(random || Math.random);
-
-    let moved = false;
 
     for (const [dx, dz] of dirs) {
       const nx = wx + dx;
       const nz = wz + dz;
 
       if (getBlock(nx, wy, nz) === 0) {
-        setBlock(nx, wy, nz, FLOWING_WATER);
-        setMeta(nx, wy, nz, "distance", distance + 1);
-        moved = true;
+
+        const newLevel = FLOW_START + distance;
+
+        setBlock(nx, wy, nz, newLevel);
+        return true;
       }
     }
 
-    return moved;
+    return false;
   }
 
   window.WaterPhysics = { tryUpdate };
+
 })();
