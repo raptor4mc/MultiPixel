@@ -1084,6 +1084,8 @@ window.perlin = perlinInstance;
             return true;
         }
 
+        let physicsTickCounter = 0;
+
         function applyBlockPhysics(nowMs) {
             if (!window.WaterPhysics || !window.SandPhysics) return;
             if (nowMs - lastPhysicsTickMs < 50) return;
