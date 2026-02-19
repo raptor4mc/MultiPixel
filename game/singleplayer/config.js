@@ -50,7 +50,7 @@
     COAL_ORE_BLOCK: getAssetPath('textures/coal_ore.png'),
     COAL_BLOCK: getAssetPath('textures/coal_block.png'),
     STONE_BRICK_BLOCK: getAssetPath('textures/stone_bricks.png'),
-    TORCH: getAssetPath('textures/torch.png'),
+    TORCH: getAssetPath('textures/item/torch.png'),
     FURNACE: getAssetPath('textures/furnace_off.png'),
     CRACKED_STONE_BRICK: getAssetPath('textures/cracked_stone_bricks.png'),
     CHARCOAL: getAssetPath('textures/item/charcoal.png'),
@@ -67,15 +67,15 @@
     COPPER_ORE: getAssetPath('textures/copper/copper_ore.png'),
     RAW_COPPER_BLOCK: getAssetPath('textures/copper/raw_copper_block.png'),
     WEATHERED_COPPER_BLOCK: getAssetPath('textures/copper/weathered_copper.png'),
-    RAW_COPPER_ITEM: getAssetPath('textures/copper/copper.png'),
+    RAW_COPPER_ITEM: getAssetPath('textures/item/raw_copper.png'),
     OBSIDIAN_BLOCK: getAssetPath('textures/obsidian.png'),
     GOLD_ORE_BLOCK: getAssetPath('textures/gold_ore.png'),
     RAW_GOLD_BLOCK: getAssetPath('textures/raw_gold_block.png'),
-    GOLD_ORE: getAssetPath('textures/item/gold_ore.png'),
+    GOLD_ORE: getAssetPath('textures/item/raw_gold.png'),
     DIAMOND_ORE: getAssetPath('textures/diamond_ore.png'),
-    DIAMOND: getAssetPath('textures/diamond.png'),
+    DIAMOND: getAssetPath('textures/item/diamond.png'),
     DIAMOND_BLOCK: getAssetPath('textures/diamond_block.png'),
-    FLINT: getAssetPath('textures/item/diamond_block.png'),
+    FLINT: getAssetPath('textures/item/flint.png'),
   };
 
   const blockMaterials = {
