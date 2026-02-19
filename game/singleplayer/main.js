@@ -1728,16 +1728,42 @@ window.perlin = perlinInstance;
                             }
                         }
                          
-                         const ravineMask = getRavineMask(wx, wz);
-                         if (ravineMask > 0.82) {
-                             const ravineDepth = Math.floor((ravineMask - 0.82) * 70) + 10;
-                             const ravineTop = Math.min(h + 6, CHUNK_HEIGHT - 1);
-                             const ravineBottom = Math.max(2, ravineTop - ravineDepth);
-                             if (y <= ravineTop && y >= ravineBottom) {
-                                 if (y < SEA_LEVEL - 2) t = 4;
-                                 else t = 0;
-                             }
-                         }
+  const ravineMask = getRavineMask(wx, wz);
+
+if (ravineMask > 0.78) {
+    const strength = (ravineMask - 0.78) / 0.22;
+
+    const ravineTop = Math.min(h + 8, CHUNK_HEIGHT - 1);
+    const maxDepth = 40 + Math.floor(strength * 40);
+    const ravineBottom = Math.max(3, ravineTop - maxDepth);
+
+    if (y <= ravineTop && y >= ravineBottom) {
+
+        const mid = (ravineTop + ravineBottom) / 2;
+        const halfHeight = (ravineTop - ravineBottom) / 2;
+        const verticalFactor = 1 - Math.abs(y - mid) / halfHeight;
+
+        const widthNoise = octaveNoise2D(wx, wz, 2, 0.5, 2.0, 0.06, 812, -245);
+        const widthFactor = strength * verticalFactor + widthNoise * 0.15;
+
+        if (widthFactor > 0.25) {
+
+            // 🔥 Lava very deep underground
+            if (y < 12) {
+                t = 33;   // Lava
+            }
+            // 🌊 Water if below sea level
+            else if (y < SEA_LEVEL - 1) {
+                t = 4;    // Water
+            }
+            // 🌫 Air above sea level
+            else {
+                t = 0;    // Air
+            }
+        }
+    }
+}
+
 
                          // Coal ore pass: mineable by hand, faster with pickaxe.
                          if (t === 3 || t === 13 && y > 6 && y < Math.min(CHUNK_HEIGHT - 6, h - 2)) {
