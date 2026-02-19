@@ -125,7 +125,7 @@
     43: { name: 'Diamond Ore', id: 43, textured: true, textureKey: 'DIAMOND_ORE' },
     44: { name: 'Diamond', id: 44, textured: true, textureKey: 'DIAMOND' },
     45: { name: 'Diamond Block', id: 45, textured: true, textureKey: 'DIAMOND_BLOCK' },
-    46: { name: 'Flint', id: 46, id: 46, textured: true, textureKey 'FLINT' },
+    46: { name: 'Flint', id: 46, id: 46, textured: true, textureKey: 'FLINT' },
   }; 
 
   window.SingleplayerConfig = {
