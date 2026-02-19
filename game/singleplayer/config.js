@@ -73,7 +73,8 @@
     RAW_GOLD_BLOCK: getAssetPath('textures/raw_gold_block.png'),
     GOLD_ORE: getAssetPath('textures/item/gold_ore.png'),
     DIAMOND_ORE: getAssetPath('textures/diamond_ore.png'),
-    DIAMOND: getAssetPath('textures/diamond.png')
+    DIAMOND: getAssetPath('textures/diamond.png'),
+    DIAMOND_BLOCK: getAssetPath('textures/diamond_block.png'),
   };
 
   const blockMaterials = {
@@ -122,6 +123,7 @@
     42: { name: 'Gold Ore', id: 42, textured: true, textureKey: 'GOLD_ORE' },
     43: { name: 'Diamond Ore', id: 43, textured: true, textureKey: 'DIAMOND_ORE' },
     44: { name: 'Diamond', id: 44, textured: true, textureKey: 'DIAMOND' },
+    45: { name: 'Diamond Block', id: 45, textured: true, textureKey: 'DIAMOND_BLOCK' },
   }; 
 
   window.SingleplayerConfig = {
