@@ -318,6 +318,7 @@ window.perlin = perlinInstance;
             addToInventory(37, 42);
             addToInventory(33, 42);
             addToInventory(39, 42);
+            addToInventory(4, 42);
             
             // Set initial sky state
             updateSkyAndSun(); 
