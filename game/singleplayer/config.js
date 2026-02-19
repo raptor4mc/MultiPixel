@@ -59,7 +59,7 @@
     GRAVEL: getAssetPath('textures/gravel.png'),
     SMOOTH_SANDSTONE_BLOCK: getAssetPath('textures/sand/normal/smooth_sandstone_block.png'),
     IRON_ORE_BLOCK: getAssetPath('textures/iron_ore.png'),
-    IRON_ORE: getAssetPath('textures/item/raw_iron_png'),
+    IRON_ORE: getAssetPath('textures/item/raw_iron.png'),
     RAW_IRON_BLOCK: getAssetPath('textures/raw_iron_block.png'),
     LAVA_LIQUID: getAssetPath('textures/liquid/lava.png'),
     WATER: getAssetPath('textures/liquid/water_still.jpeg'),
