@@ -22,7 +22,7 @@
       return ((h & 1) ? -u : u) + ((h & 2) ? -v : v);
     }
 
-    noise(x, y, z) {
+    noise(x, y, z = 0) {
       const X = Math.floor(x) & 255, Y = Math.floor(y) & 255, Z = Math.floor(z) & 255;
       x -= Math.floor(x); y -= Math.floor(y); z -= Math.floor(z);
       const u = this.fade(x), v = this.fade(y), w = this.fade(z);
@@ -42,15 +42,9 @@
     }
 
     noise2D(x, y) { return this.noise(x, y, 0); }
-    noise3D(x, y, z) { return this.noise(x, y, z); }
 
     normalize(n) { return (n + 1) * 0.5; }
-    remap(value, min1, max1, min2, max2) { return min2 + (value - min1) * (max2 - min2) / (max1 - min1); }
     clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
-
-    // =========================
-    // Advanced Fractal Noise
-    // =========================
 
     fbm2D(x, y, octaves = 6, lacunarity = 2, gain = 0.5) {
       let sum = 0, amplitude = 1, frequency = 1, max = 0;
@@ -81,16 +75,11 @@
       return { x: x + qx * strength, y: y + qy * strength };
     }
 
-    blendNoise(x, y, options = {}) {
-      // Blends multiple noises for more natural terrain
-      const { scale = 0.001, warp = true } = options;
-      let nx = x, ny = y;
-      if (warp) {
-        const w = this.warp2D(x, y, 0.01, 15);
-        nx = w.x; ny = w.y;
-      }
-      const base = this.fbm2D(nx * scale, ny * scale, 6, 2, 0.5);
-      const ridge = this.ridged2D(nx * scale * 0.5, ny * scale * 0.5) * 0.5;
+    blendNoise(x, y) {
+      const w = this.warp2D(x, y, 0.01, 15);
+      const nx = w.x, ny = w.y;
+      const base = this.fbm2D(nx * 0.002, ny * 0.002, 6);
+      const ridge = this.ridged2D(nx * 0.001, ny * 0.001) * 0.5;
       return this.clamp(base + ridge, -1, 1);
     }
   }
