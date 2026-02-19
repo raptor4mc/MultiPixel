@@ -23,31 +23,40 @@
       return mountainNoise > 0.55 && continentalNoise > 0.35 && climateNoise > -0.5;
     },
 
-    getHeight({ BASE_LAND_Y, continentalness, erosion, ridges, terrainNoise, cliffNoise, peakNoise, peaksValleys, jaggedNoise }) {
-      const uplift = mountainFactor(continentalness, erosion, ridges);
-      const curvedUplift = Math.pow(uplift / 60, 1.7) * 100;
+getHeight({ BASE_LAND_Y, continentalness, erosion, ridges, terrainNoise, cliffNoise, peakNoise, peaksValleys, jaggedNoise }) {
+  // Base mountain offset
+  const BASE_MOUNTAIN_Y = BASE_LAND_Y + 60; // 60 blocks above plains
 
-      let ridgeShape = Math.pow(1 - Math.abs(peaksValleys), 2.2) * 65;
-      ridgeShape -= Math.pow(Math.max(0, -peaksValleys), 1.5) * 20;
+  // Base ridge uplift
+  const uplift = mountainFactor(continentalness, erosion, ridges);
+  const curvedUplift = Math.pow(uplift / 50, 1.6) * 120; // increase scaling
 
-      const peakFactor = Math.pow(Math.max(0, peakNoise - 0.5), 2.3) * 2.2;
-      const cliffs = Math.max(0, cliffNoise - 0.6) * 20;
-      const roughness = terrainNoise * 5;
-      const erosionEffect = erosion * 5;
+  // Ridge shaping
+  let ridgeShape = Math.pow(1 - Math.abs(peaksValleys), 2.2) * 80;
+  ridgeShape -= Math.pow(Math.max(0, -peaksValleys), 2) * 40;
 
-      // Smooth biome blending
-      const biomeBlend = smoothstep(0.45, 0.7, continentalness); // transitions plains → hills → mountains
+  // Peak exaggeration
+  const peakFactor = Math.pow(Math.max(0, peakNoise - 0.5), 3) * 20;
 
-      const height = BASE_LAND_Y +
-        (curvedUplift * (1 + peakFactor)) +
-        ridgeShape +
-        cliffs +
-        roughness -
-        erosionEffect;
+  // Cliffs
+  const cliffs = Math.pow(Math.max(0, cliffNoise - 0.6), 3) * 60;
 
-      return lerp(BASE_LAND_Y + terrainNoise * 10, height, biomeBlend);
-    }
-  };
+  // Roughness
+  const roughness = terrainNoise * 10;
+
+  // Erosion lowering valleys
+  const erosionEffect = erosion * 5;
+
+  // Smooth blending only near plains edges
+  const biomeBlend = smoothstep(0.5, 0.7, continentalness); // 0 = plain, 1 = full mountain
+
+  // Final height
+  const mountainHeight = BASE_MOUNTAIN_Y + curvedUplift + ridgeShape + peakFactor + cliffs + roughness - erosionEffect;
+
+  // Blend only edges; otherwise full mountain stands above plains
+  return lerp(BASE_LAND_Y + terrainNoise * 5, mountainHeight, biomeBlend);
+}
+
 
   window.MountainsTerrain = MountainsTerrain;
 })();
