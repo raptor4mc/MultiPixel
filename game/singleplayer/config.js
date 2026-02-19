@@ -61,7 +61,7 @@
     IRON_ORE_BLOCK: getAssetPath('textures/iron_ore.png'),
     IRON_ORE: getAssetPath('textures/item/raw_iron.png'),
     RAW_IRON_BLOCK: getAssetPath('textures/raw_iron_block.png'),
-    LAVA_LIQUID: getAssetPath('textures/liquid/lava.png'),
+    LAVA_LIQUID: getAssetPath('textures/liquid/lava.jpeg'),
     WATER: getAssetPath('textures/liquid/water_still.jpeg'),
     COPPER_BLOCK: getAssetPath('textures/copper/copper_block.png'),
     COPPER_ORE: getAssetPath('textures/copper/copper_ore.png'),
