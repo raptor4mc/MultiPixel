@@ -31,10 +31,22 @@
     if (blockId === 18) return { id: 19, count: 1 };     // Coal ore -> Coal
     if (blockId === 30) return { id: 31, count: 1 };     // Steel ore -> iron
     if (blockId === 1) return { id: 2, count: 1};
-    if (blockId === 35) return { id: 38, count: 3};
+    if (blockId === 35) {
+  const amount = Math.floor(Math.random() * 5) + 1; // 1–5
+  return { id: 38, count: amount };
+}
     if (blockId === 40) return { id: 42, count: 1};
     if (blockId === 43) return { id: 44, count: 1};
+    if (blockId === 28) {
+  if (Math.random() < 0.5) {
+    return { id: 46, count: 1 }; // Flint
+  } else {
+    return { id: 28, count: 1 }; // Gravel
+  }
+}
+
     return { id: blockId, count: 1 };
+    
   }
 
   window.PickaxeSystem = {
