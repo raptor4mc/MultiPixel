@@ -43,7 +43,7 @@
     SAND_STONE: getAssetPath('textures/sand/normal/sand_stone.png'),
     COBBLESTONE: getAssetPath('textures/cobblestone.png'),
     SNOW_BLOCK: getAssetPath('textures/snow.png'),
-    SNOWBALL: getAssetPath('textures/item/snowball_item.png'),
+    SNOWBALL: getAssetPath('textures/item/snowball.png'),
     WOODEN_PICKAXE: getAssetPath('textures/item/tool/pickaxe/wooden_pickaxe.png'),
     BEDROCK: getAssetPath('textures/bedrock.png'),
     COAL: getAssetPath('textures/item/coal.png'),
