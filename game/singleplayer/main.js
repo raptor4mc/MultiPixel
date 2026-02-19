@@ -1770,13 +1770,23 @@ window.perlin = perlinInstance;
                            }
 
                              // Gold ore pass
-                      if (t === 3 && y > 2 && y < CHUNK_HEIGHT * 0.4) { // gold spawns lower than iron
+                      if (t === 3 && y > 2 && y < CHUNK_HEIGHT * 0.4) { // diamond spawns lower than iron
                           const veinNoise = octaveNoise2D(wx, wz, 3, 0.5, 2.0, 0.08, 9999, -1234);
                           const depthBias = 1 - (y / CHUNK_HEIGHT);
                           const oreRoll = hashRand2D(wx + y * 19, wz - y * 13, 303);
 
                           if (veinNoise > 0.25 && oreRoll < (0.03 + depthBias * 0.05)) {
                                  t = 40; // gold ore
+                              }
+                        }
+                                      // Gold ore pass
+                      if (t === 3 && y > 2 && y < CHUNK_HEIGHT * 0.2) { // diamond spawns lower than iron
+                          const veinNoise = octaveNoise2D(wx, wz, 3, 0.5, 2.0, 0.08, 11111, -8930);
+                          const depthBias = 1 - (y / CHUNK_HEIGHT);
+                          const oreRoll = hashRand2D(wx + y * 21, wz - y * 15, 303);
+
+                          if (veinNoise > 0.30 && oreRoll < (0.02 + depthBias * 0.03)) {
+                                 t = 43; // gold ore
                               }
                         }
 
