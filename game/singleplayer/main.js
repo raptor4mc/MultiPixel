@@ -1740,7 +1740,7 @@ window.perlin = perlinInstance;
                          }
 
                          // Coal ore pass: mineable by hand, faster with pickaxe.
-                         if (t === 3 && y > 6 && y < Math.min(CHUNK_HEIGHT - 6, h - 2)) {
+                         if (t === 3 || t === 13 && y > 6 && y < Math.min(CHUNK_HEIGHT - 6, h - 2)) {
                              const veinNoise = octaveNoise2D(wx, wz, 3, 0.5, 2.0, 0.09, 1450, -870);
                              const depthBias = 1 - (y / CHUNK_HEIGHT);
                              const oreRoll = hashRand2D(wx + y * 13, wz - y * 7, 301);
@@ -1749,7 +1749,7 @@ window.perlin = perlinInstance;
                              }
                          }
                                     // copper ore pass
-                       if (t === 3 && y > 6 && y < Math.min(CHUNK_HEIGHT - 6, h - 2)) {
+                       if (t === 3 || t === 13 && y > 6 && y < Math.min(CHUNK_HEIGHT - 6, h - 2)) {
                             const veinNoise = octaveNoise2D(wx, wz, 3, 0.5, 2.0, 0.07, 5555, -666);
                             const depthBias = 1 - (y / CHUNK_HEIGHT);
                             const oreRoll = hashRand2D(wx + y * 13, wz - y * 7, 302);
@@ -1759,7 +1759,7 @@ window.perlin = perlinInstance;
                                 }
                            }
                              // Iron ore pass
-                        if (t === 3 && y > 4 && y < CHUNK_HEIGHT * 0.6) {
+                        if (t === 3 || t === 13 && y > 4 && y < CHUNK_HEIGHT * 0.6) {
                             const veinNoise = octaveNoise2D(wx, wz, 3, 0.5, 2.0, 0.07, 2222, -333);
                             const depthBias = 1 - (y / CHUNK_HEIGHT);
                             const oreRoll = hashRand2D(wx + y * 17, wz - y * 11, 777);
@@ -1770,7 +1770,7 @@ window.perlin = perlinInstance;
                            }
 
                              // Gold ore pass
-                      if (t === 3 && y > 2 && y < CHUNK_HEIGHT * 0.4) { // diamond spawns lower than iron
+                      if (t === 3 || t === 13 && y > 2 && y < CHUNK_HEIGHT * 0.4) { // diamond spawns lower than iron
                           const veinNoise = octaveNoise2D(wx, wz, 3, 0.5, 2.0, 0.08, 9999, -1234);
                           const depthBias = 1 - (y / CHUNK_HEIGHT);
                           const oreRoll = hashRand2D(wx + y * 19, wz - y * 13, 303);
@@ -1780,7 +1780,7 @@ window.perlin = perlinInstance;
                               }
                         }
                                       // Gold ore pass
-                      if (t === 3 && y > 2 && y < CHUNK_HEIGHT * 0.2) { // diamond spawns lower than iron
+                      if (t === 3 || t === 13 && y > 2 && y < CHUNK_HEIGHT * 0.2) { // diamond spawns lower than iron
                           const veinNoise = octaveNoise2D(wx, wz, 3, 0.5, 2.0, 0.08, 11111, -8930);
                           const depthBias = 1 - (y / CHUNK_HEIGHT);
                           const oreRoll = hashRand2D(wx + y * 21, wz - y * 15, 303);
