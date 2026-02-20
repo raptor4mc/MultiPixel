@@ -1783,72 +1783,67 @@ if (ravineMask > 0.78) {
                              
                              
                              
-                             // Coal ore pass
-                             if ((t === 3 || t === 13) && y > 10 && y < Math.min(CHUNK_HEIGHT - 8, h - 2)) {
-                                     const veinNoise = octaveNoise2D(wx, wz, 3, 0.5, 2.0, 0.10, 1450, -870);
-                                     const depthBias = 1 - (y / CHUNK_HEIGHT);
-                                     const oreRoll = hashRand2D(wx + y * 13, wz - y * 7, 301);
-                                     
-                                     if (veinNoise > 0.18 && oreRoll < (0.035 + depthBias * 0.04)) {
-                                             t = 18;
-                                     }
+                                                     // Coal ore pass: mineable by hand, faster with pickaxe.
+                         if (t === 3 || t === 13 && y > 6 && y < Math.min(CHUNK_HEIGHT - 6, h - 2)) {
+                             const veinNoise = octaveNoise2D(wx, wz, 3, 0.5, 2.0, 0.09, 1450, -870);
+                             const depthBias = 1 - (y / CHUNK_HEIGHT);
+                             const oreRoll = hashRand2D(wx + y * 13, wz - y * 7, 301);
+                             if (veinNoise > 0.12 && oreRoll < (0.06 + depthBias * 0.08)) {
+                                 t = 18;
                              }
-                             // Copper ore pass
-                             if ((t === 3 || t === 13) && y > 12 && y < Math.min(CHUNK_HEIGHT - 10, h - 2)) {
-                                     const veinNoise = octaveNoise2D(wx, wz, 3, 0.5, 2.0, 0.09, 5555, -666);
-                                     const depthBias = 1 - (y / CHUNK_HEIGHT);
-                                     const oreRoll = hashRand2D(wx + y * 15, wz - y * 9, 302);
-                                     
-                                     if (veinNoise > 0.28 && oreRoll < (0.025 + depthBias * 0.03)) {
-                                             t = 35;
-                                     }
-                             }
-                             // Iron ore pass 
-                             if ((t === 3 || t === 13) && y > 6 && y < CHUNK_HEIGHT * 0.55) {
-                                     const veinNoise = octaveNoise2D(wx, wz, 3, 0.5, 2.0, 0.09, 2222, -333);
-                                     const depthBias = 1 - (y / CHUNK_HEIGHT);
-                                     const oreRoll = hashRand2D(wx + y * 17, wz - y * 11, 777);
-                                     
-                                     if (veinNoise > 0.30 && oreRoll < (0.02 + depthBias * 0.025)) {
-                                             t = 30;
-                                     }
-                             }
+                         }
+                                    // copper ore pass
+                       if (t === 3 || t === 13 && y > 6 && y < Math.min(CHUNK_HEIGHT - 6, h - 2)) {
+                            const veinNoise = octaveNoise2D(wx, wz, 3, 0.5, 2.0, 0.07, 5555, -666);
+                            const depthBias = 1 - (y / CHUNK_HEIGHT);
+                            const oreRoll = hashRand2D(wx + y * 13, wz - y * 7, 302);
+
+                            if (veinNoise > 0.20 && oreRoll < (0.06 + depthBias * 0.08)) {
+                                   t = 35; // copper ore
+                                }
+                           }
+                             // Iron ore pass
+                        if (t === 3 || t === 13 && y > 4 && y < CHUNK_HEIGHT * 0.6) {
+                            const veinNoise = octaveNoise2D(wx, wz, 3, 0.5, 2.0, 0.07, 2222, -333);
+                            const depthBias = 1 - (y / CHUNK_HEIGHT);
+                            const oreRoll = hashRand2D(wx + y * 17, wz - y * 11, 777);
+
+                            if (veinNoise > 0.18 && oreRoll < (0.04 + depthBias * 0.06)) {
+                                   t = 30; // iron ore
+                                }
+                           }
+
                              // Gold ore pass
-                             if ((t === 3 || t === 13) && y > 4 && y < CHUNK_HEIGHT * 0.35) {
-                                     const veinNoise = octaveNoise2D(wx, wz, 3, 0.5, 2.0, 0.10, 9999, -1234);
-                                     const depthBias = 1 - (y / CHUNK_HEIGHT);
-                                     const oreRoll = hashRand2D(wx + y * 19, wz - y * 13, 303);
+                      if (t === 3 || t === 13 && y > 2 && y < CHUNK_HEIGHT * 0.4) { // diamond spawns lower than iron
+                          const veinNoise = octaveNoise2D(wx, wz, 3, 0.5, 2.0, 0.08, 9999, -1234);
+                          const depthBias = 1 - (y / CHUNK_HEIGHT);
+                          const oreRoll = hashRand2D(wx + y * 19, wz - y * 13, 303);
 
-                                     if (veinNoise > 0.40 && oreRoll < (0.012 + depthBias * 0.02)) {
-                                             t = 40;
-                                     }
-                             }
+                          if (veinNoise > 0.25 && oreRoll < (0.03 + depthBias * 0.05)) {
+                                 t = 40; // gold ore
+                              }
+                        }
+                                      // diamond ore pass
+                      if (t === 3 || t === 13 && y > 2 && y < CHUNK_HEIGHT * 0.2) { // diamond spawns lower than iron
+                          const veinNoise = octaveNoise2D(wx, wz, 3, 0.5, 2.0, 0.08, 11111, -8930);
+                          const depthBias = 1 - (y / CHUNK_HEIGHT);
+                          const oreRoll = hashRand2D(wx + y * 21, wz - y * 15, 303);
 
+                          if (veinNoise > 0.30 && oreRoll < (0.02 + depthBias * 0.03)) {
+                                 t = 43; // gold ore
+                              }
+                        }
+                             
+                                                                   // emerald ore pass
+                      if (t === 3 || t === 13 && y > 2 && y < CHUNK_HEIGHT * 0.2) { // emerald spawns lower than iron
+                          const veinNoise = octaveNoise2D(wx, wz, 3, 0.5, 2.0, 0.08, 23498, -19840);
+                          const depthBias = 1 - (y / CHUNK_HEIGHT);
+                          const oreRoll = hashRand2D(wx + y * 26, wz - y * 17, 303);
 
-                             // Diamond ore pass (VERY RARE)
-
-                             if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.18) {
-                                     const veinNoise = octaveNoise2D(wx, wz, 3, 0.5, 2.0, 0.12, 11111, -8930);
-                                     const depthBias = 1 - (y / CHUNK_HEIGHT);
-                                     const oreRoll = hashRand2D(wx + y * 21, wz - y * 15, 304);
-
-                                     if (veinNoise > 0.50 && oreRoll < (0.006 + depthBias * 0.01)) {
-                                             t = 43; // diamond ore
-                                     }
-                             }
-
-
-                             // Emerald ore pass (ULTRA RARE)
-
-                             if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.15) {
-                                     const veinNoise = octaveNoise2D(wx, wz, 3, 0.5, 2.0, 0.14, 22222, -5555);
-                                     const depthBias = 1 - (y / CHUNK_HEIGHT);
-                                     const oreRoll = hashRand2D(wx + y * 23, wz - y * 17, 404);
-
-                                     if (veinNoise > 0.55 && oreRoll < (0.003 + depthBias * 0.006)) {
-                                             t = 54; // emerald ore
-                                     }
-                             }
+                          if (veinNoise > 0.50 && oreRoll < (0.03 + depthBias * 0.02)) {
+                                 t = 54; // emerald ore
+                              }
+                        }
 
 
 
