@@ -25,7 +25,7 @@
 
     getHeight({ BASE_LAND_Y, continentalness, erosion, ridges, terrainNoise, cliffNoise, peakNoise, peaksValleys, jaggedNoise }) {
       const uplift = mountainFactor(continentalness, erosion, ridges);
-      const curvedUplift = Math.pow(uplift / 60, 1.7) * 120;
+      const curvedUplift = Math.pow(uplift / 60, 1.4) * 220;
 
       let ridgeShape = Math.pow(1 - Math.abs(peaksValleys), 1.6) * 70;
       ridgeShape -= Math.pow(Math.max(0, -peaksValleys), 1.5) * 20;
@@ -45,7 +45,7 @@
         roughness -
         erosionEffect;
 
-      return lerp(BASE_LAND_Y + terrainNoise * 10, height, biomeBlend);
+      return lerp(BASE_LAND_Y + terrainNoise * 10, height, biomeBlend );
     }
   };
 
