@@ -37,6 +37,7 @@
 }
     if (blockId === 40) return { id: 42, count: 1};
     if (blockId === 43) return { id: 44, count: 1};
+    if (blockId === 54) return { id: 56, count: 1};
     if (blockId === 28) {
   if (Math.random() < 0.5) {
     return { id: 46, count: 1 }; // Flint
