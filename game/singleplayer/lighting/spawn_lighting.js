@@ -1,78 +1,52 @@
 (function () {
-  function create({ getBlockType, setBlockLight, getBlockLight, isSolid, CHUNK_HEIGHT }) {
+  function create({ getBlockType, isLiquid, CHUNK_HEIGHT }) {
+    const EMISSIVE_BLOCK_LIGHT = { 22: 13, 33: 14 };
 
-    // Emissive blocks and their light levels
-    const EMISSIVE_BLOCK_LIGHT = {
-      22: 14, // Torch
-      33: 15  // Lava
-    };
-
-    // Max light level
-    const MAX_LIGHT = 15;
-
-    // Directions for neighbors
-    const DIRS = [
-      [1,0,0], [-1,0,0],
-      [0,1,0], [0,-1,0],
-      [0,0,1], [0,0,-1]
-    ];
-
-    // Check if a block has direct sky access
     function isOpenToSky(wx, wy, wz) {
       for (let y = CHUNK_HEIGHT - 1; y > wy; y--) {
         const b = getBlockType(wx, y, wz);
-        if (b !== 0 && isSolid(b)) return false;
+        if (b !== 0 && !isLiquid(b)) return false;
       }
       return true;
     }
 
-    // Get sky light (simple top-down propagation)
     function getSkyLightLevel(wx, wy, wz) {
-      return isOpenToSky(wx, wy, wz) ? MAX_LIGHT : 0;
+      if (isOpenToSky(wx, wy, wz)) return 15;
+      let light = 0;
+      for (let y = CHUNK_HEIGHT - 1; y > wy; y--) {
+        const b = getBlockType(wx, y, wz);
+        if (b !== 0 && !isLiquid(b)) {
+          light = Math.max(0, light - 4);
+        } else {
+          light = Math.min(15, light + 1);
+        }
+      }
+      return light;
     }
 
-    // Propagate block light using BFS
-    function propagateBlockLight(startX, startY, startZ) {
-      const visited = new Set();
-      const queue = [];
-      const emit = EMISSIVE_BLOCK_LIGHT[getBlockType(startX, startY, startZ)];
-      if (!emit) return;
-
-      queue.push({ x: startX, y: startY, z: startZ, light: emit });
-      const key = (x,y,z) => `${x},${y},${z}`;
-
-      while (queue.length) {
-        const { x, y, z, light } = queue.shift();
-        const currentKey = key(x,y,z);
-
-        if (visited.has(currentKey)) continue;
-        visited.add(currentKey);
-
-        const existingLight = getBlockLight(x, y, z) || 0;
-        if (light <= existingLight) continue;
-
-        setBlockLight(x, y, z, light);
-
-        if (light <= 1) continue; // stop propagation
-
-        for (const [dx, dy, dz] of DIRS) {
-          const nx = x + dx, ny = y + dy, nz = z + dz;
-          const neighborBlock = getBlockType(nx, ny, nz);
-          if (!isSolid(neighborBlock)) {
-            queue.push({ x: nx, y: ny, z: nz, light: light - 1 });
+    function getBlockLightLevel(wx, wy, wz) {
+      let best = 0;
+      const r = 4;
+      for (let dx = -r; dx <= r; dx++) {
+        for (let dy = -r; dy <= r; dy++) {
+          for (let dz = -r; dz <= r; dz++) {
+            const b = getBlockType(wx + dx, wy + dy, wz + dz);
+            const emit = EMISSIVE_BLOCK_LIGHT[b] || 0;
+            if (!emit) continue;
+            const dist = Math.abs(dx) + Math.abs(dy) + Math.abs(dz);
+            const val = Math.max(0, emit - dist);
+            if (val > best) best = val;
           }
         }
       }
+      return best;
     }
 
-    // Get the combined light at a position
     function getCombinedLight(wx, wy, wz) {
-      const sky = getSkyLightLevel(wx, wy, wz);
-      const block = getBlockLight(wx, wy, wz) || 0;
-      return Math.max(sky, block);
+      return Math.max(getSkyLightLevel(wx, wy, wz), getBlockLightLevel(wx, wy, wz));
     }
 
-    return { isOpenToSky, getSkyLightLevel, propagateBlockLight, getCombinedLight };
+    return { isOpenToSky, getSkyLightLevel, getBlockLightLevel, getCombinedLight };
   }
 
   window.SpawnLighting = { create };
