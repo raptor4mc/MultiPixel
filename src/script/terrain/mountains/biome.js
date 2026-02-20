@@ -26,7 +26,7 @@
 
   const MountainsTerrain = {
     isBiome({ mountainNoise, continentalNoise, climateNoise }) {
-      return mountainNoise > 0.65 && continentalNoise > 0.35 && climateNoise > -0.2;
+      return mountainNoise > 0.55 && continentalNoise > 0.35 && climateNoise > -0.5;
     },
 
     getHeight({ BASE_LAND_Y, continentalness, erosion, ridges, terrainNoise, cliffNoise, peakNoise, peaksValleys, jaggedNoise }) {
