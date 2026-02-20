@@ -1840,7 +1840,7 @@ if (ravineMask > 0.78) {
                           const depthBias = 1 - (y / CHUNK_HEIGHT);
                           const oreRoll = hashRand2D(wx + y * 26, wz - y * 17, 303);
 
-                          if (veinNoise > 0.50 && oreRoll < (0.03 + depthBias * 0.02)) {
+                          if (veinNoise > 0.50 && oreRoll < (0.025 + depthBias * 0.02)) {
                                  t = 54; // emerald ore
                               }
                         }
