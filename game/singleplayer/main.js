@@ -1853,158 +1853,127 @@ if (ravineMask > 0.78) {
 
                          data[x + y*CHUNK_SIZE + z*CHUNK_SIZE*CHUNK_HEIGHT] = t;
                      }
+                  
+                     // --- Tree Generation (classic oak algorithm with validity + obstruction checks) ---
+                     if (!isRiver && (biome === 'Forest' || biome === 'Plains')) {
+                         let topY = -1;
+                         let topType = 0;
+                         for (let yy = CHUNK_HEIGHT - 2; yy >= 1; yy--) {
+                             const tidx = x + yy * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
+                             const ttype = data[tidx];
+                             if (ttype !== 0 && ttype !== 4) {
+                                 topY = yy;
+                                 topType = ttype;
+                                 break;
+                             }
+                         }
 
+                         if (topY > SEA_LEVEL && (topType === 1 || topType === 2)) {
+                             const densityNoise = octaveNoise2D(wx, wz, 3, 0.55, 2.0, 0.04, 700, -350) * 0.5 + 0.5;
+                             const scatter = hashRand2D(wx, wz, 99);
+                             const localScore = densityNoise * 0.65 + scatter * 0.35;
 
-                         
-// --- Tree Generation (Improved Natural Oak Algorithm) ---
-if (!isRiver && (biome === 'Forest' || biome === 'Plains')) {
+                             const cell = biome === 'Forest' ? 3 : 5;
+                             const cellKeyX = Math.floor(wx / cell);
+                             const cellKeyZ = Math.floor(wz / cell);
+                             const cellRoll = hashRand2D(cellKeyX, cellKeyZ, biome === 'Forest' ? 611 : 619);
 
-    // Find surface
-    let topY = -1;
-    let topType = 0;
+                             const threshold = biome === 'Forest' ? 0.5 : 0.82;
+                             const canSpawn = (localScore > threshold) || (biome === 'Forest' && cellRoll > 0.52 && localScore > 0.38);
 
-    for (let yy = CHUNK_HEIGHT - 2; yy >= 1; yy--) {
-        const tidx = x + yy * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
-        const ttype = data[tidx];
+                             if (canSpawn) {
+                                 const heightLimit = 5 + Math.floor(hashRand2D(wx, wz, 157) * 4); // 5-8
 
-        if (ttype !== 0 && ttype !== 4) {
-            topY = yy;
-            topType = ttype;
-            break;
-        }
-    }
+                                 // Obstruction check (only allow air/leaves in intended volume)
+                                 let obstructed = false;
+                                 for (let ty = topY + 1; ty <= Math.min(CHUNK_HEIGHT - 2, topY + heightLimit + 2) && !obstructed; ty++) {
+                                     const canopyRadius = ty >= topY + heightLimit - 2 ? 2 : 0;
+                                     for (let ox = -canopyRadius; ox <= canopyRadius && !obstructed; ox++) {
+                                         for (let oz = -canopyRadius; oz <= canopyRadius && !obstructed; oz++) {
+                                             const tx = x + ox;
+                                             const tz = z + oz;
+                                             if (tx < 0 || tx >= CHUNK_SIZE || tz < 0 || tz >= CHUNK_SIZE) continue;
+                                             const idx = tx + ty * CHUNK_SIZE + tz * CHUNK_SIZE * CHUNK_HEIGHT;
+                                             const b = data[idx];
+                                             if (b !== 0 && b !== 6) obstructed = true;
+                                         }
+                                     }
+                                 }
 
-    if (topY > SEA_LEVEL && (topType === 1 || topType === 2)) {
+                                 if (!obstructed) {
+                                     const baseIdx = x + topY * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
+                                     if (data[baseIdx] === 2) data[baseIdx] = 1;
 
-        // Improved spawn distribution
-        const densityNoise = octaveNoise2D(wx, wz, 3, 0.55, 2.0, 0.04, 700, -350) * 0.5 + 0.5;
-        const scatter = hashRand2D(wx, wz, 99);
-        const localScore = densityNoise * 0.7 + scatter * 0.3;
+                                     // Straight trunk placer
+                                     for (let i = 1; i <= heightLimit; i++) {
+                                         const ty = topY + i;
+                                         if (ty >= CHUNK_HEIGHT) break;
+                                         const idx = x + ty * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
+                                         if (data[idx] === 0 || data[idx] === 6) data[idx] = 5;
+                                     }
 
-        const cell =
-            biome === 'Forest'
-                ? 3 + Math.floor(hashRand2D(wx, wz, 101) * 2)
-                : 5 + Math.floor(hashRand2D(wx, wz, 202) * 2);
+    for (let ly = -3; ly <= 1; ly++) {
+    const yAbs = topY + heightLimit + ly;
+    if (yAbs < 1 || yAbs >= CHUNK_HEIGHT) continue;
 
-        const cellKeyX = Math.floor(wx / cell);
-        const cellKeyZ = Math.floor(wz / cell);
-        const cellRoll = hashRand2D(cellKeyX, cellKeyZ, biome === 'Forest' ? 611 : 619);
+    const radius = ly >= 0 ? 1 : (ly === -1 ? 2 : (ly === -2 ? 2 : 1));
 
-        const threshold = biome === 'Forest' ? 0.48 : 0.82;
+    for (let lx = -radius; lx <= radius; lx++) {
+        for (let lz = -radius; lz <= radius; lz++) {
+            // True circle distance check
+            if (lx*lx + lz*lz > radius*radius) continue;
 
-        const canSpawn =
-            (localScore > threshold) ||
-            (biome === 'Forest' && cellRoll > 0.5 && localScore > 0.38);
+            const tx = x + lx;
+            const tz = z + lz;
+            if (tx < 0 || tx >= CHUNK_SIZE || tz < 0 || tz >= CHUNK_SIZE) continue;
 
-        if (canSpawn) {
-
-            const heightLimit = 5 + Math.floor(hashRand2D(wx, wz, 157) * 4); // 5–8
-
-            // --- Obstruction Check (full canopy volume) ---
-            let obstructed = false;
-
-            const leafStart = topY + heightLimit - 3;
-            const leafEnd = topY + heightLimit + 1;
-
-            for (let ty = topY + 1; ty <= leafEnd && !obstructed; ty++) {
-
-                const layer = ty - (topY + heightLimit);
-                const baseRadius = 2.2 - Math.abs(layer) * 0.6;
-
-                for (let ox = -3; ox <= 3 && !obstructed; ox++) {
-                    for (let oz = -3; oz <= 3 && !obstructed; oz++) {
-
-                        const dist = Math.sqrt(ox * ox + oz * oz);
-                        if (dist > baseRadius + 0.4) continue;
-
-                        const tx = x + ox;
-                        const tz = z + oz;
-
-                        if (tx < 0 || tx >= CHUNK_SIZE || tz < 0 || tz >= CHUNK_SIZE)
-                            continue;
-
-                        if (ty < 1 || ty >= CHUNK_HEIGHT)
-                            continue;
-
-                        const idx = tx + ty * CHUNK_SIZE + tz * CHUNK_SIZE * CHUNK_HEIGHT;
-                        const b = data[idx];
-
-                        if (b !== 0 && b !== 6)
-                            obstructed = true;
-                    }
-                }
-            }
-
-            if (!obstructed) {
-
-                // Convert grass to dirt
-                const baseIdx = x + topY * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
-                if (data[baseIdx] === 2)
-                    data[baseIdx] = 1;
-
-                // --- Trunk (subtle natural lean) ---
-                let leanX = 0;
-                let leanZ = 0;
-
-                for (let i = 1; i <= heightLimit; i++) {
-
-                    const ty = topY + i;
-                    if (ty >= CHUNK_HEIGHT) break;
-
-                    if (i > 2 && hashRand2D(wx, wz + i, 888) > 0.92) {
-                        leanX += Math.floor(hashRand2D(wx + i, wz, 333) * 3) - 1;
-                        leanZ += Math.floor(hashRand2D(wx, wz + i, 444) * 3) - 1;
-
-                        leanX = Math.max(-1, Math.min(1, leanX));
-                        leanZ = Math.max(-1, Math.min(1, leanZ));
-                    }
-
-                    const tx = x + leanX;
-                    const tz = z + leanZ;
-
-                    if (tx < 0 || tx >= CHUNK_SIZE || tz < 0 || tz >= CHUNK_SIZE)
-                        continue;
-
-                    const idx = tx + ty * CHUNK_SIZE + tz * CHUNK_SIZE * CHUNK_HEIGHT;
-
-                    if (data[idx] === 0 || data[idx] === 6)
-                        data[idx] = 5;
-                }
-
-                // --- Rounded Natural Canopy ---
-                for (let yAbs = leafStart; yAbs <= leafEnd; yAbs++) {
-
-                    if (yAbs < 1 || yAbs >= CHUNK_HEIGHT)
-                        continue;
-
-                    const layer = yAbs - (topY + heightLimit);
-                    const baseRadius = 2.2 - Math.abs(layer) * 0.6;
-
-                    for (let lx = -3; lx <= 3; lx++) {
-                        for (let lz = -3; lz <= 3; lz++) {
-
-                            const dist = Math.sqrt(lx * lx + lz * lz);
-
-                            if (dist > baseRadius + hashRand2D(wx + lx, wz + lz, 412) * 0.3)
-                                continue;
-
-                            const tx = x + lx;
-                            const tz = z + lz;
-
-                            if (tx < 0 || tx >= CHUNK_SIZE || tz < 0 || tz >= CHUNK_SIZE)
-                                continue;
-
-                            const lidx = tx + yAbs * CHUNK_SIZE + tz * CHUNK_SIZE * CHUNK_HEIGHT;
-
-                            if (data[lidx] === 0)
-                                data[lidx] = 6;
-                        }
-                    }
-                }
-            }
+            const lidx = tx + yAbs * CHUNK_SIZE + tz * CHUNK_SIZE * CHUNK_HEIGHT;
+            if (data[lidx] === 0) data[lidx] = 6;
         }
     }
 }
+
+                                 }
+                             }
+                         }
+                     }
+                 }
+             }
+             return data;
+        }
+
+        function createChunk(cx, cz) {
+            const data = generateChunkData(cx, cz);
+            const group = new THREE.Group();
+            group.userData = { chunkData: data, cx, cz };
+            updateChunkGeometry(group, data);
+            chunks.set(`${cx},${cz}`, group);
+            worldGroup.add(group);
+            return group;
+        }
+
+        function updateChunkAndNeighbors(centerGroup, lx, lz) {
+            updateChunkGeometry(centerGroup, centerGroup.userData.chunkData);
+            
+           
+            if (lx === 0 || lx === CHUNK_SIZE - 1 || lz === 0 || lz === CHUNK_SIZE - 1) {
+                const cx = centerGroup.userData.cx;
+                const cz = centerGroup.userData.cz;
+
+                const neighborOffsets = [
+                    [-1, 0], [1, 0], [0, -1], [0, 1]
+                ];
+
+                for (const [dx, dz] of neighborOffsets) {
+                    const neighborId = `${cx + dx},${cz + dz}`;
+                    const neighborGroup = chunks.get(neighborId);
+                    if (neighborGroup) {
+                        updateChunkGeometry(neighborGroup, neighborGroup.userData.chunkData);
+                    }
+                }
+            }
+        }
+        
         // Maps block ID to the THREE.js material key/fallback key
         function getMaterialKey(id, faceDir) {
             const mat = blockMaterials[id];
