@@ -26,7 +26,7 @@
 
     function getBlockLightLevel(wx, wy, wz) {
       let best = 0;
-      const r = 4;
+      const r = 5;
       for (let dx = -r; dx <= r; dx++) {
         for (let dy = -r; dy <= r; dy++) {
           for (let dz = -r; dz <= r; dz++) {
