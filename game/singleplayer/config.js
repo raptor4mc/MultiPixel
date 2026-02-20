@@ -108,7 +108,7 @@
     19: { name: 'Coal', id: 19, textured: true, textureKey: 'COAL' },
     20: { name: 'Coal Block', id: 20, textured: true, textureKey: 'COAL_BLOCK' },
     21: { name: 'Stone Brick', id: 21, textured: true, textureKey: 'STONE_BRICK_BLOCK' },
-    22: { name: 'torch', id: 22, textured: true, textureKey: 'TORCH', transparent: true, opacity: 0.8 },
+    22: { name: 'torch', id: 22, textured: true, textureKey: 'TORCH', transparent: true, opacity: 0 },
     23: { name: 'Furnace', id: 23, textured: true, textureKey: 'FURNACE' },
     24: { name: 'Cracked Stone Brick', id: 24, textured: true, textureKey: 'CRACKED_STONE_BRICK' },
     25: { name: 'Charcoal', id: 25, textured: true, textureKey: 'CHARCOAL' },
@@ -154,7 +154,7 @@
     INV_COLS, INV_ROWS, HOTBAR_SLOTS, TOTAL_INV_SIZE,
     REPO_BASE_PREFIX,
     ASSET_FILEPATHS, blockMaterials,
-    SOLID_BLOCKS: [1, 2, 3, 5, 6, 7, 8, 9, 13, 14, 15, 17, 18, 20, 21, 22, 23, 24, 26, 27, 28, 29, 30, 32, 34, 35, 36, 37, 39, 40, 41, 43, 45, 54, 55],
+    SOLID_BLOCKS: [1, 2, 3, 5, 6, 7, 8, 9, 13, 14, 15, 17, 18, 20, 21, 23, 24, 26, 27, 28, 29, 30, 32, 34, 35, 36, 37, 39, 40, 41, 43, 45, 54, 55],
     LIQUID_BLOCKS: [4, 33, 47, 48, 49, 50, 51, 52, 53],
     DEFAULT_PLAYER: {
       moveSpeed: 0.12,
