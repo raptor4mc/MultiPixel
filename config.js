@@ -158,7 +158,7 @@
     LIQUID_BLOCKS: [4, 33, 47, 48, 49, 50, 51, 52, 53],
     DEFAULT_PLAYER: {
       moveSpeed: 0.12,
-      sprintMultiplier: 2,
+      sprintMultiplier: 4,
       rotationSpeed: 0.002,
       health: 20,
       maxHealth: 20,
