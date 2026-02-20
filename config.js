@@ -157,8 +157,8 @@
     SOLID_BLOCKS: [1, 2, 3, 5, 6, 7, 8, 9, 13, 14, 15, 17, 18, 20, 21, 23, 24, 26, 27, 28, 29, 30, 32, 34, 35, 36, 37, 39, 40, 41, 43, 45, 54, 55],
     LIQUID_BLOCKS: [4, 33, 47, 48, 49, 50, 51, 52, 53],
     DEFAULT_PLAYER: {
-      moveSpeed: 0.12,
-      sprintMultiplier: 4,
+      moveSpeed: 0.20,
+      sprintMultiplier: 6,
       rotationSpeed: 0.002,
       health: 20,
       maxHealth: 20,
