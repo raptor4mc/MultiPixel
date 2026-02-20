@@ -143,8 +143,8 @@
     54: { name: 'Emerald ore', id: 54, textured: true, textureKey: 'EMERALD_ORE' },
     55: { name: 'Emerald Block', id: 55, textured: true, textureKey: 'EMERALD_BLOCK' },
     56: { name: 'Emerald', id: 56, textured: true, textureKey: 'EMERALD' },
-    57: { name: 'Black Dye', id: 57, textured: true, textureKey_ 'BLACK_DYE' },
-    58: { name: 'Green Dye', id: 58, textured: true, textureKey_ 'GREEN_DYE' },
+    57: { name: 'Black Dye', id: 57, textured: true, textureKey: 'BLACK_DYE' },
+    58: { name: 'Green Dye', id: 58, textured: true, textureKey: 'GREEN_DYE' },
   }; 
 
   window.SingleplayerConfig = {
