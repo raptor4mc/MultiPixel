@@ -14,7 +14,7 @@
 
   const PLAYER_HEIGHT = 1.8 * BLOCK_SIZE;
   const PLAYER_RADIUS = 0.3;
-  const GRAVITY = -0.012;
+  const GRAVITY = -0;
   const JUMP_POWER = 0.17;
 
   const INV_COLS = 9;
@@ -158,7 +158,7 @@
     LIQUID_BLOCKS: [4, 33, 47, 48, 49, 50, 51, 52, 53],
     DEFAULT_PLAYER: {
       moveSpeed: 0.12,
-      sprintMultiplier: 1.7,
+      sprintMultiplier: 2,
       rotationSpeed: 0.002,
       health: 20,
       maxHealth: 20,
