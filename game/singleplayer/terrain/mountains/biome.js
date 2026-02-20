@@ -25,18 +25,18 @@
 
     getHeight({ BASE_LAND_Y, continentalness, erosion, ridges, terrainNoise, cliffNoise, peakNoise, peaksValleys, jaggedNoise }) {
       const uplift = mountainFactor(continentalness, erosion, ridges);
-      const curvedUplift = Math.pow(uplift / 60, 1.7) * 150;
+      const curvedUplift = Math.pow(uplift / 60, 1.7) * 120;
 
-      let ridgeShape = Math.pow(1 - Math.abs(peaksValleys), 2.2) * 100;
+      let ridgeShape = Math.pow(1 - Math.abs(peaksValleys), 1.6) * 70;
       ridgeShape -= Math.pow(Math.max(0, -peaksValleys), 1.5) * 20;
 
       const peakFactor = Math.pow(Math.max(0, peakNoise - 0.45), 2.3) * 2.2;
-      const cliffs = Math.max(0, cliffNoise - 0.6) * 45;
+      const cliffs = Math.max(0, cliffNoise - 0.65) * 25;
       const roughness = terrainNoise * 5;
       const erosionEffect = erosion * 5;
 
       // Smooth biome blending
-      const biomeBlend = smoothstep(0.45, 0.7, continentalness); // transitions plains → hills → mountains
+      const biomeBlend = smoothstep(0.3, 0.75, continentalness); // transitions plains → hills → mountains
 
       const height = BASE_LAND_Y +
         (curvedUplift * (1 + peakFactor)) +
