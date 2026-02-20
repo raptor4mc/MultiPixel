@@ -1742,37 +1742,40 @@ window.perlin = perlinInstance;
                         }
                          
                          
-  const ravineMask = getRavineMask(wx, wz);
+// 🔹 Optimized Ravine Generation
+const ravineMask = getRavineMask(wx, wz);
 
 if (ravineMask > 0.78) {
     const strength = (ravineMask - 0.78) / 0.22;
 
-    const ravineTop = Math.min(h + 8, CHUNK_HEIGHT - 1);
-    const maxDepth = 40 + Math.floor(strength * 40);
+    // Limit top slightly above terrain
+    const ravineTop = Math.min(h + 6, CHUNK_HEIGHT - 1);
+
+    // Reduce max depth for smaller chunks
+    const maxDepth = 18 + Math.floor(strength * 12); // 18–30 blocks deep
     const ravineBottom = Math.max(3, ravineTop - maxDepth);
 
     if (y <= ravineTop && y >= ravineBottom) {
-
         const mid = (ravineTop + ravineBottom) / 2;
         const halfHeight = (ravineTop - ravineBottom) / 2;
         const verticalFactor = 1 - Math.abs(y - mid) / halfHeight;
 
-        const widthNoise = octaveNoise2D(wx, wz, 2, 0.5, 2.0, 0.06, 812, -245);
-        const widthFactor = strength * verticalFactor + widthNoise * 0.15;
+        // Reduce noise impact
+        const widthNoise = octaveNoise2D(wx, wz, 2, 0.5, 2.0, 0.04, 812, -245);
+        const widthFactor = strength * verticalFactor + widthNoise * 0.1;
 
         if (widthFactor > 0.25) {
-
-            // 🔥 Lava very deep underground
-            if (y < 12) {
-                t = 33;   // Lava
+            // 🔥 Lava very deep underground (only really deep)
+            if (y < 6) {
+                t = 33;
             }
-            // 🌊 Water if below sea level
+            // 🌊 Water below sea level
             else if (y < SEA_LEVEL - 1) {
-                t = 4;    // Water
+                t = 4;
             }
             // 🌫 Air above sea level
             else {
-                t = 0;    // Air
+                t = 0;
             }
         }
     }
