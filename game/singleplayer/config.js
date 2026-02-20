@@ -81,6 +81,8 @@
     EMERALD_BLOCK: getAssetPath('textures/emerald_block.png'),
     EMERALD:  getAssetPath('textures/item/emerald.png'),
     STONE_PICKAXE: getAssetPath('textures/item/tool/pickaxe/stone_pickaxe.png'),
+    BLACK_DYE: getAssetPath('textures/item/black_dye.png'),
+    GREEN_DYE: getAssetPath('textures/item/green_dye.png'),
   };
 
   const blockMaterials = {
@@ -141,6 +143,8 @@
     54: { name: 'Emerald ore', id: 54, textured: true, textureKey: 'EMERALD_ORE' },
     55: { name: 'Emerald Block', id: 55, textured: true, textureKey: 'EMERALD_BLOCK' },
     56: { name: 'Emerald', id: 56, textured: true, textureKey: 'EMERALD' },
+    57: { name: 'Black Dye', id: 57, textured: true, textureKey_ 'BLACK_DYE' },
+    58: { name: 'Green Dye', id: 58, textured: true, textureKey_ 'GREEN_DYE' },
   }; 
 
   window.SingleplayerConfig = {
