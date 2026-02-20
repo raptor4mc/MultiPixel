@@ -80,6 +80,7 @@
     EMERALD_ORE: getAssetPath('textures/emerald_ore.png'),
     EMERALD_BLOCK: getAssetPath('textures/emerald_block.png'),
     EMERALD:  getAssetPath('textures/item/emerald.png'),
+    STONE_PICKAXE: getAssetPath('textures/item/tool/pickaxe/stone_pickaxe.png'),
   };
 
   const blockMaterials = {
@@ -95,7 +96,7 @@
     9: { name: 'Crafting Table', id: 9, textured: true, textureKey: 'CRAFTING_TABLE_SIDE' },
     10: { name: 'Stick', id: 10, textured: true, textureKey: 'STICK' },
     11: { name: 'Wooden Pickaxe', id: 11, textured: true, textureKey: 'WOODEN_PICKAXE', toolType: 'pickaxe', tier: 1 },
-    12: { name: 'Stone Pickaxe', id: 12, textured: false, color: 0x7F8C8D },
+    12: { name: 'Stone Pickaxe', id: 12, textured: true, textureKey: 'STONE_PICKAXE', toolType: 'pickaxe', tier: 2 }, },
     13: { name: 'Sand stone', id: 13, textured: true, textureKey: 'SAND_STONE' },
     14: { name: 'Bedrock', id: 14, textured: true, textureKey: 'BEDROCK', unbreakable: true },
     15: { name: 'Snow Block', id: 15, textured: true, textureKey: 'SNOW_BLOCK', color: 0xf2f7ff },
