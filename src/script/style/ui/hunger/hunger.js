@@ -13,6 +13,9 @@
     if (!container) return;
     container.innerHTML = '';
 
+    // Optionally, you can hide the hunger bar completely
+    // container.style.display = 'none';
+
     const iconPath = window.SingleplayerConfig?.ASSET_FILEPATHS?.FOOD || '';
     const foods = Math.ceil(state.value / 2);
 
@@ -31,27 +34,12 @@
   }
 
   function update(nowMs, { isMoving, isSprinting }) {
-    if (!state.lastTickAt) state.lastTickAt = nowMs;
-    const dt = (nowMs - state.lastTickAt) / 1000;
-    state.lastTickAt = nowMs;
-
-    const drain = isSprinting ? 0.45 : (isMoving ? 0.08 : -0.18);
-    state.value = Math.max(0, Math.min(state.max, state.value - drain * dt));
-
-    if (state.value < 5 && !state.lowHungerWarned) {
-      state.lowHungerWarned = true;
-      if (onMessage) onMessage('You are starving! Sprint is weaker now.');
-    } else if (state.value >= 5) {
-      state.lowHungerWarned = false;
-    }
-
+    // DO NOTHING – hunger never decreases
     render();
   }
 
   function getSpeedMultiplier() {
-    if (state.value <= 0) return 0.65;
-    if (state.value < 5) return 0.8;
-    return 1;
+    return 1; // no speed penalty ever
   }
 
   window.HungerSystem = { init, update, getSpeedMultiplier };
