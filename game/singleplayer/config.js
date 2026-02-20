@@ -4,7 +4,7 @@
   const WORLD_RADIUS = 13;
   const BLOCK_SIZE = 1;
   const SEA_LEVEL = 18;
-  const BASE_LAND_Y = 20;
+  const BASE_LAND_Y = 40;
   const ISLAND_RADIUS = 30;
 
   const CAVE_SCALE = 0.05;
