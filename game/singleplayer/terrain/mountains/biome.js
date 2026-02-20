@@ -11,7 +11,7 @@
     const erosionInv = Math.clamp(1 - (erosion + 1) * 0.5, 0, 1);
     const ridgeShape = Math.clamp(ridges, 0, 1);
 
-    const continentalLift = lerp(8, 34, Math.pow(inland, 1.2));
+    const continentalLift = lerp(8, 60, Math.pow(inland, 1.2));
     const erosionSharpness = lerp(0.35, 1.35, Math.pow(erosionInv, 1.2));
     const ridgeLift = lerp(2, 54, Math.pow(ridgeShape, 2));
 
