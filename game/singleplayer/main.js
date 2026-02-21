@@ -317,6 +317,7 @@ window.perlin = perlinInstance;
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(window.devicePixelRatio);
             document.body.appendChild(renderer.domElement);
+            setupMobileControls();
             
             window.addEventListener('resize', onWindowResize);
             document.addEventListener('contextmenu', e => e.preventDefault()); 
@@ -1895,6 +1896,7 @@ window.perlin = perlinInstance;
                     return;
                 }
                 if (!isInventoryOpen) {
+                    if (k === 'w' || k === 'a' || k === 's' || k === 'd') switchToDesktopMode();
                     player.keys[k] = true;
                     if (k >= '1' && k <= '9') {
                         selectedHotbarIndex = parseInt(k) - 1;
