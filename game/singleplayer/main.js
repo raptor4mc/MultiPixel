@@ -29,7 +29,7 @@
         const PickaxeSystem = window.PickaxeSystem || {};
         const SpawnLighting = window.SpawnLighting || {};
 
-        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-21-05';
+        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-21-06';
         console.info('[Singleplayer build]', window.__SINGLEPLAYER_BUILD__);
 
         const TerrainModules = {};
@@ -154,6 +154,9 @@ window.perlin = perlinInstance;
             worldTouchPointerId: null,
             miningTimer: null,
             isMiningTouch: false,
+            lookPointerId: null,
+            lastLookX: 0,
+            lastLookY: 0,
         };
      
 
@@ -1637,6 +1640,36 @@ window.perlin = perlinInstance;
 
        
 
+        function setMobileHudVisible(visible) {
+            const controlsEl = document.getElementById('mobile-controls');
+            const crosshair = document.getElementById('crosshair');
+            if (controlsEl) {
+                if (visible) controlsEl.classList.add('active');
+                else controlsEl.classList.remove('active');
+            }
+            if (crosshair) crosshair.style.opacity = visible ? 0 : 1;
+        }
+
+        function switchToDesktopMode() {
+            if (!mobileControls.enabled) return;
+            mobileControls.enabled = false;
+            mobileControls.moveX = 0;
+            mobileControls.moveY = 0;
+            mobileControls.sprint = false;
+            mobileControls.jump = false;
+            mobileControls.worldTouchActive = false;
+            mobileControls.lookPointerId = null;
+            setMobileHudVisible(false);
+            if (!isInventoryOpen) {
+                const el = document.body;
+                if (document.pointerLockElement !== el) {
+                    el.requestPointerLock();
+                }
+            }
+        }
+
+
+
         function setupMobileControls() {
             if (!mobileControls.enabled) return;
 
@@ -1650,14 +1683,13 @@ window.perlin = perlinInstance;
 
             if (!controlsEl || !joyWrap || !joyBg || !joyCenter || !jumpBtn || !invBtn || !fastBtn) return;
 
-            controlsEl.classList.add('active');
+            setMobileHudVisible(true);
             joyBg.src = `${MOBILE_ASSET_BASE}/joystick_off.png`;
             joyCenter.src = `${MOBILE_ASSET_BASE}/joystick_center.png`;
             jumpBtn.src = `${MOBILE_ASSET_BASE}/jump_btn.png`;
             invBtn.src = `${MOBILE_ASSET_BASE}/inventory_btn.png`;
             fastBtn.src = `${MOBILE_ASSET_BASE}/fast_btn.png`;
             document.getElementById('instructions').style.opacity = 0;
-            document.getElementById('crosshair').style.opacity = 0;
             player.canMove = true;
 
             function resetJoystick() {
@@ -1727,6 +1759,9 @@ window.perlin = perlinInstance;
                 mobileControls.worldTouchPointerId = e.pointerId;
                 mobileControls.worldTouchStartMs = performance.now();
                 mobileControls.isMiningTouch = false;
+                mobileControls.lookPointerId = e.pointerId;
+                mobileControls.lastLookX = e.clientX;
+                mobileControls.lastLookY = e.clientY;
                 if (mobileControls.miningTimer) clearTimeout(mobileControls.miningTimer);
                 mobileControls.miningTimer = setTimeout(() => {
                     if (!mobileControls.worldTouchActive) return;
@@ -1739,6 +1774,21 @@ window.perlin = perlinInstance;
                 }, 180);
             }, { passive: false });
 
+            window.addEventListener('pointermove', (e) => {
+                if (!mobileControls.enabled || isInventoryOpen || !player.canMove) return;
+                if (e.pointerType !== 'touch') return;
+                if (mobileControls.lookPointerId !== e.pointerId) return;
+
+                const dx = e.clientX - mobileControls.lastLookX;
+                const dy = e.clientY - mobileControls.lastLookY;
+                mobileControls.lastLookX = e.clientX;
+                mobileControls.lastLookY = e.clientY;
+
+                yawObject.rotation.y -= dx * player.rotationSpeed * 0.85;
+                pitchObject.rotation.x -= dy * player.rotationSpeed * 0.85;
+                pitchObject.rotation.x = Math.max(-1.5, Math.min(1.5, pitchObject.rotation.x));
+            }, { passive: true });
+
             const endWorldTouch = (e) => {
                 if (!mobileControls.enabled || e.pointerType !== 'touch') return;
                 if (mobileControls.worldTouchPointerId !== e.pointerId) return;
@@ -1749,6 +1799,7 @@ window.perlin = perlinInstance;
                 mobileControls.worldTouchActive = false;
                 mobileControls.worldTouchPointerId = null;
                 mobileControls.isMiningTouch = false;
+                mobileControls.lookPointerId = null;
                 isLeftMouseDown = false;
                 miningState.active = false;
                 updateBreakingOverlay();
@@ -1775,8 +1826,7 @@ window.perlin = perlinInstance;
                     player.canMove = false;
                     if(!isInventoryOpen) {
                         document.getElementById('instructions').style.opacity = 1;
-                        document.getElementById('crosshair').style.opacity = 0;
-                    }
+                                }
                 }
             });
             document.addEventListener('mousemove', e => {
@@ -1808,6 +1858,7 @@ window.perlin = perlinInstance;
                     return;
                 }
                 if (!isInventoryOpen) {
+                    if (k === 'w' || k === 'a' || k === 's' || k === 'd') switchToDesktopMode();
                     player.keys[k] = true;
                     if (k >= '1' && k <= '9') {
                         selectedHotbarIndex = parseInt(k) - 1;
