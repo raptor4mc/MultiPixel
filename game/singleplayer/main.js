@@ -1431,12 +1431,6 @@ window.perlin = perlinInstance;
             return selected;
         }
 
-        function getRavineMask(wx, wz) {
-            const warp = perlin.noise2D(wx * 0.001 + 250, wz * 0.001 + 250) * 30;
-            const line = Math.abs(perlin.noise2D(wx * 0.0018 + warp, wz * 0.0018));
-            return 1.0 - Math.min(1.0, line / 0.043);
-        }
-
         function octaveNoise2D(x, z, octaves, persistence, lacunarity, scale, offsetX = 0, offsetZ = 0) {
             let amp = 1;
             let freq = 1;
@@ -1484,27 +1478,30 @@ window.perlin = perlinInstance;
             return { continentalness, erosion, weirdness, humidity, peaksValleys, ridges };
         }
 
-        function getNoiseGroundHeight(wx, wz, biome) {
+        function getNoiseGroundHeight(wx, wz) {
             const tv = sampleTerrainVector(wx, wz);
             const continentalMask = (tv.continentalness + 1) * 0.5;
             const terrainNoise = (perlin.noise2D(wx * 0.03, wz * 0.03) + 1) * 0.5;
             const detailNoise = (perlin.noise2D(wx * 0.08, wz * 0.08) + 1) * 0.5;
             const erosionNoise = (tv.erosion + 1) * 0.5;
-            const ridgeNoise = Math.abs(perlin.noise2D(wx * 0.02 + 50, wz * 0.02 + 50));
             const peakNoise = Math.abs(perlin.noise2D(wx * 0.007 - 250, wz * 0.007 + 400));
             const jaggedNoise = Math.abs(octaveNoise2D(wx, wz, 5, 0.46, 2.25, 0.013, -1200, 950));
             const cliffNoise = Math.abs(perlin.noise2D(wx * 0.012 - 910, wz * 0.012 + 260));
             const deepNoise = (perlin.noise2D(wx * 0.01 - 200, wz * 0.01 + 430) + 1) * 0.5;
             const duneNoise = (perlin.noise2D(wx * 0.045 + 15, wz * 0.045 - 15) + 1) * 0.5;
 
+            // Terrain-first pipeline: landform comes from terrain vector, biome only paints/materials later.
+            let terrainType = 'Plains';
+            if (tv.continentalness < -0.28 || deepNoise > 0.78) terrainType = 'Ocean';
+            else if ((tv.ridges > 0.55 && erosionNoise < 0.52) || (peakNoise > 0.72 && jaggedNoise > 0.4)) terrainType = 'Mountains';
+            else if (duneNoise > 0.62 && erosionNoise > 0.38) terrainType = 'Desert';
+
             let h;
-            if (biome === 'Plains') {
+            if (terrainType === 'Plains') {
                 h = TerrainModules['plains'].getHeight({ BASE_LAND_Y, continentalMask, terrainNoise, erosionNoise });
-            } else if (biome === 'Forest') {
-                h = TerrainModules['oakForest'].getHeight({ BASE_LAND_Y, continentalMask, terrainNoise, erosionNoise });
-            } else if (biome === 'Desert') {
+            } else if (terrainType === 'Desert') {
                 h = TerrainModules['desert'].getHeight({ BASE_LAND_Y, continentalMask, terrainNoise, duneNoise });
-            } else if (biome === 'Mountains') {
+            } else if (terrainType === 'Mountains') {
                 h = TerrainModules['mountains'].getHeight({
                     BASE_LAND_Y,
                     continentalness: tv.continentalness,
@@ -1520,18 +1517,16 @@ window.perlin = perlinInstance;
                 h = TerrainModules['ocean'].getHeight({ SEA_LEVEL, deepNoise, terrainNoise });
             }
 
-            h += detailNoise * (biome === 'Mountains' ? 1.2 : 0.7);
+            h += detailNoise * (terrainType === 'Mountains' ? 1.2 : 0.7);
 
             const riverInfluence = getRiverMask(wx, wz);
             h = TerrainModules['river'].applyHeight({ height: h, riverInfluence, SEA_LEVEL });
 
-            const ravine = getRavineMask(wx, wz);
-            if (ravine > 0.84 && biome !== 'Ocean') h -= (ravine - 0.84) * 70;
-
-            if (biome === 'Mountains' && h < SEA_LEVEL + 8) h = SEA_LEVEL + 8;
-            if (h < SEA_LEVEL - 6 && biome !== 'Ocean') h = SEA_LEVEL - 6;
+            if (terrainType === 'Mountains' && h < SEA_LEVEL + 8) h = SEA_LEVEL + 8;
+            if (h < SEA_LEVEL - 6 && terrainType !== 'Ocean') h = SEA_LEVEL - 6;
             return Math.floor(h);
         }
+
 
 
         function getBlockType(wx, wy, wz) {
@@ -1553,7 +1548,7 @@ window.perlin = perlinInstance;
             
             // For blocks outside loaded chunks but inside the boundary, use noise (Fallback)
             const biome = getBiome(wx, wz); // Calculate biome for fallback
-            const h = getNoiseGroundHeight(wx, wz, biome); 
+            const h = getNoiseGroundHeight(wx, wz); 
             if (wy === 0) return 14;
             if (wy < h) {
                 if (biome === 'Desert') return 7;
@@ -1627,11 +1622,11 @@ window.perlin = perlinInstance;
                      const wx = cx * CHUNK_SIZE + x;
                      const wz = cz * CHUNK_SIZE + z;
                      
-                     // Biomes > Terrain: Calculate biome once, then use it for all column data
+                     // Terrain > Biome: terrain shape first, then biome paints surface + foliage
                      const biome = getBiome(wx, wz); 
                      
                      // Height based on biome
-                     const h = getNoiseGroundHeight(wx, wz, biome);
+                     const h = getNoiseGroundHeight(wx, wz);
 
                      // Check if block is near the world boundary before applying changes
                      const isNearBoundary = wx < WORLD_MIN_COORD + 4 || wx >= WORLD_MAX_COORD - 4 || 
@@ -1724,65 +1719,25 @@ window.perlin = perlinInstance;
                              // Otherwise (on dry land, above h, below sea level, not river) it remains air (t=0)
                          }
                          
-                        // --- Cave Generation Pass (layered Perlin for bigger cave systems) ---
+                        // --- Cave Generation Pass (boosted for larger and more connected cave systems) ---
                         if (y > CAVE_MIN_Y && y < h - CAVE_MAX_Y_OFFSET) {
                             if (t === 3 || t === 2 || t === 7 || t === 13) {
                                 const n1 = perlin.noise3D(wx * CAVE_SCALE, y * CAVE_SCALE * 1.7, wz * CAVE_SCALE);
                                 const n2 = perlin.noise3D(wx * CAVE_SCALE * 2.2 + 100, y * CAVE_SCALE * 1.1, wz * CAVE_SCALE * 2.2 + 100);
-                                const caveShape = n1 * 0.7 + n2 * 0.3;
+                                const n3 = octaveNoise3D(wx, y, wz, 3, 0.52, 2.0, CAVE_SCALE * 0.9, 210, -90, 470);
+                                const caveShape = n1 * 0.55 + n2 * 0.25 + n3 * 0.20;
 
                                 const depth = Math.max(0, (h - y) / Math.max(1, h));
-                                const dynamicThreshold = CAVE_THRESHOLD - Math.min(0.14, depth * 0.2);
-                                const tunnelNoise = Math.abs(perlin.noise3D(wx * CAVE_SCALE * 0.7, y * CAVE_SCALE * 0.45, wz * CAVE_SCALE * 0.7));
+                                const dynamicThreshold = (CAVE_THRESHOLD - 0.05) - Math.min(0.2, depth * 0.24);
+                                const tunnelNoise = Math.abs(perlin.noise3D(wx * CAVE_SCALE * 0.72, y * CAVE_SCALE * 0.42, wz * CAVE_SCALE * 0.72));
+                                const cavernNoise = Math.abs(perlin.noise3D(wx * CAVE_SCALE * 0.36 - 420, y * CAVE_SCALE * 0.24 + 120, wz * CAVE_SCALE * 0.36 + 910));
 
-                                if (caveShape > dynamicThreshold || (depth > 0.35 && tunnelNoise < 0.06)) {
+                                if (caveShape > dynamicThreshold || (depth > 0.3 && tunnelNoise < 0.09) || cavernNoise < 0.042) {
                                     t = 0;
                                 }
                             }
                         }
-                         
-                         
-// 🔹 Optimized Ravine Generation
-const ravineMask = getRavineMask(wx, wz);
 
-if (ravineMask > 0.78) {
-    const strength = (ravineMask - 0.78) / 0.22;
-
-    // Limit top slightly above terrain
-    const ravineTop = Math.min(h + 6, CHUNK_HEIGHT - 1);
-
-    // Reduce max depth for smaller chunks
-    const maxDepth = 18 + Math.floor(strength * 12); // 18–30 blocks deep
-    const ravineBottom = Math.max(3, ravineTop - maxDepth);
-
-    if (y <= ravineTop && y >= ravineBottom) {
-        const mid = (ravineTop + ravineBottom) / 2;
-        const halfHeight = (ravineTop - ravineBottom) / 2;
-        const verticalFactor = 1 - Math.abs(y - mid) / halfHeight;
-
-        // Reduce noise impact
-        const widthNoise = octaveNoise2D(wx, wz, 2, 0.5, 2.0, 0.04, 812, -245);
-        const widthFactor = strength * verticalFactor + widthNoise * 0.1;
-
-        if (widthFactor > 0.25) {
-            // 🔥 Lava very deep underground (only really deep)
-            if (y < 6) {
-                t = 33;
-            }
-            // 🌊 Water below sea level
-            else if (y < SEA_LEVEL - 1) {
-                t = 4;
-            }
-            // 🌫 Air above sea level
-            else {
-                t = 0;
-            }
-        }
-    }
-}
-                             
-                             
-                             
                                                      // Coal ore pass: mineable by hand, faster with pickaxe.
                          if (t === 3 || t === 13 && y > 6 && y < Math.min(CHUNK_HEIGHT - 6, h - 2)) {
                              const veinNoise = octaveNoise2D(wx, wz, 3, 0.5, 2.0, 0.09, 1450, -870);
