@@ -6,6 +6,7 @@
             font-family: 'Inter', sans-serif;
             background-color: #1a1a2e;
             user-select: none;
+            touch-action: none;
         }
         #info-panel {
             position: absolute;
@@ -133,3 +134,159 @@
             background-repeat: no-repeat;
             background-position: center;
         }
+
+        #mobile-controls {
+            position: absolute;
+            inset: 0;
+            z-index: 180;
+            pointer-events: none;
+        }
+
+        #mobile-controls.active {
+            display: block !important;
+        }
+
+        .mobile-btn-area {
+            position: absolute;
+            pointer-events: none;
+        }
+
+        #mobile-joystick {
+            left: 16px;
+            bottom: 16px;
+            width: 132px;
+            height: 132px;
+        }
+
+        #mobile-joystick-bg {
+            position: absolute;
+            inset: 0;
+            width: 132px;
+            height: 132px;
+            image-rendering: pixelated;
+            pointer-events: auto;
+            touch-action: none;
+            -webkit-user-drag: none;
+            user-select: none;
+            touch-action: none;
+        }
+
+        #mobile-joystick-center {
+            position: absolute;
+            left: 40px;
+            top: 40px;
+            width: 52px;
+            height: 52px;
+            image-rendering: pixelated;
+            pointer-events: none;
+        }
+
+        #mobile-right-controls {
+            right: 14px;
+            bottom: 16px;
+            width: 192px;
+            height: 192px;
+        }
+
+        .mobile-btn {
+            position: absolute;
+            width: 72px;
+            height: 72px;
+            pointer-events: auto;
+            touch-action: none;
+            image-rendering: pixelated;
+            -webkit-user-drag: none;
+            user-select: none;
+            touch-action: none;
+        }
+
+        #mobile-inventory-btn {
+            right: 0;
+            bottom: 0;
+        }
+
+        #mobile-jump-btn {
+            right: 84px;
+            bottom: 0;
+        }
+
+        #mobile-fast-btn {
+            right: 0;
+            bottom: 84px;
+        }
+
+        @media (pointer: coarse), (max-width: 900px) {
+            #mobile-controls {
+                display: block;
+            }
+            #instructions {
+                top: 36%;
+                font-size: 0.92rem;
+            }
+        }
+
+
+        .mode-btn {
+            pointer-events: auto;
+            padding: 0.45rem 0.95rem;
+            border-radius: 8px;
+            border: 2px solid #39ff14;
+            background: rgba(20, 20, 20, 0.85);
+            color: #fff;
+            font-weight: 700;
+            min-width: 86px;
+        }
+
+        .mode-btn.active {
+            background: rgba(57, 255, 20, 0.2);
+            box-shadow: 0 0 0 2px rgba(57, 255, 20, 0.35) inset;
+        }
+
+
+        .inventory-close-btn {
+            width: 34px;
+            height: 34px;
+            padding: 0;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            margin-right: 2px;
+            pointer-events: auto;
+        }
+
+        #inventory-close-icon {
+            width: 34px;
+            height: 34px;
+            image-rendering: pixelated;
+            display: block;
+        }
+
+
+        #inventory-panel {
+            border: 0;
+            box-shadow: none;
+            background-image: url('/MultiPixel/game/singleplayer/assets/ui/inventory/inventory.png');
+            background-size: 100% 100%;
+            background-repeat: no-repeat;
+            min-height: 360px;
+        }
+
+        #furnace-panel {
+            position: relative;
+            width: 220px;
+            height: 150px;
+            background-image: url('/MultiPixel/game/singleplayer/assets/ui/furnace/furnace.png');
+            background-size: 100% 100%;
+            background-repeat: no-repeat;
+        }
+
+        .furnace-slot {
+            position: absolute;
+            width: 42px;
+            height: 42px;
+            background: rgba(80, 80, 80, 0.25);
+        }
+
+        #furnace-input-slot { left: 18px; top: 20px; }
+        #furnace-fuel-slot { left: 18px; top: 88px; }
+        #furnace-output-slot { right: 18px; top: 54px; }

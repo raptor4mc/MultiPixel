@@ -1,94 +1,86 @@
-class Furnace {
-    constructor() {
-        this.input = null;
-        this.fuel = null;
-        this.output = null;
-
-        this.burnTime = 0;
-        this.maxBurnTime = 0;
-
-        this.cookTime = 0;
-        this.maxCookTime = 5; // seconds to smelt
+(function () {
+  const DEFAULTS = {
+    cookTimeSec: 8,
+    fuels: {
+      19: 80,  // coal
+      20: 800, // coal block
+      25: 80,  // charcoal
+      5: 15,   // wood log
+      8: 15,   // planks
+      10: 5,   // stick
+    },
+    recipes: {
+      17: { out: 3, cookTimeSec: 8 },   // cobblestone -> stone
+      7: { out: 13, cookTimeSec: 7 },   // sand -> sandstone
+      30: { out: 31, cookTimeSec: 10 }, // iron ore block -> raw iron
+      35: { out: 38, cookTimeSec: 10 }, // copper ore -> raw copper
+      40: { out: 42, cookTimeSec: 10 }, // gold ore -> raw gold
+      5: { out: 25, cookTimeSec: 8 },   // log -> charcoal
     }
+  };
 
-    update(deltaTime) {
-        // If burning, reduce burn time
-        if (this.burnTime > 0) {
-            this.burnTime -= deltaTime;
+  function createState() {
+    return {
+      input: null,
+      fuel: null,
+      output: null,
+      burnTime: 0,
+      maxBurnTime: 0,
+      cookTime: 0,
+      cookTimeTarget: DEFAULTS.cookTimeSec,
+    };
+  }
+
+  function getRecipe(id) { return DEFAULTS.recipes[id] || null; }
+  function getFuelTime(id) { return DEFAULTS.fuels[id] || 0; }
+
+  function canSmelt(state) {
+    if (!state.input) return false;
+    const recipe = getRecipe(state.input.id);
+    if (!recipe) return false;
+    if (!state.output) return true;
+    if (state.output.id !== recipe.out) return false;
+    return state.output.count < 64;
+  }
+
+  function consumeFuel(state) {
+    if (!state.fuel) return false;
+    const fuelTime = getFuelTime(state.fuel.id);
+    if (!fuelTime) return false;
+    state.maxBurnTime = fuelTime;
+    state.burnTime = fuelTime;
+    state.fuel.count -= 1;
+    if (state.fuel.count <= 0) state.fuel = null;
+    return true;
+  }
+
+  function smeltOne(state) {
+    const recipe = getRecipe(state.input?.id);
+    if (!recipe) return false;
+    state.input.count -= 1;
+    if (state.input.count <= 0) state.input = null;
+    if (!state.output) state.output = { id: recipe.out, count: 1 };
+    else state.output.count += 1;
+    return true;
+  }
+
+  function updateState(state, deltaSec) {
+    if (state.burnTime > 0) state.burnTime = Math.max(0, state.burnTime - deltaSec);
+    if (state.burnTime <= 0 && canSmelt(state) && state.fuel) consumeFuel(state);
+    if (canSmelt(state)) {
+      const recipe = getRecipe(state.input.id);
+      state.cookTimeTarget = recipe?.cookTimeSec || DEFAULTS.cookTimeSec;
+      if (state.burnTime > 0) {
+        state.cookTime += deltaSec;
+        if (state.cookTime >= state.cookTimeTarget) {
+          smeltOne(state);
+          state.cookTime = 0;
         }
-
-        // If not burning but has fuel and input
-        if (this.burnTime <= 0 && this.canSmelt() && this.fuel) {
-            this.consumeFuel();
-        }
-
-        // If burning and can smelt
-        if (this.burnTime > 0 && this.canSmelt()) {
-            this.cookTime += deltaTime;
-
-            if (this.cookTime >= this.maxCookTime) {
-                this.smeltItem();
-                this.cookTime = 0;
-            }
-        } else {
-            this.cookTime = 0;
-        }
+      }
+    } else {
+      state.cookTime = 0;
     }
+  }
 
-    canSmelt() {
-        if (!this.input) return false;
-
-        const result = Furnace.getSmeltingResult(this.input.id);
-        if (!result) return false;
-
-        if (!this.output) return true;
-        if (this.output.id !== result) return false;
-
-        return true;
-    }
-
-    smeltItem() {
-        const result = Furnace.getSmeltingResult(this.input.id);
-
-        this.input.count--;
-        if (this.input.count <= 0) this.input = null;
-
-        if (!this.output) {
-            this.output = { id: result, count: 1 };
-        } else {
-            this.output.count++;
-        }
-    }
-
-    consumeFuel() {
-        const burnTime = Furnace.getFuelTime(this.fuel.id);
-        if (!burnTime) return;
-
-        this.maxBurnTime = burnTime;
-        this.burnTime = burnTime;
-
-        this.fuel.count--;
-        if (this.fuel.count <= 0) this.fuel = null;
-    }
-
-    static getFuelTime(id) {
-        const fuels = {
-            "coal": 10,
-            "coal_block": 80,
-            "wood_log": 5,
-            "oak_planks": 5,
-            "stick": 2
-        };
-        return fuels[id] || 0;
-    }
-
-    static getSmeltingResult(id) {
-        const recipes = {
-            "cobblestone": "stone",
-            "sand": "sandstone",
-            "coal_ore_block": "coal",
-            "wood_log": "charcoal"
-        };
-        return recipes[id] || null;
-    }
-}
+  window.FurnaceSystem = { DEFAULTS, createState, updateState, canSmelt, getRecipe, getFuelTime };
+})();
