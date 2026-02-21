@@ -15,6 +15,7 @@
     <script src="terrain/desert/biome.js?v=10"></script>
     <script src="terrain/plains/biome.js?v=10"></script>
     <script src="terrain/mountains/biome.js?v=10"></script>
+    <script src="terrain/snowy_plains/biome.js?v=10"></script>
     <script src="crafting/recipes.js?v=10"></script>
     <script src="tools/pickaxes.js?v=10"></script>
     <script src="lighting/spawn_lighting.js?v=10"></script>
@@ -91,6 +92,17 @@
                 <div id="inventory-hotbar-grid" class="grid grid-cols-9 gap-1 mt-2"></div>
             </div>
             <p class="text-xs text-center text-gray-500 mt-1">Press 'E' to close</p>
+        </div>
+    </div>
+    <div id="mobile-controls" class="hidden">
+        <div id="mobile-joystick" class="mobile-btn-area">
+            <img id="mobile-joystick-bg" alt="joystick" draggable="false" />
+            <img id="mobile-joystick-center" alt="joystick center" draggable="false" />
+        </div>
+        <div id="mobile-right-controls" class="mobile-btn-area">
+            <img id="mobile-jump-btn" class="mobile-btn" alt="jump" draggable="false" />
+            <img id="mobile-inventory-btn" class="mobile-btn" alt="inventory" draggable="false" />
+            <img id="mobile-fast-btn" class="mobile-btn" alt="sprint" draggable="false" />
         </div>
     </div>
     <div id="crosshair"></div>
