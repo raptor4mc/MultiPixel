@@ -6,33 +6,38 @@
     return t * t * (3 - 2 * t);
   }
 
-  // Much more aggressive mountain separation
+  // VERY sharp biome gate
   function biomeBlendFactor(continentalness) {
-    // Plains handled elsewhere
-    // Only strong inland becomes mountain
-    return smoothstep(0.55, 0.75, continentalness);
+    // Almost binary switch
+    return smoothstep(0.68, 0.74, continentalness);
   }
 
-  function mountainMass(continentalness, erosion, ridges) {
-    const inland = smoothstep(0.55, 1.0, continentalness);
-    const lowErosion = 1 - clamp((erosion + 1) * 0.5, 0, 1);
+function mountainMass(continentalness, erosion, ridges) {
 
-    // Big landmass control (prevents hill spam)
-    const baseMass = Math.pow(inland, 2.4) * 140;
+  // Hard inland trigger
+  const inland = clamp((continentalness - 0.65) * 3.0, 0, 1);
 
-    // Erosion controls steepness only, not height spam
-    const sharpness = lerp(0.6, 1.4, Math.pow(lowErosion, 1.3));
+  // Mountain profile curve (THIS creates /\ shape)
+  const profile = Math.sin(inland * Math.PI);
 
-    // Ridges only enhance real mountains
-    const ridgeLift = Math.pow(clamp(ridges, 0, 1), 2.2) * 60;
+  // Strong but natural vertical lift
+  const baseMass = profile * 220;
 
-    return baseMass * sharpness + ridgeLift;
-  }
+  // Erosion controls steepness
+  const lowErosion = 1 - clamp((erosion + 1) * 0.5, 0, 1);
+  const sharpness = lerp(0.8, 1.5, Math.pow(lowErosion, 1.2));
+
+  // Ridges enhance the spine, not the whole mountain
+  const ridgeLift =
+    profile * Math.pow(clamp(ridges, 0, 1), 2.0) * 80;
+
+  return baseMass * sharpness + ridgeLift;
+}
 
   const MountainsTerrain = {
     isBiome({ mountainNoise, continentalNoise }) {
-      // Make mountains rarer and stronger
-      return mountainNoise > 0.65 && continentalNoise > 0.5;
+      // Much stricter spawn condition
+      return mountainNoise > 0.72 && continentalNoise > 0.68;
     },
 
     getHeight({
@@ -46,23 +51,23 @@
     }) {
 
       const biomeBlend = biomeBlendFactor(continentalness);
+
       if (biomeBlend <= 0) {
-        // fallback to base terrain if not fully mountainous
-        return BASE_LAND_Y + terrainNoise * 8;
+        return BASE_LAND_Y + terrainNoise * 6;
       }
 
       const mass = mountainMass(continentalness, erosion, ridges);
 
-      // Rare true peaks (noise-based, not random!)
+      // RARE extreme peaks
       const peakBoost =
-        Math.pow(clamp(peakNoise - 0.6, 0, 1), 2.5) * 90;
+        Math.pow(clamp(peakNoise - 0.65, 0, 1), 3.5) * 180;
 
-      // Cliffs only in high regions
+      // Hard cliffs
       const cliffs =
-        Math.pow(clamp(cliffNoise - 0.7, 0, 1), 1.8) * 40;
+        Math.pow(clamp(cliffNoise - 0.75, 0, 1), 2.5) * 80;
 
-      // Small-scale surface variation (kept low)
-      const surface = terrainNoise * 6;
+      // Minimal surface noise
+      const surface = terrainNoise * 4;
 
       const mountainHeight =
         BASE_LAND_Y +
@@ -71,11 +76,11 @@
         cliffs +
         surface;
 
-      // Smooth transition from base land to mountain
+      // MUCH sharper transition
       return lerp(
-        BASE_LAND_Y + terrainNoise * 6,
+        BASE_LAND_Y + terrainNoise * 4,
         mountainHeight,
-        biomeBlend
+        Math.pow(biomeBlend, 1.5)
       );
     }
   };
