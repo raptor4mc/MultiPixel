@@ -39,6 +39,10 @@
     FOOD: getAssetPath('ui/food_full.png'),
     OAK_PLANK: getAssetPath('textures/oak_planks.png'),
     CRAFTING_TABLE_SIDE: getAssetPath('textures/crafting_table_side.png'),
+    CRAFTING_TABLE_TOP: getAssetPath('textures/crafting_table/crafting_table_top.png'),
+    CRAFTING_TABLE_SIDE_ALT: getAssetPath('textures/crafting_table/crafting_table_side1.png'),
+    CRAFTING_TABLE_FRONT: getAssetPath('textures/crafting_table/crafting_table_front.png'),
+    CRAFTING_TABLE_FRONT_ALT: getAssetPath('textures/crafting_table/crafting_table_front1.png'),
     STICK: getAssetPath('textures/item/stick.png'),
     SAND_STONE: getAssetPath('textures/sand/normal/sand_stone.png'),
     COBBLESTONE: getAssetPath('textures/cobblestone.png'),
@@ -102,12 +106,12 @@
       textured: true,
       textureKey: 'CRAFTING_TABLE_SIDE',
       textureByFace: {
-        top: 'CRAFTING_TABLE_SIDE',
+        top: 'CRAFTING_TABLE_TOP',
         bottom: 'OAK_PLANK',
-        posX: 'CRAFTING_TABLE_SIDE',
-        negX: 'CRAFTING_TABLE_SIDE',
+        posX: 'CRAFTING_TABLE_FRONT',
+        negX: 'CRAFTING_TABLE_FRONT_ALT',
         posZ: 'CRAFTING_TABLE_SIDE',
-        negZ: 'CRAFTING_TABLE_SIDE'
+        negZ: 'CRAFTING_TABLE_SIDE_ALT'
       }
     },
     10: { name: 'Stick', id: 10, textured: true, textureKey: 'STICK' },
