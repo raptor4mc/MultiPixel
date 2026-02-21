@@ -29,7 +29,7 @@
         const PickaxeSystem = window.PickaxeSystem || {};
         const SpawnLighting = window.SpawnLighting || {};
 
-        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-21-07';
+        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-21-08';
         console.info('[Singleplayer build]', window.__SINGLEPLAYER_BUILD__);
 
         const TerrainModules = {};
@@ -300,6 +300,12 @@ window.perlin = perlinInstance;
           
             renderHearts();
             updateHotbarUI();
+            const closeBtn = document.getElementById('inventory-close-btn');
+            const closeIcon = document.getElementById('inventory-close-icon');
+            if (closeIcon) closeIcon.src = `${window.SingleplayerConfig?.REPO_BASE_PREFIX || '/MultiPixel'}/game/singleplayer/assets/ui/cdb_clear.png`;
+            if (closeBtn) closeBtn.addEventListener('click', () => {
+                if (isInventoryOpen) toggleInventory();
+            });
             if (window.HungerSystem) {
                 window.HungerSystem.init({ messageCallback: showGameMessage });
             }
@@ -2155,6 +2161,8 @@ if (ravineMask > 0.78) {
                          }
 
                          if (topY > SEA_LEVEL && (topType === 1 || topType === 2)) {
+                             // Keep trees away from chunk borders so canopy doesn't get cut into one-sided shapes.
+                             if (x < 2 || x > CHUNK_SIZE - 3 || z < 2 || z > CHUNK_SIZE - 3) continue;
                              const densityNoise = octaveNoise2D(wx, wz, 3, 0.55, 2.0, 0.04, 700, -350) * 0.5 + 0.5;
                              const scatter = hashRand2D(wx, wz, 99);
                              const localScore = densityNoise * 0.65 + scatter * 0.35;

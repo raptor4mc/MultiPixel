@@ -69,7 +69,10 @@
     </div>
     <div id="inventory-screen" class="hidden absolute inset-0 flex items-center justify-center z-[200]">
         <div class="bg-[#c6c6c6] p-4 rounded-lg shadow-2xl border-4 border-[#555555] w-[420px] flex flex-col gap-4 text-black font-sans pointer-events-auto">
-            <div class="flex justify-between items-center border-b border-gray-500 pb-2">
+            <div class="flex justify-between items-start border-b border-gray-500 pb-2">
+                <button id="inventory-close-btn" class="inventory-close-btn" type="button" aria-label="Close inventory">
+                    <img id="inventory-close-icon" alt="close inventory" draggable="false" />
+                </button>
                 <!-- 2x2 CRAFTING CONTAINER -->
                 <div id="crafting-2x2-container" class="flex items-center gap-3">
                     <h2 class="font-bold text-gray-700">Crafting</h2>

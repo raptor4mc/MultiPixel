@@ -241,3 +241,22 @@
             background: rgba(57, 255, 20, 0.2);
             box-shadow: 0 0 0 2px rgba(57, 255, 20, 0.35) inset;
         }
+
+
+        .inventory-close-btn {
+            width: 34px;
+            height: 34px;
+            padding: 0;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            margin-right: 2px;
+            pointer-events: auto;
+        }
+
+        #inventory-close-icon {
+            width: 34px;
+            height: 34px;
+            image-rendering: pixelated;
+            display: block;
+        }
