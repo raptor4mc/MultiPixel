@@ -260,3 +260,33 @@
             image-rendering: pixelated;
             display: block;
         }
+
+
+        #inventory-panel {
+            border: 0;
+            box-shadow: none;
+            background-image: url('/MultiPixel/game/singleplayer/assets/ui/inventory/inventory.png');
+            background-size: 100% 100%;
+            background-repeat: no-repeat;
+            min-height: 360px;
+        }
+
+        #furnace-panel {
+            position: relative;
+            width: 220px;
+            height: 150px;
+            background-image: url('/MultiPixel/game/singleplayer/assets/ui/furnace/furnace.png');
+            background-size: 100% 100%;
+            background-repeat: no-repeat;
+        }
+
+        .furnace-slot {
+            position: absolute;
+            width: 42px;
+            height: 42px;
+            background: rgba(80, 80, 80, 0.25);
+        }
+
+        #furnace-input-slot { left: 18px; top: 20px; }
+        #furnace-fuel-slot { left: 18px; top: 88px; }
+        #furnace-output-slot { right: 18px; top: 54px; }

@@ -29,7 +29,7 @@
         const PickaxeSystem = window.PickaxeSystem || {};
         const SpawnLighting = window.SpawnLighting || {};
 
-        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-21-10';
+        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-21-11';
         console.info('[Singleplayer build]', window.__SINGLEPLAYER_BUILD__);
 
         const TerrainModules = {};
@@ -119,6 +119,9 @@ window.perlin = perlinInstance;
         
         // --- NEW CRAFTING STATE VARIABLES ---
         let isCraftingTableOpen = false;
+        let isFurnaceOpen = false;
+        let activeFurnaceKey = null;
+        const furnaceStates = new Map();
         let craftingInput = new Array(4).fill(null); // 2x2 Grid
         let craftingTableInput = new Array(9).fill(null); // 3x3 Grid
         let craftingOutput = null; 
@@ -537,6 +540,27 @@ window.perlin = perlinInstance;
 
         // Helper function for inventory item management
 
+
+        function getOrCreateFurnaceState(key) {
+            if (!key) return null;
+            if (!furnaceStates.has(key)) {
+                const state = (window.FurnaceSystem && window.FurnaceSystem.createState)
+                    ? window.FurnaceSystem.createState()
+                    : { input: null, fuel: null, output: null, burnTime: 0, maxBurnTime: 0, cookTime: 0, cookTimeTarget: 8 };
+                furnaceStates.set(key, state);
+            }
+            return furnaceStates.get(key);
+        }
+
+        function getFurnaceSlotRef(slotType) {
+            const state = getOrCreateFurnaceState(activeFurnaceKey);
+            if (!state) return null;
+            if (slotType === 'furnace-input') return { state, key: 'input' };
+            if (slotType === 'furnace-fuel') return { state, key: 'fuel' };
+            if (slotType === 'furnace-output') return { state, key: 'output' };
+            return null;
+        }
+
         function resolveInventorySlotTarget(slotIndex, slotType = 'inv') {
             let slotArray;
             let finalIndex = slotIndex;
@@ -550,6 +574,10 @@ window.perlin = perlinInstance;
                 slotArray = craftingInput;
             } else if (slotType === 'craft-table-input') {
                 slotArray = craftingTableInput;
+            } else if (slotType === 'furnace-input' || slotType === 'furnace-fuel') {
+                const ref = getFurnaceSlotRef(slotType);
+                if (ref) slotArray = [ref.state[ref.key]];
+                finalIndex = 0;
             }
 
             return { slotArray, finalIndex };
@@ -584,6 +612,32 @@ window.perlin = perlinInstance;
                 }
             }
 
+            if (slotType === 'furnace-output') return;
+            if (slotType === 'furnace-input' || slotType === 'furnace-fuel') {
+                const ref = getFurnaceSlotRef(slotType);
+                if (!ref) return;
+                const targetItem = ref.state[ref.key];
+                if (!heldItem) {
+                    if (targetItem && targetItem.count > 1) {
+                        const split = Math.ceil(targetItem.count / 2);
+                        targetItem.count -= split;
+                        heldItem = { id: targetItem.id, count: split };
+                        if (targetItem.count <= 0) ref.state[ref.key] = null;
+                    }
+                } else {
+                    if (!targetItem) {
+                        ref.state[ref.key] = { id: heldItem.id, count: 1 };
+                        heldItem.count -= 1;
+                    } else if (targetItem.id === heldItem.id && targetItem.count < 64) {
+                        targetItem.count += 1;
+                        heldItem.count -= 1;
+                    }
+                    if (heldItem && heldItem.count <= 0) heldItem = null;
+                }
+                renderInventoryScreen();
+                updateHotbarUI();
+                return;
+            }
             if (slotType === 'craft-input' || slotType === 'craft-table-input') {
                 const inputGrid = isCraftingTableOpen ? craftingTableInput : craftingInput;
                 const gridWidth = isCraftingTableOpen ? 3 : 2;
@@ -642,6 +696,22 @@ window.perlin = perlinInstance;
             
             let { slotArray, finalIndex } = resolveInventorySlotTarget(slotIndex, slotType);
             
+            if (slotType === 'furnace-output') {
+                const ref = getFurnaceSlotRef(slotType);
+                if (ref && ref.state.output) {
+                    if (!heldItem) {
+                        heldItem = { ...ref.state.output };
+                        ref.state.output = null;
+                    } else if (heldItem.id === ref.state.output.id && heldItem.count + ref.state.output.count <= 64) {
+                        heldItem.count += ref.state.output.count;
+                        ref.state.output = null;
+                    }
+                }
+                renderInventoryScreen();
+                updateHotbarUI();
+                return;
+            }
+
             if (slotType === 'output') {
                 
                 // Determine which crafting grid is active
@@ -671,11 +741,44 @@ window.perlin = perlinInstance;
                 }
             }
 
-            if (slotArray) {
+            if (slotType === 'furnace-input' || slotType === 'furnace-fuel') {
+                const ref = getFurnaceSlotRef(slotType);
+                if (ref) {
+                    const tempArray = [ref.state[ref.key]];
+                    manageSlot(tempArray[0], tempArray, 0);
+                    ref.state[ref.key] = tempArray[0];
+                }
+            } else if (slotArray) {
                 manageSlot(slotArray[finalIndex], slotArray, finalIndex);
                 
                 // If the change was in the crafting input grid, recalculate output
-                if (slotType === 'craft-input' || slotType === 'craft-table-input') {
+                if (slotType === 'furnace-output') return;
+            if (slotType === 'furnace-input' || slotType === 'furnace-fuel') {
+                const ref = getFurnaceSlotRef(slotType);
+                if (!ref) return;
+                const targetItem = ref.state[ref.key];
+                if (!heldItem) {
+                    if (targetItem && targetItem.count > 1) {
+                        const split = Math.ceil(targetItem.count / 2);
+                        targetItem.count -= split;
+                        heldItem = { id: targetItem.id, count: split };
+                        if (targetItem.count <= 0) ref.state[ref.key] = null;
+                    }
+                } else {
+                    if (!targetItem) {
+                        ref.state[ref.key] = { id: heldItem.id, count: 1 };
+                        heldItem.count -= 1;
+                    } else if (targetItem.id === heldItem.id && targetItem.count < 64) {
+                        targetItem.count += 1;
+                        heldItem.count -= 1;
+                    }
+                    if (heldItem && heldItem.count <= 0) heldItem = null;
+                }
+                renderInventoryScreen();
+                updateHotbarUI();
+                return;
+            }
+            if (slotType === 'craft-input' || slotType === 'craft-table-input') {
                     const inputGrid = isCraftingTableOpen ? craftingTableInput : craftingInput;
                     const gridWidth = isCraftingTableOpen ? 3 : 2;
                     craftingOutput = checkCraftingRecipe(inputGrid, gridWidth);
@@ -697,6 +800,10 @@ window.perlin = perlinInstance;
             // 3x3 Elements
             const craftInputGrid3x3 = document.getElementById('crafting-table-grid');
             const craftOutputSlot3x3 = document.getElementById('crafting-table-output-slot');
+            const furnaceContainer = document.getElementById('furnace-container');
+            const furnaceInputSlot = document.getElementById('furnace-input-slot');
+            const furnaceFuelSlot = document.getElementById('furnace-fuel-slot');
+            const furnaceOutputSlot = document.getElementById('furnace-output-slot');
             
             mainGrid.innerHTML = '';
             hotbarGrid.innerHTML = '';
@@ -704,6 +811,9 @@ window.perlin = perlinInstance;
             craftOutputSlot2x2.innerHTML = '';
             craftInputGrid3x3.innerHTML = '';
             craftOutputSlot3x3.innerHTML = '';
+            if (furnaceInputSlot) furnaceInputSlot.innerHTML = '';
+            if (furnaceFuelSlot) furnaceFuelSlot.innerHTML = '';
+            if (furnaceOutputSlot) furnaceOutputSlot.innerHTML = '';
 
             const mainStart = HOTBAR_SLOTS; 
             const mainEnd = TOTAL_INV_SIZE; 
@@ -840,7 +950,7 @@ window.perlin = perlinInstance;
         // --- END: Renders the item attached to the mouse cursor when inventory is open ---
 
 
-        function toggleInventory(openTableMode = false) {
+        function toggleInventory(openTableMode = false, openFurnaceMode = false, furnaceKey = null) {
             const invScreen = document.getElementById('inventory-screen');
             const hud = document.getElementById('hud');
             
@@ -852,6 +962,8 @@ window.perlin = perlinInstance;
                 // CLOSE INVENTORY
                 isInventoryOpen = false;
                 isCraftingTableOpen = false; // Reset table state
+                isFurnaceOpen = false;
+                activeFurnaceKey = null;
                 invScreen.classList.add('hidden');
                 hud.classList.remove('opacity-0');
                 if (!mobileControls.enabled) document.body.requestPointerLock();
@@ -874,6 +986,8 @@ window.perlin = perlinInstance;
                 // OPEN INVENTORY
                 isInventoryOpen = true;
                 isCraftingTableOpen = openTableMode;
+                isFurnaceOpen = openFurnaceMode;
+                activeFurnaceKey = furnaceKey;
                 
                 // Toggle visibility of crafting grids
                 if (isCraftingTableOpen) {
@@ -1041,7 +1155,11 @@ window.perlin = perlinInstance;
             const targetBlockId = getBlockType(wx, wy, wz);
 
             if (targetBlockId === 9) {
-                toggleInventory(true);
+                toggleInventory(true, false, null);
+                return;
+            }
+            if (targetBlockId === 23) {
+                toggleInventory(false, true, `${wx},${wy},${wz}`);
                 return;
             }
 
@@ -2634,6 +2752,11 @@ if (ravineMask > 0.78) {
                 updateMining(delta);
                 applyBlockPhysics(time);
                 updateChunkFrustumCulling();
+                const dtSec = delta / 1000;
+                if (window.FurnaceSystem) {
+                    for (const state of furnaceStates.values()) window.FurnaceSystem.updateState(state, dtSec);
+                    if (isInventoryOpen && isFurnaceOpen) renderInventoryScreen();
+                }
             } else {
                 miningState.active = false;
                 updateBreakingOverlay();

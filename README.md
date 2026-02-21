@@ -1,2 +1,3 @@
 # MultiPixel
-The official MultiPixel game! from server too game!
+
+MultiPixel is the official game client for the MultiPixel server.
