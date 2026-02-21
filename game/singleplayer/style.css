@@ -268,18 +268,18 @@
         .menu-panel {
             position: relative;
             width: 384px;
-            height: 272px;
+            height: 288px;
             border: 0;
             box-shadow: none;
             image-rendering: pixelated;
             background-size: 100% auto;
-            background-position: 14px top;
+            background-position: 26px top;
             background-repeat: no-repeat;
             overflow: hidden;
         }
 
         #inventory-screen .menu-panel {
-            transform: translateY(-22px);
+            transform: translateY(-40px);
         }
 
         #inventory-panel.inventory-mode {
@@ -301,9 +301,9 @@
 
         .menu-lower {
             position: absolute;
-            left: 40px;
-            top: 156px;
-            width: 304px;
+            left: 52px;
+            top: 152px;
+            width: 280px;
         }
 
         .slot-grid {
@@ -311,24 +311,24 @@
             gap: 2px;
         }
 
-        .grid-2x2 { grid-template-columns: repeat(2, 32px); }
-        .grid-3x3 { grid-template-columns: repeat(3, 32px); }
-        .grid-9x3 { grid-template-columns: repeat(9, 32px); grid-template-rows: repeat(3, 32px); }
-        .grid-9x1 { grid-template-columns: repeat(9, 32px); margin-top: 8px; }
+        .grid-2x2 { grid-template-columns: repeat(2, 30px); }
+        .grid-3x3 { grid-template-columns: repeat(3, 30px); }
+        .grid-9x3 { grid-template-columns: repeat(9, 30px); grid-template-rows: repeat(3, 30px); }
+        .grid-9x1 { grid-template-columns: repeat(9, 30px); margin-top: 8px; }
 
-        #crafting-input-grid { position: absolute; left: 178px; top: 40px; }
-        #crafting-output-slot-container { position: absolute; left: 262px; top: 52px; }
+        #crafting-input-grid { position: absolute; left: 186px; top: 42px; }
+        #crafting-output-slot-container { position: absolute; left: 258px; top: 52px; }
 
-        #crafting-table-grid { position: absolute; left: 30px; top: 22px; }
-        #crafting-table-output-slot { position: absolute; left: 168px; top: 46px; }
+        #crafting-table-grid { position: absolute; left: 34px; top: 26px; }
+        #crafting-table-output-slot { position: absolute; left: 156px; top: 50px; }
 
-        #furnace-input-slot { position: absolute; left: 56px; top: 28px; }
-        #furnace-fuel-slot { position: absolute; left: 56px; top: 74px; }
-        #furnace-output-slot { position: absolute; left: 236px; top: 50px; }
+        #furnace-input-slot { position: absolute; left: 62px; top: 30px; }
+        #furnace-fuel-slot { position: absolute; left: 62px; top: 74px; }
+        #furnace-output-slot { position: absolute; left: 230px; top: 50px; }
 
         .slot-grid-single,
         .slot-grid-single .inv-slot,
         .slot-grid .inv-slot {
-            width: 32px;
-            height: 32px;
+            width: 30px;
+            height: 30px;
         }

@@ -2623,7 +2623,7 @@ if (ravineMask > 0.78) {
                 // Indices
                 const idx = [];
                 for(let i=0; i<gd.pos.length/3; i+=4) idx.push(i, i+1, i+2, i, i+2, i+3);
-                geom.setIndex(idx);
+                geom.setIndex(new THREE.BufferAttribute(new Uint32Array(idx), 1));
 
                 const mesh = new THREE.Mesh(geom, currentMaterial);
                 mesh.frustumCulled = true;
