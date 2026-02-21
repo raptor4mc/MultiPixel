@@ -29,7 +29,7 @@
         const PickaxeSystem = window.PickaxeSystem || {};
         const SpawnLighting = window.SpawnLighting || {};
 
-        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-21-04';
+        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-21-05';
         console.info('[Singleplayer build]', window.__SINGLEPLAYER_BUILD__);
 
         const TerrainModules = {};
@@ -139,9 +139,11 @@ window.perlin = perlinInstance;
 
         const MOBILE_ASSET_BASE = `${window.SingleplayerConfig?.REPO_BASE_PREFIX || '/MultiPixel'}/game/singleplayer/assets/mobile`;
         const coarsePointer = window.matchMedia ? window.matchMedia('(pointer: coarse)').matches : false;
+        const noHover = window.matchMedia ? window.matchMedia('(hover: none)').matches : false;
+        const touchCapable = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
         const mobileControls = {
-            // Lock mobile controls to coarse/small-screen mode to avoid hybrid touch+mouse desktops flickering between modes.
-            enabled: coarsePointer || window.innerWidth <= 900,
+            // Enable mobile mode on true touch devices, but avoid desktop hybrids with hover+large screens.
+            enabled: coarsePointer || (touchCapable && noHover) || (touchCapable && window.innerWidth <= 1024),
             moveX: 0,
             moveY: 0,
             sprint: false,
@@ -1655,6 +1657,7 @@ window.perlin = perlinInstance;
             invBtn.src = `${MOBILE_ASSET_BASE}/inventory_btn.png`;
             fastBtn.src = `${MOBILE_ASSET_BASE}/fast_btn.png`;
             document.getElementById('instructions').style.opacity = 0;
+            document.getElementById('crosshair').style.opacity = 0;
             player.canMove = true;
 
             function resetJoystick() {
@@ -1777,6 +1780,7 @@ window.perlin = perlinInstance;
                 }
             });
             document.addEventListener('mousemove', e => {
+                if (mobileControls.enabled) return;
                 if (!player.canMove || isInventoryOpen) return;
                 yawObject.rotation.y -= e.movementX * player.rotationSpeed;
                 pitchObject.rotation.x -= e.movementY * player.rotationSpeed;
