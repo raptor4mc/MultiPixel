@@ -298,8 +298,12 @@
               const threshold = biome === 'Forest' ? 0.5 : 0.82;
               const canSpawn = (localScore > threshold) || (biome === 'Forest' && cellRoll > 0.52 && localScore > 0.38);
 
-              if (canSpawn) {
+              const hasChunkPaddingForTree = x >= 2 && x <= CHUNK_SIZE - 3 && z >= 2 && z <= CHUNK_SIZE - 3;
+              if (canSpawn && hasChunkPaddingForTree) {
                 const heightLimit = 5 + Math.floor(hashRand2D(wx, wz, 157) * 4);
+
+                // Keep full trunk + canopy in-bounds so trees don't generate as cut-off halves on chunk seams.
+                if (topY + heightLimit + 1 >= CHUNK_HEIGHT) continue;
                 let obstructed = false;
                 for (let ty = topY + 1; ty <= Math.min(CHUNK_HEIGHT - 2, topY + heightLimit + 2) && !obstructed; ty++) {
                   const canopyRadius = ty >= topY + heightLimit - 2 ? 2 : 0;
