@@ -317,7 +317,7 @@
         .grid-9x1 { grid-template-columns: repeat(9, 30px); margin-top: 8px; }
 
         #crafting-input-grid { position: absolute; left: 160px; top: 50px; }
-        #crafting-output-slot-container { position: absolute; left: 258px; top: 90px; }
+        #crafting-output-slot-container { position: absolute; left: 258px; top: 40px; }
 
         #crafting-table-grid { position: absolute; left: 34px; top: 26px; }
         #crafting-table-output-slot { position: absolute; left: 156px; top: 50px; }
