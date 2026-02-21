@@ -29,7 +29,7 @@
         const PickaxeSystem = window.PickaxeSystem || {};
         const SpawnLighting = window.SpawnLighting || {};
 
-        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-21-01';
+        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-21-02';
         console.info('[Singleplayer build]', window.__SINGLEPLAYER_BUILD__);
 
         const TerrainModules = {};
@@ -1409,14 +1409,13 @@ window.perlin = perlinInstance;
             const climate = sampleClimateVector(wx, wz, SEA_LEVEL + 8);
             const mountainNoise = (Math.abs(octaveNoise2D(wx, wz, 3, 0.56, 2.0, 0.0013, -400, 750)) + 1) * 0.5;
             const continentalNoise = (tv.continentalness + 1) * 0.5;
-            const moistureNoise = octaveNoise2D(wx, wz, 3, 0.55, 2.0, 0.0007, 1000, 1000);
 
-            const oceanW = smoothstep(0.34, 0.0, continentalNoise);
-            const mountainW = smoothstep(0.49, 0.82, mountainNoise) * smoothstep(0.30, 0.85, continentalNoise);
-            const desertW = smoothstep(-0.05, 0.42, climate.temp) * smoothstep(0.30, -0.26, climate.humidity) * smoothstep(0.26, 0.86, continentalNoise);
-            const snowyW = smoothstep(-0.22, -0.62, climate.temp) * smoothstep(-0.20, 0.46, climate.humidity) * smoothstep(0.20, 0.84, continentalNoise) * (1 - mountainW * 0.78);
-            const forestW = smoothstep(-0.16, 0.40, climate.humidity) * smoothstep(-0.36, 0.42, climate.temp) * (1 - desertW * 0.65);
-            const plainsW = 0.50 + smoothstep(0.12, 0.72, continentalNoise) * 0.30;
+            const oceanW = smoothstep(0.36, 0.02, continentalNoise);
+            const mountainW = smoothstep(0.50, 0.80, mountainNoise) * smoothstep(0.34, 0.90, continentalNoise);
+            const desertW = smoothstep(0.02, 0.48, climate.temp) * smoothstep(0.24, -0.30, climate.humidity) * smoothstep(0.30, 0.90, continentalNoise);
+            const snowyW = smoothstep(-0.20, -0.64, climate.temp) * smoothstep(-0.18, 0.50, climate.humidity) * smoothstep(0.22, 0.86, continentalNoise) * (1 - mountainW * 0.70);
+            const forestW = smoothstep(-0.12, 0.44, climate.humidity) * smoothstep(-0.28, 0.40, climate.temp) * (1 - desertW * 0.72);
+            const plainsW = 0.16 + smoothstep(0.14, 0.66, continentalNoise) * 0.14;
 
             const total = oceanW + mountainW + desertW + snowyW + forestW + plainsW;
             if (total <= 0) {
@@ -1442,16 +1441,32 @@ window.perlin = perlinInstance;
         }
 
         function getBiome(wx, wz) {
-            const { weights } = biomeWeights(wx, wz);
-            let selected = 'Plains';
-            let maxW = -1;
-            for (const [name, w] of Object.entries(weights)) {
-                if (w > maxW) {
-                    maxW = w;
-                    selected = name;
+            const { climate, weights } = biomeWeights(wx, wz);
+            const contenders = ['Mountains', 'Desert', 'Forest', 'Snowy Plains', 'Ocean'];
+
+            let bestSpecial = 'Plains';
+            let bestSpecialW = 0;
+            for (const biomeName of contenders) {
+                const w = weights[biomeName] || 0;
+                if (w > bestSpecialW) {
+                    bestSpecialW = w;
+                    bestSpecial = biomeName;
                 }
             }
-            return selected;
+
+            const plainsW = weights['Plains'] || 0;
+
+            // Prefer special biomes when they are clearly present.
+            if (bestSpecialW > plainsW * 0.80 || bestSpecialW > 0.27) {
+                return bestSpecial;
+            }
+
+            // Climate nudges to avoid a plains-only world.
+            if (climate.temp < -0.38 && climate.humidity > -0.15) return 'Snowy Plains';
+            if (climate.humidity > 0.20 && climate.temp > -0.30 && climate.temp < 0.42) return 'Forest';
+            if (climate.temp > 0.18 && climate.humidity < -0.08) return 'Desert';
+
+            return 'Plains';
         }
 
         function getRavineMask(wx, wz) {
