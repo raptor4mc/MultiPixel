@@ -6,6 +6,7 @@
             font-family: 'Inter', sans-serif;
             background-color: #1a1a2e;
             user-select: none;
+            touch-action: none;
         }
         #info-panel {
             position: absolute;
@@ -132,4 +133,198 @@
             background-size: contain;
             background-repeat: no-repeat;
             background-position: center;
+        }
+
+        #mobile-controls {
+            position: absolute;
+            inset: 0;
+            z-index: 180;
+            pointer-events: none;
+        }
+
+        #mobile-controls.active {
+            display: block !important;
+        }
+
+        .mobile-btn-area {
+            position: absolute;
+            pointer-events: none;
+        }
+
+        #mobile-joystick {
+            left: 16px;
+            bottom: 16px;
+            width: 132px;
+            height: 132px;
+        }
+
+        #mobile-joystick-bg {
+            position: absolute;
+            inset: 0;
+            width: 132px;
+            height: 132px;
+            image-rendering: pixelated;
+            pointer-events: auto;
+            touch-action: none;
+            -webkit-user-drag: none;
+            user-select: none;
+            touch-action: none;
+        }
+
+        #mobile-joystick-center {
+            position: absolute;
+            left: 40px;
+            top: 40px;
+            width: 52px;
+            height: 52px;
+            image-rendering: pixelated;
+            pointer-events: none;
+        }
+
+        #mobile-right-controls {
+            right: 14px;
+            bottom: 16px;
+            width: 192px;
+            height: 192px;
+        }
+
+        .mobile-btn {
+            position: absolute;
+            width: 72px;
+            height: 72px;
+            pointer-events: auto;
+            touch-action: none;
+            image-rendering: pixelated;
+            -webkit-user-drag: none;
+            user-select: none;
+            touch-action: none;
+        }
+
+        #mobile-inventory-btn {
+            right: 0;
+            bottom: 0;
+        }
+
+        #mobile-jump-btn {
+            right: 84px;
+            bottom: 0;
+        }
+
+        #mobile-fast-btn {
+            right: 0;
+            bottom: 84px;
+        }
+
+        @media (pointer: coarse), (max-width: 900px) {
+            #mobile-controls {
+                display: block;
+            }
+            #instructions {
+                top: 36%;
+                font-size: 0.92rem;
+            }
+        }
+
+
+        .mode-btn {
+            pointer-events: auto;
+            padding: 0.45rem 0.95rem;
+            border-radius: 8px;
+            border: 2px solid #39ff14;
+            background: rgba(20, 20, 20, 0.85);
+            color: #fff;
+            font-weight: 700;
+            min-width: 86px;
+        }
+
+        .mode-btn.active {
+            background: rgba(57, 255, 20, 0.2);
+            box-shadow: 0 0 0 2px rgba(57, 255, 20, 0.35) inset;
+        }
+
+
+        .inventory-close-btn {
+            width: 34px;
+            height: 34px;
+            padding: 0;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            pointer-events: auto;
+            position: absolute;
+            right: 8px;
+            top: 8px;
+            z-index: 5;
+        }
+
+        #inventory-close-icon,
+        #furnace-close-icon {
+            width: 100%;
+            height: 100%;
+            image-rendering: pixelated;
+            display: block;
+        }
+
+        .menu-panel {
+            position: relative;
+            width: 384px;
+            height: 290px;
+            border: 0;
+            box-shadow: none;
+            image-rendering: pixelated;
+            background-size: 100% auto;
+            background-position: top center;
+            background-repeat: no-repeat;
+            overflow: hidden;
+        }
+
+        #inventory-panel.inventory-mode {
+            background-image: url('/MultiPixel/game/singleplayer/assets/ui/inventory/inventory.png');
+        }
+
+        #inventory-panel:not(.inventory-mode) {
+            background-image: url('/MultiPixel/game/singleplayer/assets/ui/craftingtable/crafting_table.png');
+        }
+
+        #furnace-workbench-panel {
+            background-image: url('/MultiPixel/game/singleplayer/assets/ui/furnace/furnace.png');
+        }
+
+        .menu-top-layout {
+            position: absolute;
+            inset: 0;
+        }
+
+        .menu-lower {
+            position: absolute;
+            left: 24px;
+            top: 166px;
+            width: 336px;
+        }
+
+        .slot-grid {
+            display: grid;
+            gap: 2px;
+        }
+
+        .grid-2x2 { grid-template-columns: repeat(2, 36px); }
+        .grid-3x3 { grid-template-columns: repeat(3, 36px); }
+        .grid-9x3 { grid-template-columns: repeat(9, 36px); grid-template-rows: repeat(3, 36px); }
+        .grid-9x1 { grid-template-columns: repeat(9, 36px); margin-top: 10px; }
+
+        #crafting-input-grid { position: absolute; left: 194px; top: 45px; }
+        #crafting-output-slot-container { position: absolute; left: 290px; top: 60px; }
+
+        #crafting-table-grid { position: absolute; left: 34px; top: 25px; }
+        #crafting-table-output-slot { position: absolute; left: 204px; top: 43px; }
+
+        #furnace-input-slot { position: absolute; left: 62px; top: 30px; }
+        #furnace-fuel-slot { position: absolute; left: 62px; top: 84px; }
+        #furnace-output-slot { position: absolute; left: 260px; top: 57px; }
+
+        .slot-grid-single,
+        .slot-grid-single .inv-slot,
+        .slot-grid .inv-slot {
+            width: 36px;
+            height: 36px;
         }
