@@ -83,6 +83,12 @@
       </div>
       <input id="pack-file" class="hidden" type="file" accept=".zip" />
       <input id="pack-folder" class="hidden" type="file" webkitdirectory />
+      <div class="pack-controls">
+        <button id="replay-save" class="ghost compact" type="button">Save Replay</button>
+        <button id="replay-load" class="ghost compact" type="button">Load Replay</button>
+        <div id="replay-status" class="pack-status">Replay: none</div>
+      </div>
+      <input id="replay-file" class="hidden" type="file" accept=".json" />
 
       <label id="control-mode-field" class="field hidden">
         <span>Control Mode</span>
@@ -331,5 +337,5 @@
   </script>
 
   <script type="module" src="./dist/main.js"></script>
-</body>
+<!-- Cloudflare Pages Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "ba4e488caf8849e9af3e0cc5ff39ffaf"}'></script><!-- Cloudflare Pages Analytics --></body>
 </html>

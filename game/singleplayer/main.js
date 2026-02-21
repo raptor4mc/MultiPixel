@@ -80,7 +80,14 @@
 
         // Three.js specific materials created after textures are loaded
         let materials = {};
-        
+
+// --- 2. CREATE PERLIN INSTANCE ---
+const seed = Math.random() * 65536; // or pick a fixed seed for consistent worlds
+const perlinInstance = new PerlinNoise(seed);
+
+// Make it globally accessible for biomes
+window.perlin = perlinInstance;
+
         // --- 2. GAME STATE & THREE.JS SETUP ---
 
       
@@ -319,6 +326,16 @@
             addToInventory(5, 5); // Wood Log (for crafting)
             addToInventory(6, 1); // Leaves
             addToInventory(7, 32); // Sand
+            addToInventory(26, 32);
+            addToInventory(27, 32);
+            addToInventory(28, 32);
+            addToInventory(30, 42);
+            addToInventory(35, 42);
+            addToInventory(34, 42);
+            addToInventory(37, 42);
+            addToInventory(33, 42);
+            addToInventory(39, 42);
+            addToInventory(4, 42);
             
             // Set initial sky state
             updateSkyAndSun(); 
@@ -1430,7 +1447,7 @@
                 const key = mat.textureKey;
                 // Use the loaded material key if it exists, otherwise use a colored fallback key
                 if (materials[key] && materials[key].map) return key; 
-                return `${key}_FALLBACK`;
+                return `textures/Fallback.png`;
             }
             if (id === 4) return 'WATER'; 
             if (id === 5) return 'WOOD';  
