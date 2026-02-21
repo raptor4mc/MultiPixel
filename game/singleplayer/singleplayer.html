@@ -15,12 +15,14 @@
     <script src="terrain/desert/biome.js?v=10"></script>
     <script src="terrain/plains/biome.js?v=10"></script>
     <script src="terrain/mountains/biome.js?v=10"></script>
+    <script src="terrain/snowy_plains/biome.js?v=10"></script>
     <script src="crafting/recipes.js?v=10"></script>
     <script src="tools/pickaxes.js?v=10"></script>
     <script src="lighting/spawn_lighting.js?v=10"></script>
     <script src="ui/hunger.js?v=10"></script>
     <script src="BlockPhysics/water.js?v=10"></script>
     <script src="BlockPhysics/sand.js?v=10"></script>
+    <script src="BlockPhysics/lava.js?v=10"></script>
     <script src="main.js?v=11"></script>
     <!-- Removed external script links to ensure functionality in this single-file preview -->
 </head>
@@ -59,11 +61,19 @@
         <p>Break: <span class="text-neon-green">LMB</span> | Place: <span class="text-neon-green">RMB</span></p>
         <p>Inventory: <span class="text-neon-green">Y</span> or <span class="text-neon-green">I</span></p>
         <p>Scroll/1-9: <span class="text-neon-green">Select Item</span></p>
-        <p class="mt-4 text-sm text-gray-400">Click to Start</p>
+        <p class="mt-3 text-sm text-gray-300">Choose controls:</p>
+        <div id="input-mode-buttons" class="mt-2 flex justify-center gap-3">
+            <button id="mode-mobile-btn" class="mode-btn">Mobile</button>
+            <button id="mode-pc-btn" class="mode-btn">PC</button>
+        </div>
+        <p class="mt-3 text-sm text-gray-400">Then tap/click to Start</p>
     </div>
     <div id="inventory-screen" class="hidden absolute inset-0 flex items-center justify-center z-[200]">
         <div class="bg-[#c6c6c6] p-4 rounded-lg shadow-2xl border-4 border-[#555555] w-[420px] flex flex-col gap-4 text-black font-sans pointer-events-auto">
-            <div class="flex justify-between items-center border-b border-gray-500 pb-2">
+            <div class="flex justify-between items-start border-b border-gray-500 pb-2">
+                <button id="inventory-close-btn" class="inventory-close-btn" type="button" aria-label="Close inventory">
+                    <img id="inventory-close-icon" alt="close inventory" draggable="false" />
+                </button>
                 <!-- 2x2 CRAFTING CONTAINER -->
                 <div id="crafting-2x2-container" class="flex items-center gap-3">
                     <h2 class="font-bold text-gray-700">Crafting</h2>
@@ -91,6 +101,17 @@
                 <div id="inventory-hotbar-grid" class="grid grid-cols-9 gap-1 mt-2"></div>
             </div>
             <p class="text-xs text-center text-gray-500 mt-1">Press 'E' to close</p>
+        </div>
+    </div>
+    <div id="mobile-controls" class="hidden">
+        <div id="mobile-joystick" class="mobile-btn-area">
+            <img id="mobile-joystick-bg" alt="joystick" draggable="false" />
+            <img id="mobile-joystick-center" alt="joystick center" draggable="false" />
+        </div>
+        <div id="mobile-right-controls" class="mobile-btn-area">
+            <img id="mobile-jump-btn" class="mobile-btn" alt="jump" draggable="false" />
+            <img id="mobile-inventory-btn" class="mobile-btn" alt="inventory" draggable="false" />
+            <img id="mobile-fast-btn" class="mobile-btn" alt="sprint" draggable="false" />
         </div>
     </div>
     <div id="crosshair"></div>
