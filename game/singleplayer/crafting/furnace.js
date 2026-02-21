@@ -56,7 +56,6 @@
       if (state.output.id !== recipe.out) return false;
       return state.output.count < 64;
     }
-  }
 
     function consumeFuel(state) {
       if (!state.fuel) return false;

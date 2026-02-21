@@ -825,7 +825,7 @@ window.perlin = perlinInstance;
 
             const createSlot = (item, index, type) => {
                 const slot = document.createElement('div');
-                slot.className = 'inv-slot w-10 h-10 md:w-12 md:h-12';
+                slot.className = 'inv-slot';
                 slot.dataset.index = index;
                 slot.dataset.type = type;
                 slot.onclick = () => handleInventoryClick(index, type);
@@ -951,6 +951,7 @@ window.perlin = perlinInstance;
             const hud = document.getElementById('hud');
             const container2x2 = document.getElementById('crafting-2x2-container');
             const container3x3 = document.getElementById('crafting-3x3-container');
+            const inventoryPanel = document.getElementById('inventory-panel');
 
             if (isInventoryOpen) {
                 isInventoryOpen = false;
@@ -959,6 +960,7 @@ window.perlin = perlinInstance;
                 activeFurnaceKey = null;
                 if (invScreen) invScreen.classList.add('hidden');
                 if (furnaceScreen) furnaceScreen.classList.add('hidden');
+                if (inventoryPanel) inventoryPanel.classList.add('inventory-mode');
                 hud.classList.remove('opacity-0');
                 if (!mobileControls.enabled) document.body.requestPointerLock();
 
@@ -983,9 +985,11 @@ window.perlin = perlinInstance;
             if (isCraftingTableOpen) {
                 container2x2.classList.add('hidden');
                 container3x3.classList.remove('hidden');
+                if (inventoryPanel) inventoryPanel.classList.remove('inventory-mode');
             } else {
                 container2x2.classList.remove('hidden');
                 container3x3.classList.add('hidden');
+                if (inventoryPanel) inventoryPanel.classList.add('inventory-mode');
             }
 
             heldItem = null;
@@ -1012,6 +1016,8 @@ window.perlin = perlinInstance;
             isInventoryOpen = true;
             isCraftingTableOpen = false;
             isFurnaceOpen = true;
+            const inventoryPanel = document.getElementById('inventory-panel');
+            if (inventoryPanel) inventoryPanel.classList.add('inventory-mode');
             activeFurnaceKey = furnaceKey;
 
             heldItem = null;
