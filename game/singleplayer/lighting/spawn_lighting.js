@@ -1,6 +1,6 @@
 (function () {
   function create({ getBlockType, isLiquid, CHUNK_HEIGHT }) {
-    const EMISSIVE_BLOCK_LIGHT = { 4: 2, 9: 4 };
+    const EMISSIVE_BLOCK_LIGHT = { 22: 13, 33: 14 };
 
     function isOpenToSky(wx, wy, wz) {
       for (let y = CHUNK_HEIGHT - 1; y > wy; y--) {
@@ -26,7 +26,7 @@
 
     function getBlockLightLevel(wx, wy, wz) {
       let best = 0;
-      const r = 4;
+      const r = 5;
       for (let dx = -r; dx <= r; dx++) {
         for (let dy = -r; dy <= r; dy++) {
           for (let dz = -r; dz <= r; dz++) {
