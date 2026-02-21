@@ -315,6 +315,7 @@ window.perlin = perlinInstance;
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(window.devicePixelRatio);
             document.body.appendChild(renderer.domElement);
+            setupMobileControls();
             
             window.addEventListener('resize', onWindowResize);
             document.addEventListener('contextmenu', e => e.preventDefault()); 
