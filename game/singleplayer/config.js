@@ -38,7 +38,7 @@
     HEART: getAssetPath('ui/heart_full.png'),
     FOOD: getAssetPath('ui/food_full.png'),
     OAK_PLANK: getAssetPath('textures/oak_planks.png'),
-    CRAFTING_TABLE_SIDE: getAssetPath('textures/crafting_table_side.png'),
+    CRAFTING_TABLE_SIDE: getAssetPath('textures/crafting_table/crafting_table_side.png'),
     CRAFTING_TABLE_TOP: getAssetPath('textures/crafting_table/crafting_table_top.png'),
     CRAFTING_TABLE_SIDE_ALT: getAssetPath('textures/crafting_table/crafting_table_side1.png'),
     CRAFTING_TABLE_FRONT: getAssetPath('textures/crafting_table/crafting_table_front.png'),
