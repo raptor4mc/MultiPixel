@@ -6,38 +6,42 @@
     return t * t * (3 - 2 * t);
   }
 
-  // VERY sharp biome gate
+  // Clean but strong biome transition
   function biomeBlendFactor(continentalness) {
-    // Almost binary switch
-    return smoothstep(0.68, 0.74, continentalness);
+    return smoothstep(0.62, 0.78, continentalness);
   }
 
-function mountainMass(continentalness, erosion, ridges) {
+  function mountainMass(continentalness, erosion, ridges) {
 
-  // Hard inland trigger
-  const inland = clamp((continentalness - 0.65) * 3.0, 0, 1);
+    // Smooth inland ramp (prevents collapse zones)
+    const inland = smoothstep(0.62, 0.85, continentalness);
 
-  // Mountain profile curve (THIS creates /\ shape)
-  const profile = Math.sin(inland * Math.PI);
+    // Fast rise from plains
+    const rise = Math.pow(inland, 1.2);
 
-  // Strong but natural vertical lift
-  const baseMass = profile * 220;
+    // Slight peak compression (avoids flat tops)
+    const peakCompression = 1 - Math.pow(1 - inland, 2.0);
 
-  // Erosion controls steepness
-  const lowErosion = 1 - clamp((erosion + 1) * 0.5, 0, 1);
-  const sharpness = lerp(0.8, 1.5, Math.pow(lowErosion, 1.2));
+    const profile = rise * peakCompression;
 
-  // Ridges enhance the spine, not the whole mountain
-  const ridgeLift =
-    profile * Math.pow(clamp(ridges, 0, 1), 2.0) * 80;
+    // Main vertical lift
+    const baseMass = profile * 190;
 
-  return baseMass * sharpness + ridgeLift;
-}
+    // Steepness control
+    const lowErosion = 1 - clamp((erosion + 1) * 0.5, 0, 1);
+    const sharpness = lerp(0.9, 1.5, Math.pow(lowErosion, 1.1));
+
+    // Ridge spine (not whole mountain)
+    const ridgeLift =
+      profile * Math.pow(clamp(ridges, 0, 1), 2.0) * 70;
+
+    return baseMass * sharpness + ridgeLift;
+  }
 
   const MountainsTerrain = {
     isBiome({ mountainNoise, continentalNoise }) {
-      // Much stricter spawn condition
-      return mountainNoise > 0.72 && continentalNoise > 0.68;
+      // Relaxed slightly so mountains actually appear
+      return mountainNoise > 0.6 && continentalNoise > 0.6;
     },
 
     getHeight({
@@ -52,36 +56,37 @@ function mountainMass(continentalness, erosion, ridges) {
 
       const biomeBlend = biomeBlendFactor(continentalness);
 
+      const baseHeight = BASE_LAND_Y + terrainNoise * 6;
+
       if (biomeBlend <= 0) {
-        return BASE_LAND_Y + terrainNoise * 6;
+        return baseHeight;
       }
 
       const mass = mountainMass(continentalness, erosion, ridges);
 
-      // RARE extreme peaks
+      // Rare high peaks
       const peakBoost =
-        Math.pow(clamp(peakNoise - 0.65, 0, 1), 3.5) * 180;
+        Math.pow(clamp(peakNoise - 0.7, 0, 1), 3.0) * 120;
 
-      // Hard cliffs
+      // Controlled cliffs
       const cliffs =
-        Math.pow(clamp(cliffNoise - 0.75, 0, 1), 2.5) * 80;
-
-      // Minimal surface noise
-      const surface = terrainNoise * 4;
+        Math.pow(clamp(cliffNoise - 0.75, 0, 1), 2.0) * 50;
 
       const mountainHeight =
         BASE_LAND_Y +
         mass +
         peakBoost +
         cliffs +
-        surface;
+        terrainNoise * 4;
 
-      // MUCH sharper transition
-      return lerp(
-        BASE_LAND_Y + terrainNoise * 4,
+      const finalHeight = lerp(
+        baseHeight,
         mountainHeight,
-        Math.pow(biomeBlend, 1.5)
+        Math.pow(biomeBlend, 1.3)
       );
+
+      // SAFETY FLOOR (prevents bedrock void columns)
+      return Math.max(BASE_LAND_Y - 5, finalHeight);
     }
   };
 
