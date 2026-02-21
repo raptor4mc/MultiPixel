@@ -1,59 +1,82 @@
 (function () {
   function lerp(a, b, t) { return a + (b - a) * t; }
+  function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
   function smoothstep(edge0, edge1, x) {
-    let t = Math.clamp((x - edge0) / (edge1 - edge0), 0, 1);
+    let t = clamp((x - edge0) / (edge1 - edge0), 0, 1);
     return t * t * (3 - 2 * t);
   }
-  Math.clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
+  // Much more aggressive mountain separation
   function biomeBlendFactor(continentalness) {
-    if (continentalness < 0.4) return 0;       // plains
-    if (continentalness < 0.6) return 0.5;     // hills
-    return 1;                                   // mountains
-}
+    // Plains handled elsewhere
+    // Only strong inland becomes mountain
+    return smoothstep(0.55, 0.75, continentalness);
+  }
 
-  function mountainFactor(cont, erosion, ridges) {
-    const inland = Math.clamp((cont + 0.2) / 0.9, 0, 1);
-    const erosionInv = Math.clamp(1 - (erosion + 1) * 0.5, 0, 1);
-    const ridgeShape = Math.clamp(ridges, 0, 1);
+  function mountainMass(continentalness, erosion, ridges) {
+    const inland = smoothstep(0.55, 1.0, continentalness);
+    const lowErosion = 1 - clamp((erosion + 1) * 0.5, 0, 1);
 
-    const continentalLift = lerp(8, 60, Math.pow(inland, 1.2));
-    const erosionSharpness = lerp(0.35, 1.35, Math.pow(erosionInv, 1.2));
-    const ridgeLift = lerp(2, 54, Math.pow(ridgeShape, 2));
+    // Big landmass control (prevents hill spam)
+    const baseMass = Math.pow(inland, 2.4) * 140;
 
-    return continentalLift * erosionSharpness + ridgeLift;
+    // Erosion controls steepness only, not height spam
+    const sharpness = lerp(0.6, 1.4, Math.pow(lowErosion, 1.3));
+
+    // Ridges only enhance real mountains
+    const ridgeLift = Math.pow(clamp(ridges, 0, 1), 2.2) * 60;
+
+    return baseMass * sharpness + ridgeLift;
   }
 
   const MountainsTerrain = {
-    isBiome({ mountainNoise, continentalNoise, climateNoise }) {
-      return mountainNoise > 0.55 && continentalNoise > 0.35 && climateNoise > -0.5;
+    isBiome({ mountainNoise, continentalNoise }) {
+      // Make mountains rarer and stronger
+      return mountainNoise > 0.65 && continentalNoise > 0.5;
     },
 
-    getHeight({ BASE_LAND_Y, continentalness, erosion, ridges, terrainNoise, cliffNoise, peakNoise, peaksValleys, jaggedNoise }) {
-      const uplift = mountainFactor(continentalness, erosion, ridges);
-      const curvedUplift = Math.pow(uplift / 50, 1.35) * 150;
+    getHeight({
+      BASE_LAND_Y,
+      continentalness,
+      erosion,
+      ridges,
+      terrainNoise,
+      peakNoise,
+      cliffNoise
+    }) {
 
-      let ridgeShape = Math.pow(1 - Math.abs(peaksValleys), 1.6) * 70;
-      ridgeShape -= Math.pow(Math.max(0, -peaksValleys), 1.5) * 20;
-
-      const peakFactor = Math.pow(Math.max(0, peakNoise - 0.45), 2.1) * 40;
-      const peakRandomness = Math.pow(Math.random(), 3) * 25; // rarer extreme peaks
-      const cliffs = Math.max(0, cliffNoise - 0.65) * 18;
-      const roughness = terrainNoise * 5;
-      const erosionEffect = erosion * 5;
-
-      // Smooth biome blending
       const biomeBlend = biomeBlendFactor(continentalness);
-      
-      const height = BASE_LAND_Y +
-        (curvedUplift * (1 + peakFactor)) +
-        ridgeShape +
-        cliffs +
-        roughness -
-        erosionEffect +
-        peakRandomness;
+      if (biomeBlend <= 0) {
+        // fallback to base terrain if not fully mountainous
+        return BASE_LAND_Y + terrainNoise * 8;
+      }
 
-      return lerp(BASE_LAND_Y + terrainNoise * 10, height, biomeBlend );
+      const mass = mountainMass(continentalness, erosion, ridges);
+
+      // Rare true peaks (noise-based, not random!)
+      const peakBoost =
+        Math.pow(clamp(peakNoise - 0.6, 0, 1), 2.5) * 90;
+
+      // Cliffs only in high regions
+      const cliffs =
+        Math.pow(clamp(cliffNoise - 0.7, 0, 1), 1.8) * 40;
+
+      // Small-scale surface variation (kept low)
+      const surface = terrainNoise * 6;
+
+      const mountainHeight =
+        BASE_LAND_Y +
+        mass +
+        peakBoost +
+        cliffs +
+        surface;
+
+      // Smooth transition from base land to mountain
+      return lerp(
+        BASE_LAND_Y + terrainNoise * 6,
+        mountainHeight,
+        biomeBlend
+      );
     }
   };
 
