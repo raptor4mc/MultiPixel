@@ -244,16 +244,16 @@
 
 
         .inventory-close-btn {
-            width: 26px;
-            height: 26px;
+            width: 34px;
+            height: 34px;
             padding: 0;
             border: none;
             background: transparent;
             cursor: pointer;
             pointer-events: auto;
             position: absolute;
-            right: 6px;
-            bottom: 6px;
+            right: 8px;
+            top: 8px;
             z-index: 5;
         }
 
@@ -267,13 +267,15 @@
 
         .menu-panel {
             position: relative;
-            width: 256px;
-            height: 256px;
+            width: 384px;
+            height: 290px;
             border: 0;
             box-shadow: none;
             image-rendering: pixelated;
-            background-size: 100% 100%;
+            background-size: 100% auto;
+            background-position: top center;
             background-repeat: no-repeat;
+            overflow: hidden;
         }
 
         #inventory-panel.inventory-mode {
@@ -295,35 +297,34 @@
 
         .menu-lower {
             position: absolute;
-            left: 16px;
-            top: 111px;
-            width: 224px;
+            left: 24px;
+            top: 166px;
+            width: 336px;
         }
 
         .slot-grid {
             display: grid;
-            gap: 1px;
+            gap: 2px;
         }
 
-        .grid-2x2 { grid-template-columns: repeat(2, 24px); }
-        .grid-3x3 { grid-template-columns: repeat(3, 24px); }
-        .grid-9x3 { grid-template-columns: repeat(9, 24px); grid-template-rows: repeat(3, 24px); }
-        .grid-9x1 { grid-template-columns: repeat(9, 24px); margin-top: 8px; }
+        .grid-2x2 { grid-template-columns: repeat(2, 36px); }
+        .grid-3x3 { grid-template-columns: repeat(3, 36px); }
+        .grid-9x3 { grid-template-columns: repeat(9, 36px); grid-template-rows: repeat(3, 36px); }
+        .grid-9x1 { grid-template-columns: repeat(9, 36px); margin-top: 10px; }
 
-        #crafting-input-grid { position: absolute; left: 129px; top: 30px; }
-        #crafting-output-slot-container { position: absolute; left: 205px; top: 42px; }
+        #crafting-input-grid { position: absolute; left: 194px; top: 45px; }
+        #crafting-output-slot-container { position: absolute; left: 290px; top: 60px; }
 
-        #crafting-table-grid { position: absolute; left: 23px; top: 17px; }
-        #crafting-table-output-slot { position: absolute; left: 147px; top: 29px; }
+        #crafting-table-grid { position: absolute; left: 34px; top: 25px; }
+        #crafting-table-output-slot { position: absolute; left: 204px; top: 43px; }
 
-        #furnace-input-slot { position: absolute; left: 41px; top: 19px; }
-        #furnace-fuel-slot { position: absolute; left: 41px; top: 55px; }
-        #furnace-output-slot { position: absolute; left: 184px; top: 37px; }
+        #furnace-input-slot { position: absolute; left: 62px; top: 30px; }
+        #furnace-fuel-slot { position: absolute; left: 62px; top: 84px; }
+        #furnace-output-slot { position: absolute; left: 260px; top: 57px; }
 
         .slot-grid-single,
         .slot-grid-single .inv-slot,
         .slot-grid .inv-slot {
-            width: 24px;
-            height: 24px;
+            width: 36px;
+            height: 36px;
         }
-
