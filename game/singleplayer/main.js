@@ -327,6 +327,7 @@ window.perlin = perlinInstance;
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(window.devicePixelRatio);
             document.body.appendChild(renderer.domElement);
+            setupMobileControls();
             
             window.addEventListener('resize', onWindowResize);
             document.addEventListener('contextmenu', e => e.preventDefault()); 
@@ -944,7 +945,7 @@ window.perlin = perlinInstance;
         // --- END: Renders the item attached to the mouse cursor when inventory is open ---
 
 
-        function toggleInventory(openTableMode = false) {
+        function toggleInventory(openTableMode = false, openFurnaceMode = false, furnaceKey = null) {
             const invScreen = document.getElementById('inventory-screen');
             const furnaceScreen = document.getElementById('furnace-screen');
             const hud = document.getElementById('hud');
@@ -2028,6 +2029,7 @@ window.perlin = perlinInstance;
                     return;
                 }
                 if (!isInventoryOpen) {
+                    if (k === 'w' || k === 'a' || k === 's' || k === 'd') switchToDesktopMode();
                     player.keys[k] = true;
                     if (k >= '1' && k <= '9') {
                         selectedHotbarIndex = parseInt(k) - 1;
@@ -2461,6 +2463,66 @@ if (ravineMask > 0.78) {
                 return data[x + y*16 + z*16*96];
             };
 
+            // Greedy meshing for top faces (largest perf win in terrain worlds).
+            const topCovered = new Uint8Array(data.length);
+            for (let y = 0; y < 96; y++) {
+                const mask = new Array(16 * 16).fill(null);
+                for (let z = 0; z < 16; z++) {
+                    for (let x = 0; x < 16; x++) {
+                        const id = get(x, y, z);
+                        if (id === 0) continue;
+                        const mat = blockMaterials[id];
+                        if (!mat || mat.transparent || (mat.textured && mat.textureKey === 'LEAVES')) continue;
+                        const above = get(x, y + 1, z);
+                        const aboveMat = blockMaterials[above];
+                        if (above !== 0 && !(aboveMat && aboveMat.transparent)) continue;
+                        mask[x + z * 16] = id;
+                    }
+                }
+
+                for (let z = 0; z < 16; z++) {
+                    for (let x = 0; x < 16; ) {
+                        const id = mask[x + z * 16];
+                        if (!id) { x++; continue; }
+
+                        let w = 1;
+                        while (x + w < 16 && mask[x + w + z * 16] === id) w++;
+
+                        let h = 1;
+                        outer: while (z + h < 16) {
+                            for (let k = 0; k < w; k++) {
+                                if (mask[x + k + (z + h) * 16] !== id) break outer;
+                            }
+                            h++;
+                        }
+
+                        const materialKey = getMaterialKey(id, [0,1,0]);
+                        if (!geometryData[materialKey]) geometryData[materialKey] = { pos: [], norm: [], col: [], uv: [] };
+                        const gd = geometryData[materialKey];
+                        const wx0 = x + cx * 16, wz0 = z + cz * 16;
+                        const wx1 = wx0 + w, wz1 = wz0 + h, yy = y + 1;
+
+                        gd.pos.push(wx0, yy, wz1, wx1, yy, wz1, wx1, yy, wz0, wx0, yy, wz0);
+                        gd.norm.push(0,1,0, 0,1,0, 0,1,0, 0,1,0);
+                        if (materials[materialKey] && materials[materialKey].map) {
+                            gd.uv.push(0,1, 0,0, 1,0, 1,1);
+                        } else {
+                            const c = new THREE.Color(blockMaterials[id].color || 0xd1c17e);
+                            gd.col.push(c.r,c.g,c.b, c.r,c.g,c.b, c.r,c.g,c.b, c.r,c.g,c.b);
+                        }
+
+                        for (let dz = 0; dz < h; dz++) {
+                            for (let dx = 0; dx < w; dx++) {
+                                topCovered[(x + dx) + y * 16 + (z + dz) * 16 * 96] = 1;
+                                mask[x + dx + (z + dz) * 16] = null;
+                            }
+                        }
+
+                        x += w;
+                    }
+                }
+            }
+
             for(let x=0; x<16; x++){
                 for(let y=0; y<96; y++){
                     for(let z=0; z<16; z++){
@@ -2471,6 +2533,7 @@ if (ravineMask > 0.78) {
                         const isTrans = mat.transparent || (mat.textured && mat.textureKey === 'LEAVES'); 
                         
                         for(let i=0; i<6; i++){
+                            if (i === 2 && topCovered[x + y*16 + z*16*96]) continue;
                             const f = faces[i];
                             const nid = get(x+f.dir[0], y+f.dir[1], z+f.dir[2]);
                             const neighborMat = blockMaterials[nid];
