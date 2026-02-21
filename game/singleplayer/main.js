@@ -29,7 +29,7 @@
         const PickaxeSystem = window.PickaxeSystem || {};
         const SpawnLighting = window.SpawnLighting || {};
 
-        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-21-06';
+        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-21-07';
         console.info('[Singleplayer build]', window.__SINGLEPLAYER_BUILD__);
 
         const TerrainModules = {};
@@ -142,8 +142,10 @@ window.perlin = perlinInstance;
         const noHover = window.matchMedia ? window.matchMedia('(hover: none)').matches : false;
         const touchCapable = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
         const mobileControls = {
-            // Enable mobile mode on true touch devices, but avoid desktop hybrids with hover+large screens.
-            enabled: coarsePointer || (touchCapable && noHover) || (touchCapable && window.innerWidth <= 1024),
+            // User can choose mode from the start screen; this is the suggested default.
+            autoEnabled: coarsePointer || (touchCapable && noHover) || (touchCapable && window.innerWidth <= 1024),
+            enabled: false,
+            initialized: false,
             moveX: 0,
             moveY: 0,
             sprint: false,
@@ -292,6 +294,7 @@ window.perlin = perlinInstance;
             setupPointerLockControls();
             setupKeyboardControls();
             setupBlockInteraction();
+            setupInputModeChooser();
             setInitialPlayerPosition();
             
           
@@ -1640,6 +1643,29 @@ window.perlin = perlinInstance;
 
        
 
+        function setupInputModeChooser() {
+            const mobileBtn = document.getElementById('mode-mobile-btn');
+            const pcBtn = document.getElementById('mode-pc-btn');
+            if (!mobileBtn || !pcBtn) return;
+
+            const applyMode = (mode) => {
+                const mobile = mode === 'mobile';
+                mobileControls.enabled = mobile;
+                mobileBtn.classList.toggle('active', mobile);
+                pcBtn.classList.toggle('active', !mobile);
+                if (mobile) {
+                    if (mobileControls.initialized) setMobileHudVisible(true);
+                    else setupMobileControls();
+                } else {
+                    setMobileHudVisible(false);
+                }
+            };
+
+            mobileBtn.addEventListener('click', (e) => { e.preventDefault(); applyMode('mobile'); });
+            pcBtn.addEventListener('click', (e) => { e.preventDefault(); applyMode('pc'); });
+            applyMode(mobileControls.autoEnabled ? 'mobile' : 'pc');
+        }
+
         function setMobileHudVisible(visible) {
             const controlsEl = document.getElementById('mobile-controls');
             const crosshair = document.getElementById('crosshair');
@@ -1671,7 +1697,8 @@ window.perlin = perlinInstance;
 
 
         function setupMobileControls() {
-            if (!mobileControls.enabled) return;
+            if (!mobileControls.enabled || mobileControls.initialized) return;
+            mobileControls.initialized = true;
 
             const controlsEl = document.getElementById('mobile-controls');
             const joyWrap = document.getElementById('mobile-joystick');
