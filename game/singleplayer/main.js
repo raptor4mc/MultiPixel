@@ -202,11 +202,13 @@ window.perlin = perlinInstance;
                         (texture) => {
                             texture.magFilter = THREE.NearestFilter; // Sharp pixel look
                             texture.minFilter = THREE.NearestFilter;
+                            const matId = getMaterialIdByTextureKey(key);
+                            const matCfg = matId >= 0 ? blockMaterials[matId] : {};
                             materials[key] = new THREE.MeshStandardMaterial({
                                 map: texture,
                                 side: key === 'LEAVES' ? THREE.DoubleSide : THREE.FrontSide,
-                                transparent: blockMaterials[getMaterialIdByTextureKey(key)].transparent || false,
-                                opacity: blockMaterials[getMaterialIdByTextureKey(key)].opacity || 1.0,
+                                transparent: matCfg.transparent || false,
+                                opacity: matCfg.opacity || 1.0,
                             });
                             resolve();
                         },
@@ -248,7 +250,13 @@ window.perlin = perlinInstance;
         
         function getMaterialIdByTextureKey(key) {
             for (const id in blockMaterials) {
-                if (blockMaterials[id].textureKey === key) return parseInt(id);
+                const mat = blockMaterials[id];
+                if (mat.textureKey === key) return parseInt(id);
+                if (mat.textureByFace) {
+                    for (const faceKey in mat.textureByFace) {
+                        if (mat.textureByFace[faceKey] === key) return parseInt(id);
+                    }
+                }
             }
             return -1;
         }
@@ -2420,7 +2428,15 @@ if (ravineMask > 0.78) {
             const mat = blockMaterials[id];
             
             if (mat.textured) {
-                const key = mat.textureKey;
+                let key = mat.textureKey;
+                if (mat.textureByFace && faceDir) {
+                    if (faceDir[1] === 1) key = mat.textureByFace.top || key;
+                    else if (faceDir[1] === -1) key = mat.textureByFace.bottom || key;
+                    else if (faceDir[0] === 1) key = mat.textureByFace.posX || key;
+                    else if (faceDir[0] === -1) key = mat.textureByFace.negX || key;
+                    else if (faceDir[2] === 1) key = mat.textureByFace.posZ || key;
+                    else if (faceDir[2] === -1) key = mat.textureByFace.negZ || key;
+                }
                 // Use the loaded material key if it exists, otherwise use a colored fallback key
                 if (materials[key] && materials[key].map) return key; 
                 return `textures/Fallback.png`;
