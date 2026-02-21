@@ -29,7 +29,7 @@
         const PickaxeSystem = window.PickaxeSystem || {};
         const SpawnLighting = window.SpawnLighting || {};
 
-        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-21-08';
+        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-21-09';
         console.info('[Singleplayer build]', window.__SINGLEPLAYER_BUILD__);
 
         const TerrainModules = {};
@@ -1123,9 +1123,10 @@ window.perlin = perlinInstance;
         let physicsTickCounter = 0;
 
         function applyBlockPhysics(nowMs) {
-            if (!window.WaterPhysics || !window.SandPhysics) return;
+            if (!window.WaterPhysics || !window.SandPhysics || !window.LavaPhysics) return;
             if (nowMs - lastPhysicsTickMs < 50) return;
             lastPhysicsTickMs = nowMs;
+            physicsTickCounter++;
 
             const centerCx = Math.floor(yawObject.position.x / CHUNK_SIZE);
             const centerCz = Math.floor(yawObject.position.z / CHUNK_SIZE);
@@ -1151,10 +1152,9 @@ window.perlin = perlinInstance;
                             const z = (i * 7 + y * 3) % CHUNK_SIZE;
                             const idx = x + y * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
                             const type = data[idx];
-                            const isWater =
-                                    type === 4 ||
-                                    (type >= 47 && type <= 53);
-                                if (!isWater && type !== 7) continue;
+                            const isWater = type === 4 || (type >= 47 && type <= 53);
+                            const isLava = type === 33 || (type >= 60 && type <= 66);
+                            if (!isWater && !isLava && type !== 7) continue;
 
 
                             const wx = cx * CHUNK_SIZE + x;
@@ -1164,6 +1164,7 @@ window.perlin = perlinInstance;
                                 getBlock: getBlockType,
                                 setBlock: (xw, yw, zw, nt) => setBlockTypeRaw(xw, yw, zw, nt, true),
                                 swapBlocks: swapBlocksRaw,
+                                gameTick: physicsTickCounter,
                                 random: Math.random,
                             };
 
@@ -1171,6 +1172,8 @@ window.perlin = perlinInstance;
                                 
                                 if (isWater) {
                                         changed = window.WaterPhysics.tryUpdate(ctx);
+                                } else if (isLava) {
+                                        changed = window.LavaPhysics.tryUpdate(ctx);
                                 } else if (type === 7) {
                                         changed = window.SandPhysics.tryUpdate(ctx);
                                 }
