@@ -29,7 +29,7 @@
         const PickaxeSystem = window.PickaxeSystem || {};
         const SpawnLighting = window.SpawnLighting || {};
 
-        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-21-09';
+        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-21-10';
         console.info('[Singleplayer build]', window.__SINGLEPLAYER_BUILD__);
 
         const TerrainModules = {};
@@ -166,6 +166,8 @@ window.perlin = perlinInstance;
         let scene, camera, renderer, perlin, raycaster;
         let worldSeed = 0;
         let lightingSystem = null;
+        const frustum = new THREE.Frustum();
+        const cameraViewProj = new THREE.Matrix4();
         const chunks = new Map();
         const worldGroup = new THREE.Group();
         let yawObject, pitchObject; 
@@ -302,7 +304,7 @@ window.perlin = perlinInstance;
             updateHotbarUI();
             const closeBtn = document.getElementById('inventory-close-btn');
             const closeIcon = document.getElementById('inventory-close-icon');
-            if (closeIcon) closeIcon.src = `${window.SingleplayerConfig?.REPO_BASE_PREFIX || '/MultiPixel'}/game/singleplayer/assets/ui/cdb_clear.png`;
+            if (closeIcon) closeIcon.src = `${window.SingleplayerConfig?.REPO_BASE_PREFIX || '/MultiPixel'}/game/singleplayer/assets/mobile/cdb_clear.png`;
             if (closeBtn) closeBtn.addEventListener('click', () => {
                 if (isInventoryOpen) toggleInventory();
             });
@@ -2242,11 +2244,35 @@ if (ravineMask > 0.78) {
         function createChunk(cx, cz) {
             const data = generateChunkData(cx, cz);
             const group = new THREE.Group();
-            group.userData = { chunkData: data, cx, cz };
+            group.userData = { chunkData: data, cx, cz, meshHash: null, frustumRadius: Math.sqrt((CHUNK_SIZE*CHUNK_SIZE)*0.5 + (CHUNK_HEIGHT*CHUNK_HEIGHT)*0.25) };
             updateChunkGeometry(group, data);
             chunks.set(`${cx},${cz}`, group);
             worldGroup.add(group);
             return group;
+        }
+
+
+        function computeChunkHash(data) {
+            let h = 2166136261 >>> 0;
+            for (let i = 0; i < data.length; i++) {
+                h ^= data[i] & 0xff;
+                h = Math.imul(h, 16777619) >>> 0;
+            }
+            return h >>> 0;
+        }
+
+        function updateChunkFrustumCulling() {
+            camera.updateMatrixWorld();
+            cameraViewProj.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+            frustum.setFromProjectionMatrix(cameraViewProj);
+            for (const group of chunks.values()) {
+                const center = new THREE.Vector3(
+                    group.userData.cx * CHUNK_SIZE + CHUNK_SIZE * 0.5,
+                    CHUNK_HEIGHT * 0.5,
+                    group.userData.cz * CHUNK_SIZE + CHUNK_SIZE * 0.5
+                );
+                group.visible = frustum.intersectsSphere(new THREE.Sphere(center, group.userData.frustumRadius || 40));
+            }
         }
 
         function updateChunkAndNeighbors(centerGroup, lx, lz) {
@@ -2289,7 +2315,10 @@ if (ravineMask > 0.78) {
         }
 
         function updateChunkGeometry(group, data) {
-         
+            const nextHash = computeChunkHash(data);
+            if (group.userData.meshHash === nextHash && group.children.length > 0) return;
+            group.userData.meshHash = nextHash;
+
             while(group.children.length) group.remove(group.children[0]);
             
             // Map to hold position/normal/uv data arrays for each material key
@@ -2316,6 +2345,66 @@ if (ravineMask > 0.78) {
                 return data[x + y*16 + z*16*96];
             };
 
+            // Greedy meshing for top faces (largest perf win in terrain worlds).
+            const topCovered = new Uint8Array(data.length);
+            for (let y = 0; y < 96; y++) {
+                const mask = new Array(16 * 16).fill(null);
+                for (let z = 0; z < 16; z++) {
+                    for (let x = 0; x < 16; x++) {
+                        const id = get(x, y, z);
+                        if (id === 0) continue;
+                        const mat = blockMaterials[id];
+                        if (!mat || mat.transparent || (mat.textured && mat.textureKey === 'LEAVES')) continue;
+                        const above = get(x, y + 1, z);
+                        const aboveMat = blockMaterials[above];
+                        if (above !== 0 && !(aboveMat && aboveMat.transparent)) continue;
+                        mask[x + z * 16] = id;
+                    }
+                }
+
+                for (let z = 0; z < 16; z++) {
+                    for (let x = 0; x < 16; ) {
+                        const id = mask[x + z * 16];
+                        if (!id) { x++; continue; }
+
+                        let w = 1;
+                        while (x + w < 16 && mask[x + w + z * 16] === id) w++;
+
+                        let h = 1;
+                        outer: while (z + h < 16) {
+                            for (let k = 0; k < w; k++) {
+                                if (mask[x + k + (z + h) * 16] !== id) break outer;
+                            }
+                            h++;
+                        }
+
+                        const materialKey = getMaterialKey(id, [0,1,0]);
+                        if (!geometryData[materialKey]) geometryData[materialKey] = { pos: [], norm: [], col: [], uv: [] };
+                        const gd = geometryData[materialKey];
+                        const wx0 = x + cx * 16, wz0 = z + cz * 16;
+                        const wx1 = wx0 + w, wz1 = wz0 + h, yy = y + 1;
+
+                        gd.pos.push(wx0, yy, wz1, wx1, yy, wz1, wx1, yy, wz0, wx0, yy, wz0);
+                        gd.norm.push(0,1,0, 0,1,0, 0,1,0, 0,1,0);
+                        if (materials[materialKey] && materials[materialKey].map) {
+                            gd.uv.push(0,1, 0,0, 1,0, 1,1);
+                        } else {
+                            const c = new THREE.Color(blockMaterials[id].color || 0xd1c17e);
+                            gd.col.push(c.r,c.g,c.b, c.r,c.g,c.b, c.r,c.g,c.b, c.r,c.g,c.b);
+                        }
+
+                        for (let dz = 0; dz < h; dz++) {
+                            for (let dx = 0; dx < w; dx++) {
+                                topCovered[(x + dx) + y * 16 + (z + dz) * 16 * 96] = 1;
+                                mask[x + dx + (z + dz) * 16] = null;
+                            }
+                        }
+
+                        x += w;
+                    }
+                }
+            }
+
             for(let x=0; x<16; x++){
                 for(let y=0; y<96; y++){
                     for(let z=0; z<16; z++){
@@ -2326,6 +2415,7 @@ if (ravineMask > 0.78) {
                         const isTrans = mat.transparent || (mat.textured && mat.textureKey === 'LEAVES'); 
                         
                         for(let i=0; i<6; i++){
+                            if (i === 2 && topCovered[x + y*16 + z*16*96]) continue;
                             const f = faces[i];
                             const nid = get(x+f.dir[0], y+f.dir[1], z+f.dir[2]);
                             const neighborMat = blockMaterials[nid];
@@ -2376,6 +2466,7 @@ if (ravineMask > 0.78) {
                 
                 const geom = new THREE.BufferGeometry();
                 geom.setAttribute('position', new THREE.Float32BufferAttribute(gd.pos, 3));
+                geom.getAttribute('position').setUsage(THREE.StaticDrawUsage);
                 geom.setAttribute('normal', new THREE.Float32BufferAttribute(gd.norm, 3));
                 
                 let currentMaterial = materials[key];
@@ -2400,7 +2491,9 @@ if (ravineMask > 0.78) {
                 for(let i=0; i<gd.pos.length/3; i+=4) idx.push(i, i+1, i+2, i, i+2, i+3);
                 geom.setIndex(idx);
 
-                group.add(new THREE.Mesh(geom, currentMaterial));
+                const mesh = new THREE.Mesh(geom, currentMaterial);
+                mesh.frustumCulled = true;
+                group.add(mesh);
             }
         }
 
@@ -2540,6 +2633,7 @@ if (ravineMask > 0.78) {
                 updatePlayerMovement();
                 updateMining(delta);
                 applyBlockPhysics(time);
+                updateChunkFrustumCulling();
             } else {
                 miningState.active = false;
                 updateBreakingOverlay();
