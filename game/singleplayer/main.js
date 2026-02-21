@@ -29,7 +29,7 @@
         const PickaxeSystem = window.PickaxeSystem || {};
         const SpawnLighting = window.SpawnLighting || {};
 
-        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-14-15';
+        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-21-01';
         console.info('[Singleplayer build]', window.__SINGLEPLAYER_BUILD__);
 
         const TerrainModules = {};
@@ -64,6 +64,11 @@
         TerrainModules['plains'] = window.PlainsTerrain || {
             isBiome: function () { return true; },
             getHeight: function (ctx) { return ctx.BASE_LAND_Y + ctx.continentalMask * 8 + ctx.terrainNoise * 2; }
+        };
+
+        TerrainModules['snowyPlains'] = window.SnowyPlainsTerrain || {
+            isBiome: function (ctx) { return ctx.tempNoise < -0.34 && ctx.humidityNoise > -0.12 && ctx.mountainNoise < 0.58; },
+            getHeight: function (ctx) { return ctx.BASE_LAND_Y + ctx.continentalMask * 6 + ctx.terrainNoise * 2 - ctx.erosionNoise; }
         };
 
         TerrainModules['mountains'] = window.MountainsTerrain || {
@@ -1361,6 +1366,7 @@ window.perlin = perlinInstance;
             { name: 'Desert', temp: 0.09, humidity: -0.12, continentalness: 0.18, erosion: 0.08, weirdness: 0.06 },
             { name: 'Forest', temp: 0.0, humidity: 0.16, continentalness: 0.14, erosion: 0.06, weirdness: -0.04 },
             { name: 'Plains', temp: -0.02, humidity: 0.02, continentalness: 0.1, erosion: 0.2, weirdness: 0.02 },
+            { name: 'Snowy Plains', temp: -0.52, humidity: 0.04, continentalness: 0.12, erosion: 0.18, weirdness: -0.02 },
         ];
 
         function sampleClimateVector(wx, wz, y = SEA_LEVEL) {
@@ -1391,43 +1397,60 @@ window.perlin = perlinInstance;
             return best;
         }
 
-        function getBiome(wx, wz) {
+
+        function clamp01(v) { return Math.max(0, Math.min(1, v)); }
+        function smoothstep(edge0, edge1, x) {
+            const t = clamp01((x - edge0) / (edge1 - edge0));
+            return t * t * (3 - 2 * t);
+        }
+        function lerp(a, b, t) { return a + (b - a) * t; }
+        function biomeWeights(wx, wz) {
             const tv = sampleTerrainVector(wx, wz);
             const climate = sampleClimateVector(wx, wz, SEA_LEVEL + 8);
-            const detailNoise = octaveNoise2D(wx, wz, 3, 0.6, 2.0, 0.003, 0, 0);
             const mountainNoise = (Math.abs(octaveNoise2D(wx, wz, 3, 0.56, 2.0, 0.0013, -400, 750)) + 1) * 0.5;
             const continentalNoise = (tv.continentalness + 1) * 0.5;
-            const distFromCenter = Math.sqrt(wx * wx + wz * wz);
-            const riverMask = getRiverMask(wx, wz);
+            const moistureNoise = octaveNoise2D(wx, wz, 3, 0.55, 2.0, 0.0007, 1000, 1000);
 
-            if (TerrainModules['mountains'].isBiome({ mountainNoise, continentalNoise, climateNoise: climate.temp })) return 'Mountains';
-            if (TerrainModules['ocean'].isBiome({ continentalNoise, climateNoise: climate.temp })) return 'Ocean';
+            const oceanW = smoothstep(0.34, 0.0, continentalNoise);
+            const mountainW = smoothstep(0.49, 0.82, mountainNoise) * smoothstep(0.30, 0.85, continentalNoise);
+            const desertW = smoothstep(-0.05, 0.42, climate.temp) * smoothstep(0.30, -0.26, climate.humidity) * smoothstep(0.26, 0.86, continentalNoise);
+            const snowyW = smoothstep(-0.22, -0.62, climate.temp) * smoothstep(-0.20, 0.46, climate.humidity) * smoothstep(0.20, 0.84, continentalNoise) * (1 - mountainW * 0.78);
+            const forestW = smoothstep(-0.16, 0.40, climate.humidity) * smoothstep(-0.36, 0.42, climate.temp) * (1 - desertW * 0.65);
+            const plainsW = 0.50 + smoothstep(0.12, 0.72, continentalNoise) * 0.30;
 
-            const aridNoise = octaveNoise2D(wx, wz, 3, 0.54, 2.0, 0.0016, 1400, -900);
-            const heatNoise = octaveNoise2D(wx, wz, 2, 0.58, 2.0, 0.0022, -1700, 500);
-            const likelyDesert = aridNoise > 0.18 && heatNoise > -0.05 && continentalNoise > 0.35 && mountainNoise < 0.72 && riverMask < 0.28;
-            const likelyForest = climate.humidity > 0.16 && climate.temp > -0.35 && climate.temp < 0.38;
-
-            let selected = chooseBiomeByClimate(climate);
-            if (likelyDesert) selected = 'Desert';
-            else if (likelyForest && selected !== 'Desert') selected = 'Forest';
-
-            if (selected === 'Desert') {
-                const isDesert = TerrainModules['desert'].isBiome({
-                    climateNoise: climate.temp,
-                    moistureNoise: Math.min(climate.humidity, octaveNoise2D(wx, wz, 3, 0.55, 2.0, 0.0007, 1000, 1000)),
-                    continentalNoise,
-                });
-                if (!isDesert || riverMask > 0.35) selected = 'Plains';
+            const total = oceanW + mountainW + desertW + snowyW + forestW + plainsW;
+            if (total <= 0) {
+                return {
+                    tv,
+                    climate,
+                    weights: { Ocean: 0, Mountains: 0, Desert: 0, Forest: 0, Plains: 1, 'Snowy Plains': 0 }
+                };
             }
 
-            const shouldForceForest = climate.humidity > 0.14 && detailNoise > -0.22 && climate.temp > -0.35;
-            if (selected === 'Forest' && !TerrainModules['oakForest'].isBiome({ detailNoise, humidityNoise: climate.humidity, distFromCenter, ISLAND_RADIUS }) && !shouldForceForest) {
-                selected = 'Plains';
-            } else if (selected === 'Plains' && shouldForceForest && climate.temp > -0.35) {
-                selected = 'Forest';
-            }
+            return {
+                tv,
+                climate,
+                weights: {
+                    Ocean: oceanW / total,
+                    Mountains: mountainW / total,
+                    Desert: desertW / total,
+                    Forest: forestW / total,
+                    Plains: plainsW / total,
+                    'Snowy Plains': snowyW / total,
+                }
+            };
+        }
 
+        function getBiome(wx, wz) {
+            const { weights } = biomeWeights(wx, wz);
+            let selected = 'Plains';
+            let maxW = -1;
+            for (const [name, w] of Object.entries(weights)) {
+                if (w > maxW) {
+                    maxW = w;
+                    selected = name;
+                }
+            }
             return selected;
         }
 
@@ -1487,49 +1510,55 @@ window.perlin = perlinInstance;
         function getNoiseGroundHeight(wx, wz, biome) {
             const tv = sampleTerrainVector(wx, wz);
             const continentalMask = (tv.continentalness + 1) * 0.5;
-            const terrainNoise = (perlin.noise2D(wx * 0.03, wz * 0.03) + 1) * 0.5;
-            const detailNoise = (perlin.noise2D(wx * 0.08, wz * 0.08) + 1) * 0.5;
+            const terrainNoise = (perlin.noise2D(wx * 0.02, wz * 0.02) + 1) * 0.5;
+            const detailNoise = (perlin.noise2D(wx * 0.045, wz * 0.045) + 1) * 0.5;
             const erosionNoise = (tv.erosion + 1) * 0.5;
             const ridgeNoise = Math.abs(perlin.noise2D(wx * 0.02 + 50, wz * 0.02 + 50));
             const peakNoise = Math.abs(perlin.noise2D(wx * 0.007 - 250, wz * 0.007 + 400));
             const jaggedNoise = Math.abs(octaveNoise2D(wx, wz, 5, 0.46, 2.25, 0.013, -1200, 950));
             const cliffNoise = Math.abs(perlin.noise2D(wx * 0.012 - 910, wz * 0.012 + 260));
             const deepNoise = (perlin.noise2D(wx * 0.01 - 200, wz * 0.01 + 430) + 1) * 0.5;
-            const duneNoise = (perlin.noise2D(wx * 0.045 + 15, wz * 0.045 - 15) + 1) * 0.5;
+            const bigDuneNoise = (perlin.noise2D(wx * 0.016 + 15, wz * 0.016 - 15) + 1) * 0.5;
+            const duneDetailNoise = (perlin.noise2D(wx * 0.038 + 120, wz * 0.038 - 70) + 1) * 0.5;
+            const rockMaskNoise = (perlin.noise2D(wx * 0.009 - 510, wz * 0.009 + 230) + 1) * 0.5;
+            const { weights } = biomeWeights(wx, wz);
 
-            let h;
-            if (biome === 'Plains') {
-                h = TerrainModules['plains'].getHeight({ BASE_LAND_Y, continentalMask, terrainNoise, erosionNoise });
-            } else if (biome === 'Forest') {
-                h = TerrainModules['oakForest'].getHeight({ BASE_LAND_Y, continentalMask, terrainNoise, erosionNoise });
-            } else if (biome === 'Desert') {
-                h = TerrainModules['desert'].getHeight({ BASE_LAND_Y, continentalMask, terrainNoise, duneNoise });
-            } else if (biome === 'Mountains') {
-                h = TerrainModules['mountains'].getHeight({
-                    BASE_LAND_Y,
-                    continentalness: tv.continentalness,
-                    erosion: tv.erosion,
-                    ridges: tv.ridges,
-                    peaksValleys: tv.peaksValleys,
-                    terrainNoise,
-                    cliffNoise,
-                    peakNoise,
-                    jaggedNoise,
-                });
-            } else {
-                h = TerrainModules['ocean'].getHeight({ SEA_LEVEL, deepNoise, terrainNoise });
-            }
+            const plainsH = TerrainModules['plains'].getHeight({ BASE_LAND_Y, continentalMask, terrainNoise, erosionNoise });
+            const forestH = TerrainModules['oakForest'].getHeight({ BASE_LAND_Y, continentalMask, terrainNoise, erosionNoise });
+            const desertH = TerrainModules['desert'].getHeight({ BASE_LAND_Y, continentalMask, bigDuneNoise, duneDetailNoise, rockMaskNoise });
+            const snowyH = TerrainModules['snowyPlains'].getHeight({ BASE_LAND_Y, continentalMask, terrainNoise, erosionNoise });
+            const mountainH = TerrainModules['mountains'].getHeight({
+                BASE_LAND_Y,
+                continentalness: tv.continentalness,
+                erosion: tv.erosion,
+                ridges: tv.ridges,
+                peaksValleys: tv.peaksValleys,
+                terrainNoise,
+                cliffNoise,
+                peakNoise,
+                jaggedNoise,
+            });
+            const oceanH = TerrainModules['ocean'].getHeight({ SEA_LEVEL, deepNoise, terrainNoise });
 
-            h += detailNoise * (biome === 'Mountains' ? 1.2 : 0.7);
+            let h =
+                plainsH * weights['Plains'] +
+                forestH * weights['Forest'] +
+                desertH * weights['Desert'] +
+                snowyH * weights['Snowy Plains'] +
+                mountainH * weights['Mountains'] +
+                oceanH * weights['Ocean'];
+
+            const mountainWeight = weights['Mountains'];
+            h += detailNoise * lerp(0.36, 1.0, mountainWeight);
 
             const riverInfluence = getRiverMask(wx, wz);
             h = TerrainModules['river'].applyHeight({ height: h, riverInfluence, SEA_LEVEL });
 
             const ravine = getRavineMask(wx, wz);
-            if (ravine > 0.84 && biome !== 'Ocean') h -= (ravine - 0.84) * 70;
+            if (ravine > 0.84 && weights['Ocean'] < 0.5) h -= (ravine - 0.84) * 55;
 
-            if (biome === 'Mountains' && h < SEA_LEVEL + 8) h = SEA_LEVEL + 8;
-            if (h < SEA_LEVEL - 6 && biome !== 'Ocean') h = SEA_LEVEL - 6;
+            if (mountainWeight > 0.5 && h < SEA_LEVEL + 8) h = SEA_LEVEL + 8;
+            if (h < SEA_LEVEL - 6 && weights['Ocean'] < 0.5) h = SEA_LEVEL - 6;
             return Math.floor(h);
         }
 
@@ -1557,11 +1586,12 @@ window.perlin = perlinInstance;
             if (wy === 0) return 14;
             if (wy < h) {
                 if (biome === 'Desert') return 7;
+                if (biome === 'Snowy Plains') return wy >= h - 1 ? 15 : 59;
                 if (biome === 'Mountains') {
                     if (wy >= h - 1 && h > SEA_LEVEL + 16) return 15;
                     return 3;
                 }
-                return 1;
+                return wy >= h - 1 ? 1 : (wy >= h - 4 ? 2 : 3);
             }
             if (wy < SEA_LEVEL) return 4;
             return 0;
@@ -1664,6 +1694,13 @@ window.perlin = perlinInstance;
                                      t = 7;
                                  } else {
                                      t = 13;
+                                 }
+                             } else if (biome === 'Snowy Plains') {
+                                 if (distFromSurface === 0) {
+                                     t = 15;
+                                     surfaceBlockType = 15;
+                                 } else {
+                                     t = 59;
                                  }
                              } else if (biome === 'Mountains') {
                                  const isSnowCap = h > SEA_LEVEL + 26;
