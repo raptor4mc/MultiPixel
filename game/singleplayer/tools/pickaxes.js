@@ -4,7 +4,7 @@
     12: { name: 'Stone Pickaxe', tier: 2, hardBlockSpeed: 0.38, softBlockPenalty: 1.02 },
   };
 
-  const HARD_BLOCKS = new Set([3, 13, 17, 14, 20, 30]);
+  const HARD_BLOCKS = new Set([3, 13, 17, 14, 20]);
 
   function getEquippedPickaxe(item) {
     if (!item) return null;

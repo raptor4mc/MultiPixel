@@ -136,6 +136,7 @@ window.perlin = perlinInstance;
       
         let scene, camera, renderer, perlin, raycaster;
         let worldSeed = 0;
+        let worldGenerator = null;
         let lightingSystem = null;
         const chunks = new Map();
         const worldGroup = new THREE.Group();
@@ -1373,6 +1374,37 @@ window.perlin = perlinInstance;
         function generateChunkData(cx, cz) {
             if (!worldGenerator) return new Array(CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE).fill(0);
             return worldGenerator.generateChunkData(cx, cz);
+        }
+
+        function getBlockType(wx, wy, wz) {
+            if (wx < WORLD_MIN_COORD || wx >= WORLD_MAX_COORD || wz < WORLD_MIN_COORD || wz >= WORLD_MAX_COORD) {
+                return 0;
+            }
+
+            if (wy < 0 || wy >= CHUNK_HEIGHT) return 0;
+            const cx = Math.floor(wx / CHUNK_SIZE);
+            const cz = Math.floor(wz / CHUNK_SIZE);
+            const id = `${cx},${cz}`;
+            if (chunks.has(id)) {
+                const group = chunks.get(id);
+                const lx = wx - group.userData.cx * CHUNK_SIZE;
+                const lz = wz - group.userData.cz * CHUNK_SIZE;
+                return group.userData.chunkData[lx + wy * CHUNK_SIZE + lz * CHUNK_SIZE * CHUNK_HEIGHT];
+            }
+
+            const biome = getBiome(wx, wz);
+            const h = getNoiseGroundHeight(wx, wz, biome);
+            if (wy === 0) return 14;
+            if (wy < h) {
+                if (biome === 'Desert') return 7;
+                if (biome === 'Mountains') {
+                    if (wy >= h - 1 && h > SEA_LEVEL + 16) return 15;
+                    return 3;
+                }
+                return 1;
+            }
+            if (wy < SEA_LEVEL) return 4;
+            return 0;
         }
 
         function createChunk(cx, cz) {
