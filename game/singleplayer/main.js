@@ -29,7 +29,7 @@
         const PickaxeSystem = window.PickaxeSystem || {};
         const SpawnLighting = window.SpawnLighting || {};
 
-        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-21-03';
+        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-21-04';
         console.info('[Singleplayer build]', window.__SINGLEPLAYER_BUILD__);
 
         const TerrainModules = {};
@@ -138,8 +138,10 @@ window.perlin = perlinInstance;
         let physicsCursorY = 1;
 
         const MOBILE_ASSET_BASE = `${window.SingleplayerConfig?.REPO_BASE_PREFIX || '/MultiPixel'}/game/singleplayer/assets/mobile`;
+        const coarsePointer = window.matchMedia ? window.matchMedia('(pointer: coarse)').matches : false;
         const mobileControls = {
-            enabled: ('ontouchstart' in window) || navigator.maxTouchPoints > 0,
+            // Lock mobile controls to coarse/small-screen mode to avoid hybrid touch+mouse desktops flickering between modes.
+            enabled: coarsePointer || window.innerWidth <= 900,
             moveX: 0,
             moveY: 0,
             sprint: false,
