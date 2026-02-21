@@ -307,8 +307,15 @@ window.perlin = perlinInstance;
             updateHotbarUI();
             const closeBtn = document.getElementById('inventory-close-btn');
             const closeIcon = document.getElementById('inventory-close-icon');
-            if (closeIcon) closeIcon.src = `${window.SingleplayerConfig?.REPO_BASE_PREFIX || '/MultiPixel'}/game/singleplayer/assets/mobile/cdb_clear.png`;
+            const furnaceCloseBtn = document.getElementById('furnace-close-btn');
+            const furnaceCloseIcon = document.getElementById('furnace-close-icon');
+            const closeIconPath = `${window.SingleplayerConfig?.REPO_BASE_PREFIX || '/MultiPixel'}/game/singleplayer/assets/mobile/cdb_clear.png`;
+            if (closeIcon) closeIcon.src = closeIconPath;
+            if (furnaceCloseIcon) furnaceCloseIcon.src = closeIconPath;
             if (closeBtn) closeBtn.addEventListener('click', () => {
+                if (isInventoryOpen) toggleInventory();
+            });
+            if (furnaceCloseBtn) furnaceCloseBtn.addEventListener('click', () => {
                 if (isInventoryOpen) toggleInventory();
             });
             if (window.HungerSystem) {
@@ -790,70 +797,60 @@ window.perlin = perlinInstance;
         }
         
         function renderInventoryScreen() {
-            const mainGrid = document.getElementById('main-inventory-grid');
-            const hotbarGrid = document.getElementById('inventory-hotbar-grid');
-            
-            // 2x2 Elements
+            const usingFurnaceScreen = isFurnaceOpen;
+            const mainGrid = document.getElementById(usingFurnaceScreen ? 'furnace-main-inventory-grid' : 'main-inventory-grid');
+            const hotbarGrid = document.getElementById(usingFurnaceScreen ? 'furnace-hotbar-grid' : 'inventory-hotbar-grid');
+
             const craftInputGrid2x2 = document.getElementById('crafting-input-grid');
             const craftOutputSlot2x2 = document.getElementById('crafting-output-slot-container');
-            
-            // 3x3 Elements
             const craftInputGrid3x3 = document.getElementById('crafting-table-grid');
             const craftOutputSlot3x3 = document.getElementById('crafting-table-output-slot');
-            const furnaceContainer = document.getElementById('furnace-container');
             const furnaceInputSlot = document.getElementById('furnace-input-slot');
             const furnaceFuelSlot = document.getElementById('furnace-fuel-slot');
             const furnaceOutputSlot = document.getElementById('furnace-output-slot');
-            
+
+            if (!mainGrid || !hotbarGrid) return;
+
             mainGrid.innerHTML = '';
             hotbarGrid.innerHTML = '';
-            craftInputGrid2x2.innerHTML = '';
-            craftOutputSlot2x2.innerHTML = '';
-            craftInputGrid3x3.innerHTML = '';
-            craftOutputSlot3x3.innerHTML = '';
+            if (craftInputGrid2x2) craftInputGrid2x2.innerHTML = '';
+            if (craftOutputSlot2x2) craftOutputSlot2x2.innerHTML = '';
+            if (craftInputGrid3x3) craftInputGrid3x3.innerHTML = '';
+            if (craftOutputSlot3x3) craftOutputSlot3x3.innerHTML = '';
             if (furnaceInputSlot) furnaceInputSlot.innerHTML = '';
             if (furnaceFuelSlot) furnaceFuelSlot.innerHTML = '';
             if (furnaceOutputSlot) furnaceOutputSlot.innerHTML = '';
 
-            const mainStart = HOTBAR_SLOTS; 
-            const mainEnd = TOTAL_INV_SIZE; 
+            const mainStart = HOTBAR_SLOTS;
 
-            // Helper function to create a slot element
             const createSlot = (item, index, type) => {
                 const slot = document.createElement('div');
                 slot.className = 'inv-slot w-10 h-10 md:w-12 md:h-12';
                 slot.dataset.index = index;
                 slot.dataset.type = type;
-                slot.onclick = () => handleInventoryClick(index, type); 
+                slot.onclick = () => handleInventoryClick(index, type);
                 slot.oncontextmenu = (e) => {
                     e.preventDefault();
                     handleInventoryRightClick(index, type);
-                }; 
-                
+                };
+
                 if (item) {
                     const mat = blockMaterials[item.id];
                     let imgPath = '';
                     let colorStyle = '';
 
-                    if (mat.textured) {
-                        // --- USING DIRECT PATH FOR HOTBAR ICON ---
-                        imgPath = ASSET_FILEPATHS[mat.textureKey];
-                    } else {
+                    if (mat.textured) imgPath = ASSET_FILEPATHS[mat.textureKey];
+                    else {
                         const colorHex = mat.color ? mat.color.toString(16).padStart(6, '0') : '7F8C8D';
                         colorStyle = `background-color: #${colorHex};`;
                     }
-                    
+
                     const itemDiv = document.createElement('div');
-                    itemDiv.className = 'w-full h-full p-1'; 
+                    itemDiv.className = 'w-full h-full p-1';
+                    if (imgPath) itemDiv.innerHTML = `<img src="${imgPath}" alt="${mat.name}" class="texture-icon w-full h-full">`;
+                    else itemDiv.style.cssText = `width: 80%; height: 80%; ${colorStyle} border: 1px solid rgba(0,0,0,0.1);`;
 
-                    if (imgPath) {
-                        itemDiv.innerHTML = `<img src="${imgPath}" alt="${mat.name}" class="texture-icon w-full h-full">`;
-                    } else {
-                        itemDiv.style.cssText = `width: 80%; height: 80%; ${colorStyle} border: 1px solid rgba(0,0,0,0.1);`;
-                    }
-                    
                     slot.appendChild(itemDiv);
-
                     const countSpan = document.createElement('span');
                     countSpan.className = 'item-count';
                     countSpan.textContent = item.count;
@@ -862,43 +859,41 @@ window.perlin = perlinInstance;
                 return slot;
             };
 
-            // Hotbar grid (slots 0-8)
-            for (let i = 0; i < HOTBAR_SLOTS; i++) {
-                hotbarGrid.appendChild(createSlot(inventory[i], i, 'hotbar'));
-            }
-
-            // Main inventory grid (slots 9-35)
+            for (let i = 0; i < HOTBAR_SLOTS; i++) hotbarGrid.appendChild(createSlot(inventory[i], i, 'hotbar'));
             for (let r = 0; r < INV_ROWS; r++) {
                 for (let c = 0; c < INV_COLS; c++) {
                     const invIndex = mainStart + r * INV_COLS + c;
-                    const displayIndex = r * INV_COLS + c; // Index relative to the main grid (0-26)
+                    const displayIndex = r * INV_COLS + c;
                     mainGrid.appendChild(createSlot(inventory[invIndex], displayIndex, 'main-inv'));
                 }
             }
 
-            // RENDER CRAFTING GRIDS BASED ON STATE
-            if (isCraftingTableOpen) {
-                // Render 3x3 Grid
-                for (let i = 0; i < 9; i++) {
-                    craftInputGrid3x3.appendChild(createSlot(craftingTableInput[i], i, 'craft-table-input'));
+            if (usingFurnaceScreen && activeFurnaceKey) {
+                const state = getOrCreateFurnaceState(activeFurnaceKey);
+                if (furnaceInputSlot) furnaceInputSlot.appendChild(createSlot(state.input, 0, 'furnace-input'));
+                if (furnaceFuelSlot) furnaceFuelSlot.appendChild(createSlot(state.fuel, 0, 'furnace-fuel'));
+                if (furnaceOutputSlot) {
+                    const outSlot = createSlot(state.output, 0, 'furnace-output');
+                    outSlot.style.backgroundColor = '#6495ed';
+                    furnaceOutputSlot.appendChild(outSlot);
                 }
-                // Output Slot
+                renderHeldItem();
+                return;
+            }
+
+            if (isCraftingTableOpen) {
+                for (let i = 0; i < 9; i++) craftInputGrid3x3.appendChild(createSlot(craftingTableInput[i], i, 'craft-table-input'));
                 const outputSlotEl = createSlot(craftingOutput, 0, 'output');
-                outputSlotEl.style.backgroundColor = '#6495ed'; 
+                outputSlotEl.style.backgroundColor = '#6495ed';
                 craftOutputSlot3x3.appendChild(outputSlotEl);
             } else {
-                // Render 2x2 Grid
-                for (let i = 0; i < 4; i++) {
-                    craftInputGrid2x2.appendChild(createSlot(craftingInput[i], i, 'craft-input'));
-                }
-                // Output Slot
+                for (let i = 0; i < 4; i++) craftInputGrid2x2.appendChild(createSlot(craftingInput[i], i, 'craft-input'));
                 const outputSlotEl = createSlot(craftingOutput, 0, 'output');
-                outputSlotEl.style.backgroundColor = '#6495ed'; 
+                outputSlotEl.style.backgroundColor = '#6495ed';
                 craftOutputSlot2x2.appendChild(outputSlotEl);
             }
 
-            
-            renderHeldItem(); 
+            renderHeldItem();
         }
 
         // --- Renders the item attached to the mouse cursor when inventory is open ---
@@ -952,70 +947,84 @@ window.perlin = perlinInstance;
 
         function toggleInventory(openTableMode = false, openFurnaceMode = false, furnaceKey = null) {
             const invScreen = document.getElementById('inventory-screen');
+            const furnaceScreen = document.getElementById('furnace-screen');
             const hud = document.getElementById('hud');
-            
-            // Elements to toggle
             const container2x2 = document.getElementById('crafting-2x2-container');
             const container3x3 = document.getElementById('crafting-3x3-container');
 
             if (isInventoryOpen) {
-                // CLOSE INVENTORY
                 isInventoryOpen = false;
-                isCraftingTableOpen = false; // Reset table state
+                isCraftingTableOpen = false;
                 isFurnaceOpen = false;
                 activeFurnaceKey = null;
-                invScreen.classList.add('hidden');
+                if (invScreen) invScreen.classList.add('hidden');
+                if (furnaceScreen) furnaceScreen.classList.add('hidden');
                 hud.classList.remove('opacity-0');
                 if (!mobileControls.enabled) document.body.requestPointerLock();
-                
-                // --- Cleanup held item when closing inventory ---
+
                 if (heldItem) {
-                    // Try to return item to inventory
                     if (!addToInventory(heldItem.id, heldItem.count)) {
-                        // If full, drop item (simplified: just delete for now or keep in heldItem? Let's keep logic simple and try to add)
-                        console.log("Inventory full, item lost on close (simplified logic)");
+                        console.log('Inventory full, item lost on close (simplified logic)');
                     }
                     heldItem = null;
                     heldItemSourceIndex = -1;
                     heldItemSourceType = null;
                 }
-                renderHeldItem(); 
-                updateHotbarUI(); 
-
-            } else {
-                // OPEN INVENTORY
-                isInventoryOpen = true;
-                isCraftingTableOpen = openTableMode;
-                isFurnaceOpen = openFurnaceMode;
-                activeFurnaceKey = furnaceKey;
-                
-                // Toggle visibility of crafting grids
-                if (isCraftingTableOpen) {
-                    container2x2.classList.add('hidden');
-                    container3x3.classList.remove('hidden');
-                } else {
-                    container2x2.classList.remove('hidden');
-                    container3x3.classList.add('hidden');
-                }
-
-                heldItem = null; 
-                heldItemSourceIndex = -1;
-                heldItemSourceType = null;
-                
-                // Recalculate crafting output just before opening
-                const inputGrid = isCraftingTableOpen ? craftingTableInput : craftingInput;
-                const gridWidth = isCraftingTableOpen ? 3 : 2;
-                craftingOutput = checkCraftingRecipe(inputGrid, gridWidth);
-                
-                renderInventoryScreen(); 
-                invScreen.classList.remove('hidden');
-                hud.classList.add('opacity-0');
-                if (!mobileControls.enabled) document.exitPointerLock(); 
-                player.keys = {}; 
+                renderHeldItem();
+                updateHotbarUI();
+                return;
             }
+
+            isInventoryOpen = true;
+            isCraftingTableOpen = openTableMode;
+            isFurnaceOpen = false;
+            activeFurnaceKey = null;
+
+            if (isCraftingTableOpen) {
+                container2x2.classList.add('hidden');
+                container3x3.classList.remove('hidden');
+            } else {
+                container2x2.classList.remove('hidden');
+                container3x3.classList.add('hidden');
+            }
+
+            heldItem = null;
+            heldItemSourceIndex = -1;
+            heldItemSourceType = null;
+
+            const inputGrid = isCraftingTableOpen ? craftingTableInput : craftingInput;
+            const gridWidth = isCraftingTableOpen ? 3 : 2;
+            craftingOutput = checkCraftingRecipe(inputGrid, gridWidth);
+
+            renderInventoryScreen();
+            if (invScreen) invScreen.classList.remove('hidden');
+            if (furnaceScreen) furnaceScreen.classList.add('hidden');
+            hud.classList.add('opacity-0');
+            if (!mobileControls.enabled) document.exitPointerLock();
+            player.keys = {};
         }
-        
-    
+
+        function openFurnaceScreen(furnaceKey) {
+            const invScreen = document.getElementById('inventory-screen');
+            const furnaceScreen = document.getElementById('furnace-screen');
+            const hud = document.getElementById('hud');
+
+            isInventoryOpen = true;
+            isCraftingTableOpen = false;
+            isFurnaceOpen = true;
+            activeFurnaceKey = furnaceKey;
+
+            heldItem = null;
+            heldItemSourceIndex = -1;
+            heldItemSourceType = null;
+
+            renderInventoryScreen();
+            if (invScreen) invScreen.classList.add('hidden');
+            if (furnaceScreen) furnaceScreen.classList.remove('hidden');
+            hud.classList.add('opacity-0');
+            if (!mobileControls.enabled) document.exitPointerLock();
+            player.keys = {};
+        }
 
         function getMiningDurationMs(blockId) {
             const hardness = BLOCK_HARDNESS[blockId] ?? 1.5;
@@ -1155,11 +1164,11 @@ window.perlin = perlinInstance;
             const targetBlockId = getBlockType(wx, wy, wz);
 
             if (targetBlockId === 9) {
-                toggleInventory(true, false, null);
+                toggleInventory(true);
                 return;
             }
             if (targetBlockId === 23) {
-                toggleInventory(false, true, `${wx},${wy},${wz}`);
+                openFurnaceScreen(`${wx},${wy},${wz}`);
                 return;
             }
 
@@ -2269,87 +2278,72 @@ if (ravineMask > 0.78) {
                          data[x + y*CHUNK_SIZE + z*CHUNK_SIZE*CHUNK_HEIGHT] = t;
                      }
                   
-                     // --- Tree Generation (classic oak algorithm with validity + obstruction checks) ---
+                     // --- Tree Generation (deterministic + chunk-safe placement) ---
                      if (!isRiver && (biome === 'Forest' || biome === 'Plains')) {
                          let topY = -1;
-                         let topType = 0;
                          for (let yy = CHUNK_HEIGHT - 2; yy >= 1; yy--) {
                              const tidx = x + yy * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
                              const ttype = data[tidx];
                              if (ttype !== 0 && ttype !== 4) {
                                  topY = yy;
-                                 topType = ttype;
                                  break;
                              }
                          }
 
-                         if (topY > SEA_LEVEL && (topType === 1 || topType === 2)) {
-                             // Keep trees away from chunk borders so canopy doesn't get cut into one-sided shapes.
-                             if (x < 2 || x > CHUNK_SIZE - 3 || z < 2 || z > CHUNK_SIZE - 3) continue;
-                             const densityNoise = octaveNoise2D(wx, wz, 3, 0.55, 2.0, 0.04, 700, -350) * 0.5 + 0.5;
-                             const scatter = hashRand2D(wx, wz, 99);
-                             const localScore = densityNoise * 0.65 + scatter * 0.35;
+                         if (topY > SEA_LEVEL) {
+                             const topIdx = x + topY * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
+                             const topType = data[topIdx];
+                             const validGround = (topType === 1 || topType === 2);
+                             if (validGround && x > 0 && x < CHUNK_SIZE - 1 && z > 0 && z < CHUNK_SIZE - 1) {
+                                 const treeNoise = octaveNoise2D(wx, wz, 2, 0.56, 2.0, 0.028, 700, -350) * 0.5 + 0.5;
+                                 const scatter = hashRand2D(wx, wz, 99);
+                                 const density = treeNoise * 0.6 + scatter * 0.4;
+                                 const chance = biome === 'Forest' ? 0.10 : 0.03;
+                                 const denseBonus = biome === 'Forest' ? 0.08 : 0.03;
+                                 const shouldTrySpawn = density > (1.0 - (chance + treeNoise * denseBonus));
 
-                             const cell = biome === 'Forest' ? 3 : 5;
-                             const cellKeyX = Math.floor(wx / cell);
-                             const cellKeyZ = Math.floor(wz / cell);
-                             const cellRoll = hashRand2D(cellKeyX, cellKeyZ, biome === 'Forest' ? 611 : 619);
-
-                             const threshold = biome === 'Forest' ? 0.5 : 0.82;
-                             const canSpawn = (localScore > threshold) || (biome === 'Forest' && cellRoll > 0.52 && localScore > 0.38);
-
-                             if (canSpawn) {
-                                 const heightLimit = 5 + Math.floor(hashRand2D(wx, wz, 157) * 4); // 5-8
-
-                                 // Obstruction check (only allow air/leaves in intended volume)
-                                 let obstructed = false;
-                                 for (let ty = topY + 1; ty <= Math.min(CHUNK_HEIGHT - 2, topY + heightLimit + 2) && !obstructed; ty++) {
-                                     const canopyRadius = ty >= topY + heightLimit - 2 ? 2 : 0;
-                                     for (let ox = -canopyRadius; ox <= canopyRadius && !obstructed; ox++) {
-                                         for (let oz = -canopyRadius; oz <= canopyRadius && !obstructed; oz++) {
-                                             const tx = x + ox;
-                                             const tz = z + oz;
-                                             if (tx < 0 || tx >= CHUNK_SIZE || tz < 0 || tz >= CHUNK_SIZE) continue;
-                                             const idx = tx + ty * CHUNK_SIZE + tz * CHUNK_SIZE * CHUNK_HEIGHT;
-                                             const b = data[idx];
-                                             if (b !== 0 && b !== 6) obstructed = true;
+                                 if (shouldTrySpawn) {
+                                     const heightLimit = 4 + Math.floor(hashRand2D(wx, wz, 157) * 3); // 4-6
+                                     let obstructed = false;
+                                     for (let ty = topY + 1; ty <= Math.min(CHUNK_HEIGHT - 2, topY + heightLimit + 2) && !obstructed; ty++) {
+                                         const canopyRadius = ty >= topY + heightLimit - 2 ? 2 : 0;
+                                         for (let ox = -canopyRadius; ox <= canopyRadius && !obstructed; ox++) {
+                                             for (let oz = -canopyRadius; oz <= canopyRadius && !obstructed; oz++) {
+                                                 const tx = x + ox;
+                                                 const tz = z + oz;
+                                                 if (tx < 0 || tx >= CHUNK_SIZE || tz < 0 || tz >= CHUNK_SIZE) continue;
+                                                 const idx = tx + ty * CHUNK_SIZE + tz * CHUNK_SIZE * CHUNK_HEIGHT;
+                                                 const b = data[idx];
+                                                 if (b !== 0 && b !== 6) obstructed = true;
+                                             }
                                          }
                                      }
-                                 }
 
-                                 if (!obstructed) {
-                                     const baseIdx = x + topY * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
-                                     if (data[baseIdx] === 2) data[baseIdx] = 1;
+                                     if (!obstructed) {
+                                         if (data[topIdx] === 2) data[topIdx] = 1;
+                                         for (let i = 1; i <= heightLimit; i++) {
+                                             const ty = topY + i;
+                                             if (ty >= CHUNK_HEIGHT) break;
+                                             const idx = x + ty * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
+                                             if (data[idx] === 0 || data[idx] === 6) data[idx] = 5;
+                                         }
 
-                                     // Straight trunk placer
-                                     for (let i = 1; i <= heightLimit; i++) {
-                                         const ty = topY + i;
-                                         if (ty >= CHUNK_HEIGHT) break;
-                                         const idx = x + ty * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
-                                         if (data[idx] === 0 || data[idx] === 6) data[idx] = 5;
+                                         for (let ly = -3; ly <= 1; ly++) {
+                                             const yAbs = topY + heightLimit + ly;
+                                             if (yAbs < 1 || yAbs >= CHUNK_HEIGHT) continue;
+                                             const radius = ly >= 0 ? 1 : (ly === -1 ? 2 : (ly === -2 ? 2 : 1));
+                                             for (let lx = -radius; lx <= radius; lx++) {
+                                                 for (let lz = -radius; lz <= radius; lz++) {
+                                                     if (lx * lx + lz * lz > radius * radius) continue;
+                                                     const tx = x + lx;
+                                                     const tz = z + lz;
+                                                     if (tx < 0 || tx >= CHUNK_SIZE || tz < 0 || tz >= CHUNK_SIZE) continue;
+                                                     const lidx = tx + yAbs * CHUNK_SIZE + tz * CHUNK_SIZE * CHUNK_HEIGHT;
+                                                     if (data[lidx] === 0) data[lidx] = 6;
+                                                 }
+                                             }
+                                         }
                                      }
-
-    for (let ly = -3; ly <= 1; ly++) {
-    const yAbs = topY + heightLimit + ly;
-    if (yAbs < 1 || yAbs >= CHUNK_HEIGHT) continue;
-
-    const radius = ly >= 0 ? 1 : (ly === -1 ? 2 : (ly === -2 ? 2 : 1));
-
-    for (let lx = -radius; lx <= radius; lx++) {
-        for (let lz = -radius; lz <= radius; lz++) {
-            // True circle distance check
-            if (lx*lx + lz*lz > radius*radius) continue;
-
-            const tx = x + lx;
-            const tz = z + lz;
-            if (tx < 0 || tx >= CHUNK_SIZE || tz < 0 || tz >= CHUNK_SIZE) continue;
-
-            const lidx = tx + yAbs * CHUNK_SIZE + tz * CHUNK_SIZE * CHUNK_HEIGHT;
-            if (data[lidx] === 0) data[lidx] = 6;
-        }
-    }
-}
-
                                  }
                              }
                          }

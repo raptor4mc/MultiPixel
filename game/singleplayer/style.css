@@ -254,13 +254,25 @@
             pointer-events: auto;
         }
 
-        #inventory-close-icon {
+        #inventory-close-icon,
+        #furnace-close-icon {
             width: 34px;
             height: 34px;
             image-rendering: pixelated;
             display: block;
         }
 
+
+
+
+        #furnace-workbench-panel {
+            border: 0;
+            box-shadow: none;
+            background-image: url('/MultiPixel/game/singleplayer/assets/ui/inventory/inventory.png');
+            background-size: 100% 100%;
+            background-repeat: no-repeat;
+            min-height: 420px;
+        }
 
         #inventory-panel {
             border: 0;
