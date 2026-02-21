@@ -29,7 +29,7 @@
         const PickaxeSystem = window.PickaxeSystem || {};
         const SpawnLighting = window.SpawnLighting || {};
 
-        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-21-02';
+        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-21-03';
         console.info('[Singleplayer build]', window.__SINGLEPLAYER_BUILD__);
 
         const TerrainModules = {};
@@ -136,6 +136,21 @@ window.perlin = perlinInstance;
         let lastPhysicsTickMs = 0;
         const dirtyChunkKeys = new Set();
         let physicsCursorY = 1;
+
+        const MOBILE_ASSET_BASE = `${window.SingleplayerConfig?.REPO_BASE_PREFIX || '/MultiPixel'}/game/singleplayer/assets/mobile`;
+        const mobileControls = {
+            enabled: ('ontouchstart' in window) || navigator.maxTouchPoints > 0,
+            moveX: 0,
+            moveY: 0,
+            sprint: false,
+            jump: false,
+            joystickPointerId: null,
+            worldTouchActive: false,
+            worldTouchStartMs: 0,
+            worldTouchPointerId: null,
+            miningTimer: null,
+            isMiningTouch: false,
+        };
      
 
       
@@ -284,6 +299,7 @@ window.perlin = perlinInstance;
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(window.devicePixelRatio);
             document.body.appendChild(renderer.domElement);
+            setupMobileControls();
             
             window.addEventListener('resize', onWindowResize);
             document.addEventListener('contextmenu', e => e.preventDefault()); 
@@ -820,7 +836,7 @@ window.perlin = perlinInstance;
                 isCraftingTableOpen = false; // Reset table state
                 invScreen.classList.add('hidden');
                 hud.classList.remove('opacity-0');
-                document.body.requestPointerLock();
+                if (!mobileControls.enabled) document.body.requestPointerLock();
                 
                 // --- Cleanup held item when closing inventory ---
                 if (heldItem) {
@@ -862,7 +878,7 @@ window.perlin = perlinInstance;
                 renderInventoryScreen(); 
                 invScreen.classList.remove('hidden');
                 hud.classList.add('opacity-0');
-                document.exitPointerLock(); 
+                if (!mobileControls.enabled) document.exitPointerLock(); 
                 player.keys = {}; 
             }
         }
@@ -981,74 +997,73 @@ window.perlin = perlinInstance;
         function setupBlockInteraction() {
             window.addEventListener('pointerdown', onPointerDown, false);
             window.addEventListener('pointerup', onPointerUp, false);
+            window.addEventListener('pointercancel', onPointerUp, false);
         }
 
         function onPointerUp(event) {
+            if (event.pointerType === 'touch') return;
             if (event.button !== 0) return;
             isLeftMouseDown = false;
             miningState.active = false;
             updateBreakingOverlay();
         }
 
-        function onPointerDown(event) {
-            if (!player.canMove || isInventoryOpen) return;
-
-            raycaster.setFromCamera({ x: 0, y: 0 }, camera); 
-            
-          
+        function interactOrPlaceAtCrosshair() {
+            raycaster.setFromCamera({ x: 0, y: 0 }, camera);
             const meshes = [];
             worldGroup.children.forEach(g => g.children.forEach(m => meshes.push(m)));
-            
             const intersects = raycaster.intersectObjects(meshes, true);
+            if (!intersects.length) return;
 
-            if (intersects.length > 0) {
-                const hit = intersects[0];
-               
-                // LEFT CLICK - Break
-                if (event.button === 0) {
-                    isLeftMouseDown = true;
-                    const target = getTargetBlockFromCrosshair();
-                    if (target) {
-                        beginMiningTarget(target);
-                        updateBreakingOverlay();
-                    }
-                } 
-                // RIGHT CLICK - Interact or Place
-                else if (event.button === 2) { 
-                    
-                    // 1. Check for Block Interaction (Crafting Table)
-                    const targetBlockPos = hit.point.clone().sub(hit.face.normal.clone().multiplyScalar(0.01));
-                    const wx = Math.floor(targetBlockPos.x);
-                    const wy = Math.floor(targetBlockPos.y);
-                    const wz = Math.floor(targetBlockPos.z);
-                    const targetBlockId = getBlockType(wx, wy, wz);
+            const hit = intersects[0];
+            const targetBlockPos = hit.point.clone().sub(hit.face.normal.clone().multiplyScalar(0.01));
+            const wx = Math.floor(targetBlockPos.x);
+            const wy = Math.floor(targetBlockPos.y);
+            const wz = Math.floor(targetBlockPos.z);
+            const targetBlockId = getBlockType(wx, wy, wz);
 
-                    if (targetBlockId === 9) { // 9 = Crafting Table
-                        toggleInventory(true); // Open in Table Mode
-                        return; 
-                    }
+            if (targetBlockId === 9) {
+                toggleInventory(true);
+                return;
+            }
 
-                    // 2. Place Block Logic
-                    const item = inventory[selectedHotbarIndex];
-                    if (!item || !isSolid(item.id)) return; 
+            const item = inventory[selectedHotbarIndex];
+            if (!item || !isSolid(item.id)) return;
 
-                    const placePos = hit.point.clone().add(hit.face.normal.clone().multiplyScalar(0.01));
-                    
-                    const px = Math.floor(placePos.x), py = Math.floor(placePos.y), pz = Math.floor(placePos.z);
-                    const playerBox = new THREE.Box3(
-                        new THREE.Vector3(yawObject.position.x - PLAYER_RADIUS, yawObject.position.y, yawObject.position.z - PLAYER_RADIUS),
-                        new THREE.Vector3(yawObject.position.x + PLAYER_RADIUS, yawObject.position.y + PLAYER_HEIGHT, yawObject.position.z + PLAYER_RADIUS)
-                    );
-                    const blockBox = new THREE.Box3(
-                        new THREE.Vector3(px, py, pz), new THREE.Vector3(px+1, py+1, pz+1)
-                    );
+            const placePos = hit.point.clone().add(hit.face.normal.clone().multiplyScalar(0.01));
+            const px = Math.floor(placePos.x), py = Math.floor(placePos.y), pz = Math.floor(placePos.z);
+            const playerBox = new THREE.Box3(
+                new THREE.Vector3(yawObject.position.x - PLAYER_RADIUS, yawObject.position.y, yawObject.position.z - PLAYER_RADIUS),
+                new THREE.Vector3(yawObject.position.x + PLAYER_RADIUS, yawObject.position.y + PLAYER_HEIGHT, yawObject.position.z + PLAYER_RADIUS)
+            );
+            const blockBox = new THREE.Box3(
+                new THREE.Vector3(px, py, pz), new THREE.Vector3(px + 1, py + 1, pz + 1)
+            );
 
-                    if (!playerBox.intersectsBox(blockBox)) {
-                        if (modifyWorld(placePos, item.id)) {
-                            consumeSelectedItem();
-                        }
-                    }
+            if (!playerBox.intersectsBox(blockBox)) {
+                if (modifyWorld(placePos, item.id)) consumeSelectedItem();
+            }
+        }
+
+        function onPointerDown(event) {
+            if (event.pointerType === 'touch') return;
+            if (!player.canMove || isInventoryOpen) return;
+
+            raycaster.setFromCamera({ x: 0, y: 0 }, camera);
+            const meshes = [];
+            worldGroup.children.forEach(g => g.children.forEach(m => meshes.push(m)));
+            const intersects = raycaster.intersectObjects(meshes, true);
+            if (!intersects.length) return;
+
+            if (event.button === 0) {
+                isLeftMouseDown = true;
+                const target = getTargetBlockFromCrosshair();
+                if (target) {
+                    beginMiningTarget(target);
+                    updateBreakingOverlay();
                 }
+            } else if (event.button === 2) {
+                interactOrPlaceAtCrosshair();
             }
         }
 
@@ -1221,10 +1236,14 @@ window.perlin = perlinInstance;
             if (player.keys['s']) player.direction.sub(forward);
             if (player.keys['a']) player.direction.sub(right);
             if (player.keys['d']) player.direction.add(right);
-            player.direction.normalize();
+            if (mobileControls.enabled) {
+                player.direction.add(right.clone().multiplyScalar(mobileControls.moveX));
+                player.direction.add(forward.clone().multiplyScalar(-mobileControls.moveY));
+            }
+            if (player.direction.lengthSq() > 0) player.direction.normalize();
 
             const isMoving = player.direction.lengthSq() > 0;
-            const isSprinting = isMoving && player.keys['e'];
+            const isSprinting = isMoving && (player.keys['e'] || mobileControls.sprint);
             if (window.HungerSystem) {
                 window.HungerSystem.update(performance.now(), { isMoving, isSprinting });
             }
@@ -1237,7 +1256,7 @@ window.perlin = perlinInstance;
             player.velocity.y += GRAVITY;
 
           
-            if (player.keys[' '] && !player.isJumping) {
+            if ((player.keys[' '] || mobileControls.jump) && !player.isJumping) {
                 player.velocity.y = JUMP_POWER;
                 player.isJumping = true;
             }
@@ -1613,9 +1632,135 @@ window.perlin = perlinInstance;
         }
 
        
+
+        function setupMobileControls() {
+            if (!mobileControls.enabled) return;
+
+            const controlsEl = document.getElementById('mobile-controls');
+            const joyWrap = document.getElementById('mobile-joystick');
+            const joyBg = document.getElementById('mobile-joystick-bg');
+            const joyCenter = document.getElementById('mobile-joystick-center');
+            const jumpBtn = document.getElementById('mobile-jump-btn');
+            const invBtn = document.getElementById('mobile-inventory-btn');
+            const fastBtn = document.getElementById('mobile-fast-btn');
+
+            if (!controlsEl || !joyWrap || !joyBg || !joyCenter || !jumpBtn || !invBtn || !fastBtn) return;
+
+            controlsEl.classList.add('active');
+            joyBg.src = `${MOBILE_ASSET_BASE}/joystick_off.png`;
+            joyCenter.src = `${MOBILE_ASSET_BASE}/joystick_center.png`;
+            jumpBtn.src = `${MOBILE_ASSET_BASE}/jump_btn.png`;
+            invBtn.src = `${MOBILE_ASSET_BASE}/inventory_btn.png`;
+            fastBtn.src = `${MOBILE_ASSET_BASE}/fast_btn.png`;
+            document.getElementById('instructions').style.opacity = 0;
+            player.canMove = true;
+
+            function resetJoystick() {
+                mobileControls.moveX = 0;
+                mobileControls.moveY = 0;
+                mobileControls.joystickPointerId = null;
+                joyCenter.style.left = '40px';
+                joyCenter.style.top = '40px';
+                joyBg.src = `${MOBILE_ASSET_BASE}/joystick_off.png`;
+            }
+
+            joyBg.addEventListener('pointerdown', (e) => {
+                mobileControls.joystickPointerId = e.pointerId;
+                joyBg.setPointerCapture(e.pointerId);
+                joyBg.src = `${MOBILE_ASSET_BASE}/joystick_bg.png`;
+                e.preventDefault();
+            });
+
+            joyBg.addEventListener('pointermove', (e) => {
+                if (mobileControls.joystickPointerId !== e.pointerId) return;
+                const rect = joyWrap.getBoundingClientRect();
+                const cx = rect.left + rect.width / 2;
+                const cy = rect.top + rect.height / 2;
+                const dx = e.clientX - cx;
+                const dy = e.clientY - cy;
+                const maxR = 44;
+                const len = Math.hypot(dx, dy) || 1;
+                const clamped = Math.min(maxR, len);
+                const nx = (dx / len) * clamped;
+                const ny = (dy / len) * clamped;
+                mobileControls.moveX = nx / maxR;
+                mobileControls.moveY = ny / maxR;
+                joyCenter.style.left = `${40 + nx}px`;
+                joyCenter.style.top = `${40 + ny}px`;
+            });
+
+            const releaseJoystick = (e) => {
+                if (mobileControls.joystickPointerId !== e.pointerId) return;
+                resetJoystick();
+            };
+            joyBg.addEventListener('pointerup', releaseJoystick);
+            joyBg.addEventListener('pointercancel', releaseJoystick);
+
+            const holdButton = (el, key) => {
+                const start = (e) => { mobileControls[key] = true; e.preventDefault(); };
+                const end = (e) => { mobileControls[key] = false; e.preventDefault(); };
+                el.addEventListener('pointerdown', start);
+                el.addEventListener('pointerup', end);
+                el.addEventListener('pointercancel', end);
+                el.addEventListener('pointerleave', end);
+            };
+
+            holdButton(jumpBtn, 'jump');
+            holdButton(fastBtn, 'sprint');
+
+            invBtn.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                toggleInventory();
+            });
+
+            const mobileControlTargets = new Set([joyBg, jumpBtn, invBtn, fastBtn]);
+            window.addEventListener('pointerdown', (e) => {
+                if (!mobileControls.enabled || !player.canMove || isInventoryOpen) return;
+                if (mobileControlTargets.has(e.target)) return;
+                if (e.pointerType !== 'touch') return;
+                mobileControls.worldTouchActive = true;
+                mobileControls.worldTouchPointerId = e.pointerId;
+                mobileControls.worldTouchStartMs = performance.now();
+                mobileControls.isMiningTouch = false;
+                if (mobileControls.miningTimer) clearTimeout(mobileControls.miningTimer);
+                mobileControls.miningTimer = setTimeout(() => {
+                    if (!mobileControls.worldTouchActive) return;
+                    const target = getTargetBlockFromCrosshair();
+                    if (!target) return;
+                    isLeftMouseDown = true;
+                    mobileControls.isMiningTouch = true;
+                    beginMiningTarget(target);
+                    updateBreakingOverlay();
+                }, 180);
+            }, { passive: false });
+
+            const endWorldTouch = (e) => {
+                if (!mobileControls.enabled || e.pointerType !== 'touch') return;
+                if (mobileControls.worldTouchPointerId !== e.pointerId) return;
+                if (mobileControls.miningTimer) clearTimeout(mobileControls.miningTimer);
+
+                const wasMining = mobileControls.isMiningTouch;
+                const touchDuration = performance.now() - mobileControls.worldTouchStartMs;
+                mobileControls.worldTouchActive = false;
+                mobileControls.worldTouchPointerId = null;
+                mobileControls.isMiningTouch = false;
+                isLeftMouseDown = false;
+                miningState.active = false;
+                updateBreakingOverlay();
+
+                if (!wasMining && touchDuration < 220) {
+                    interactOrPlaceAtCrosshair();
+                }
+            };
+
+            window.addEventListener('pointerup', endWorldTouch, { passive: false });
+            window.addEventListener('pointercancel', endWorldTouch, { passive: false });
+        }
+
         function setupPointerLockControls() {
             const el = document.body;
             document.addEventListener('pointerlockchange', () => {
+                if (mobileControls.enabled) return;
                 if (document.pointerLockElement === el) {
                     player.canMove = true;
                     if(isInventoryOpen) toggleInventory(); 
@@ -1636,6 +1781,11 @@ window.perlin = perlinInstance;
                 pitchObject.rotation.x = Math.max(-1.5, Math.min(1.5, pitchObject.rotation.x));
             });
             document.getElementById('instructions').onclick = () => {
+                if (mobileControls.enabled) {
+                    player.canMove = true;
+                    document.getElementById('instructions').style.opacity = 0;
+                    return;
+                }
                 if(!isInventoryOpen) el.requestPointerLock();
             };
         }
