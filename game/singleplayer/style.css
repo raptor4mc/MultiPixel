@@ -324,7 +324,7 @@
 
         #furnace-input-slot { position: absolute; left: 62px; top: 30px; }
         #furnace-fuel-slot { position: absolute; left: 62px; top: 74px; }
-        #furnace-output-slot { position: absolute; left: 230px; top: 50px; }
+        #furnace-output-slot { position: absolute; left: 130px; top: 50px; }
 
         .slot-grid-single,
         .slot-grid-single .inv-slot,
