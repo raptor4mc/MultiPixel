@@ -136,7 +136,6 @@ window.perlin = perlinInstance;
       
         let scene, camera, renderer, perlin, raycaster;
         let worldSeed = 0;
-        let worldGenerator = null;
         let lightingSystem = null;
         const chunks = new Map();
         const worldGroup = new THREE.Group();
@@ -235,22 +234,6 @@ window.perlin = perlinInstance;
             if (typeof PerlinNoise !== 'undefined') {
                 worldSeed = Math.floor(Math.random() * 2147483647);
                 perlin = new PerlinNoise(worldSeed);
-                worldGenerator = window.WorldGeneration.createWorldGenerator({
-                    CHUNK_SIZE,
-                    CHUNK_HEIGHT,
-                    SEA_LEVEL,
-                    BASE_LAND_Y,
-                    ISLAND_RADIUS,
-                    CAVE_SCALE,
-                    CAVE_THRESHOLD,
-                    CAVE_MIN_Y,
-                    CAVE_MAX_Y_OFFSET,
-                    WORLD_MIN_COORD,
-                    WORLD_MAX_COORD,
-                    TerrainModules,
-                    getPerlin: () => perlin,
-                    getWorldSeed: () => worldSeed,
-                });
                 console.info('[World seed]', worldSeed);
                 lightingSystem = SpawnLighting.create ? SpawnLighting.create({ getBlockType, isLiquid, CHUNK_HEIGHT }) : null;
             } else {
@@ -1101,15 +1084,18 @@ window.perlin = perlinInstance;
             return true;
         }
 
+        let physicsTickCounter = 0;
+
         function applyBlockPhysics(nowMs) {
             if (!window.WaterPhysics || !window.SandPhysics) return;
-            if (nowMs - lastPhysicsTickMs < 90) return;
+            if (nowMs - lastPhysicsTickMs < 50) return;
             lastPhysicsTickMs = nowMs;
 
             const centerCx = Math.floor(yawObject.position.x / CHUNK_SIZE);
             const centerCz = Math.floor(yawObject.position.z / CHUNK_SIZE);
             const activeRadius = 3;
             const maxUpdates = 360;
+
             let updates = 0;
 
             const startY = physicsCursorY;
@@ -1123,13 +1109,17 @@ window.perlin = perlinInstance;
                     if (!group) continue;
                     const data = group.userData.chunkData;
 
-                    for (let y = startY; y <= endY && updates < maxUpdates; y++) {
+                   for (let y = endY; y >= startY && updates < maxUpdates; y--)
                         for (let i = 0; i < CHUNK_SIZE * CHUNK_SIZE && updates < maxUpdates; i++) {
                             const x = i % CHUNK_SIZE;
                             const z = (i * 7 + y * 3) % CHUNK_SIZE;
                             const idx = x + y * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
                             const type = data[idx];
-                            if (type !== 4 && type !== 7) continue;
+                            const isWater =
+                                    type === 4 ||
+                                    (type >= 47 && type <= 53);
+                                if (!isWater && type !== 7) continue;
+
 
                             const wx = cx * CHUNK_SIZE + x;
                             const wz = cz * CHUNK_SIZE + z;
@@ -1141,8 +1131,14 @@ window.perlin = perlinInstance;
                                 random: Math.random,
                             };
 
-                            const changed = type === 4 ? window.WaterPhysics.tryUpdate(ctx) : window.SandPhysics.tryUpdate(ctx);
-                            if (changed) updates++;
+                           let changed = false;
+                                
+                                if (isWater) {
+                                        changed = window.WaterPhysics.tryUpdate(ctx);
+                                } else if (type === 7) {
+                                        changed = window.SandPhysics.tryUpdate(ctx);
+                                }
+                                if (changed) updates++;
                         }
                     }
                 }
@@ -1155,7 +1151,6 @@ window.perlin = perlinInstance;
                 }
                 dirtyChunkKeys.clear();
             }
-        }
 
         function modifyWorld(posVector, newType) {
             const wx = Math.floor(posVector.x);
@@ -1199,7 +1194,7 @@ window.perlin = perlinInstance;
 
     
         function getRiverMask(wx, wz) {
-            return worldGenerator ? worldGenerator.getRiverMask(wx, wz) : 0;
+            return TerrainModules['river'].getMask({ perlin, wx, wz });
         }
 
 
@@ -1362,23 +1357,187 @@ window.perlin = perlinInstance;
             return false;
         }
 
+        const BIOME_CLIMATE_TARGETS = [
+            { name: 'Desert', temp: 0.09, humidity: -0.12, continentalness: 0.18, erosion: 0.08, weirdness: 0.06 },
+            { name: 'Forest', temp: 0.0, humidity: 0.16, continentalness: 0.14, erosion: 0.06, weirdness: -0.04 },
+            { name: 'Plains', temp: -0.02, humidity: 0.02, continentalness: 0.1, erosion: 0.2, weirdness: 0.02 },
+        ];
+
+        function sampleClimateVector(wx, wz, y = SEA_LEVEL) {
+            return {
+                temp: octaveNoise3D(wx, y, wz, 3, 0.52, 2.0, 0.00048, -600, 170, 300),
+                humidity: octaveNoise3D(wx, y, wz, 3, 0.55, 2.0, 0.00072, 320, -240, -130),
+                continentalness: octaveNoise3D(wx, y, wz, 3, 0.52, 2.0, 0.00145, 200, 90, 200),
+                erosion: octaveNoise3D(wx, y, wz, 4, 0.5, 2.05, 0.0039, 180, -120, -90),
+                weirdness: octaveNoise3D(wx, y, wz, 4, 0.5, 2.0, 0.0021, -510, 380, 140),
+            };
+        }
+
+        function chooseBiomeByClimate(vec) {
+            let best = 'Plains';
+            let bestDist = Infinity;
+            for (const t of BIOME_CLIMATE_TARGETS) {
+                const dTemp = vec.temp - t.temp;
+                const dHum = vec.humidity - t.humidity;
+                const dCont = vec.continentalness - t.continentalness;
+                const dEro = vec.erosion - t.erosion;
+                const dWeird = vec.weirdness - t.weirdness;
+                const dist = dTemp*dTemp + dHum*dHum + dCont*dCont + dEro*dEro + dWeird*dWeird;
+                if (dist < bestDist) {
+                    bestDist = dist;
+                    best = t.name;
+                }
+            }
+            return best;
+        }
+
         function getBiome(wx, wz) {
-            return worldGenerator ? worldGenerator.getBiome(wx, wz) : 'Plains';
+            const tv = sampleTerrainVector(wx, wz);
+            const climate = sampleClimateVector(wx, wz, SEA_LEVEL + 8);
+            const detailNoise = octaveNoise2D(wx, wz, 3, 0.6, 2.0, 0.003, 0, 0);
+            const mountainNoise = (Math.abs(octaveNoise2D(wx, wz, 3, 0.56, 2.0, 0.0013, -400, 750)) + 1) * 0.5;
+            const continentalNoise = (tv.continentalness + 1) * 0.5;
+            const distFromCenter = Math.sqrt(wx * wx + wz * wz);
+            const riverMask = getRiverMask(wx, wz);
+
+            if (TerrainModules['mountains'].isBiome({ mountainNoise, continentalNoise, climateNoise: climate.temp })) return 'Mountains';
+            if (TerrainModules['ocean'].isBiome({ continentalNoise, climateNoise: climate.temp })) return 'Ocean';
+
+            const aridNoise = octaveNoise2D(wx, wz, 3, 0.54, 2.0, 0.0016, 1400, -900);
+            const heatNoise = octaveNoise2D(wx, wz, 2, 0.58, 2.0, 0.0022, -1700, 500);
+            const likelyDesert = aridNoise > 0.18 && heatNoise > -0.05 && continentalNoise > 0.35 && mountainNoise < 0.72 && riverMask < 0.28;
+            const likelyForest = climate.humidity > 0.16 && climate.temp > -0.35 && climate.temp < 0.38;
+
+            let selected = chooseBiomeByClimate(climate);
+            if (likelyDesert) selected = 'Desert';
+            else if (likelyForest && selected !== 'Desert') selected = 'Forest';
+
+            if (selected === 'Desert') {
+                const isDesert = TerrainModules['desert'].isBiome({
+                    climateNoise: climate.temp,
+                    moistureNoise: Math.min(climate.humidity, octaveNoise2D(wx, wz, 3, 0.55, 2.0, 0.0007, 1000, 1000)),
+                    continentalNoise,
+                });
+                if (!isDesert || riverMask > 0.35) selected = 'Plains';
+            }
+
+            const shouldForceForest = climate.humidity > 0.14 && detailNoise > -0.22 && climate.temp > -0.35;
+            if (selected === 'Forest' && !TerrainModules['oakForest'].isBiome({ detailNoise, humidityNoise: climate.humidity, distFromCenter, ISLAND_RADIUS }) && !shouldForceForest) {
+                selected = 'Plains';
+            } else if (selected === 'Plains' && shouldForceForest && climate.temp > -0.35) {
+                selected = 'Forest';
+            }
+
+            return selected;
+        }
+
+        function getRavineMask(wx, wz) {
+            const warp = perlin.noise2D(wx * 0.001 + 250, wz * 0.001 + 250) * 30;
+            const line = Math.abs(perlin.noise2D(wx * 0.0018 + warp, wz * 0.0018));
+            return 1.0 - Math.min(1.0, line / 0.043);
+        }
+
+        function octaveNoise2D(x, z, octaves, persistence, lacunarity, scale, offsetX = 0, offsetZ = 0) {
+            let amp = 1;
+            let freq = 1;
+            let sum = 0;
+            let norm = 0;
+            for (let i = 0; i < octaves; i++) {
+                sum += perlin.noise2D((x + offsetX) * scale * freq, (z + offsetZ) * scale * freq) * amp;
+                norm += amp;
+                amp *= persistence;
+                freq *= lacunarity;
+            }
+            return norm > 0 ? (sum / norm) : 0;
+        }
+
+        function octaveNoise3D(x, y, z, octaves, persistence, lacunarity, scale, offsetX = 0, offsetY = 0, offsetZ = 0) {
+            let amp = 1;
+            let freq = 1;
+            let sum = 0;
+            let norm = 0;
+            for (let i = 0; i < octaves; i++) {
+                sum += perlin.noise3D((x + offsetX) * scale * freq, (y + offsetY) * scale * freq, (z + offsetZ) * scale * freq) * amp;
+                norm += amp;
+                amp *= persistence;
+                freq *= lacunarity;
+            }
+            return norm > 0 ? (sum / norm) : 0;
+        }
+
+        function hashRand2D(wx, wz, salt = 0) {
+            let h = (Math.imul(wx | 0, 374761393) ^ Math.imul(wz | 0, 668265263) ^ Math.imul((worldSeed + salt) | 0, 2246822519)) >>> 0;
+            h = (h ^ (h >>> 13)) >>> 0;
+            h = Math.imul(h, 1274126177) >>> 0;
+            h = (h ^ (h >>> 16)) >>> 0;
+            return h / 4294967296;
+        }
+
+        function sampleTerrainVector(wx, wz) {
+            // Multi-noise vector: continentalness/erosion/weirdness/humidity.
+            const continentalness = octaveNoise2D(wx, wz, 3, 0.52, 2.0, 0.00145, 200, 200);
+            const erosion = octaveNoise2D(wx, wz, 4, 0.5, 2.05, 0.0039, 180, -90);
+            const weirdness = octaveNoise2D(wx, wz, 4, 0.5, 2.0, 0.0021, -510, 140);
+            const humidity = octaveNoise2D(wx, wz, 3, 0.55, 2.0, 0.0011, 320, -130);
+            const peaksValleys = 1 - Math.abs(weirdness);
+            const ridges = Math.pow(Math.max(0, peaksValleys), 1.8);
+            return { continentalness, erosion, weirdness, humidity, peaksValleys, ridges };
         }
 
         function getNoiseGroundHeight(wx, wz, biome) {
-            if (!worldGenerator) return SEA_LEVEL;
-            return worldGenerator.getNoiseGroundHeight(wx, wz, biome);
+            const tv = sampleTerrainVector(wx, wz);
+            const continentalMask = (tv.continentalness + 1) * 0.5;
+            const terrainNoise = (perlin.noise2D(wx * 0.03, wz * 0.03) + 1) * 0.5;
+            const detailNoise = (perlin.noise2D(wx * 0.08, wz * 0.08) + 1) * 0.5;
+            const erosionNoise = (tv.erosion + 1) * 0.5;
+            const ridgeNoise = Math.abs(perlin.noise2D(wx * 0.02 + 50, wz * 0.02 + 50));
+            const peakNoise = Math.abs(perlin.noise2D(wx * 0.007 - 250, wz * 0.007 + 400));
+            const jaggedNoise = Math.abs(octaveNoise2D(wx, wz, 5, 0.46, 2.25, 0.013, -1200, 950));
+            const cliffNoise = Math.abs(perlin.noise2D(wx * 0.012 - 910, wz * 0.012 + 260));
+            const deepNoise = (perlin.noise2D(wx * 0.01 - 200, wz * 0.01 + 430) + 1) * 0.5;
+            const duneNoise = (perlin.noise2D(wx * 0.045 + 15, wz * 0.045 - 15) + 1) * 0.5;
+
+            let h;
+            if (biome === 'Plains') {
+                h = TerrainModules['plains'].getHeight({ BASE_LAND_Y, continentalMask, terrainNoise, erosionNoise });
+            } else if (biome === 'Forest') {
+                h = TerrainModules['oakForest'].getHeight({ BASE_LAND_Y, continentalMask, terrainNoise, erosionNoise });
+            } else if (biome === 'Desert') {
+                h = TerrainModules['desert'].getHeight({ BASE_LAND_Y, continentalMask, terrainNoise, duneNoise });
+            } else if (biome === 'Mountains') {
+                h = TerrainModules['mountains'].getHeight({
+                    BASE_LAND_Y,
+                    continentalness: tv.continentalness,
+                    erosion: tv.erosion,
+                    ridges: tv.ridges,
+                    peaksValleys: tv.peaksValleys,
+                    terrainNoise,
+                    cliffNoise,
+                    peakNoise,
+                    jaggedNoise,
+                });
+            } else {
+                h = TerrainModules['ocean'].getHeight({ SEA_LEVEL, deepNoise, terrainNoise });
+            }
+
+            h += detailNoise * (biome === 'Mountains' ? 1.2 : 0.7);
+
+            const riverInfluence = getRiverMask(wx, wz);
+            h = TerrainModules['river'].applyHeight({ height: h, riverInfluence, SEA_LEVEL });
+
+            const ravine = getRavineMask(wx, wz);
+            if (ravine > 0.84 && biome !== 'Ocean') h -= (ravine - 0.84) * 70;
+
+            if (biome === 'Mountains' && h < SEA_LEVEL + 8) h = SEA_LEVEL + 8;
+            if (h < SEA_LEVEL - 6 && biome !== 'Ocean') h = SEA_LEVEL - 6;
+            return Math.floor(h);
         }
 
-        function generateChunkData(cx, cz) {
-            if (!worldGenerator) return new Array(CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE).fill(0);
-            return worldGenerator.generateChunkData(cx, cz);
-        }
 
         function getBlockType(wx, wy, wz) {
+            // Check world boundary before accessing chunk data
             if (wx < WORLD_MIN_COORD || wx >= WORLD_MAX_COORD || wz < WORLD_MIN_COORD || wz >= WORLD_MAX_COORD) {
-                return 0;
+                return 0; // Void outside the generated area
             }
 
             if (wy < 0 || wy >= CHUNK_HEIGHT) return 0;
@@ -1391,9 +1550,10 @@ window.perlin = perlinInstance;
                 const lz = wz - group.userData.cz * CHUNK_SIZE;
                 return group.userData.chunkData[lx + wy * CHUNK_SIZE + lz * CHUNK_SIZE * CHUNK_HEIGHT];
             }
-
-            const biome = getBiome(wx, wz);
-            const h = getNoiseGroundHeight(wx, wz, biome);
+            
+            // For blocks outside loaded chunks but inside the boundary, use noise (Fallback)
+            const biome = getBiome(wx, wz); // Calculate biome for fallback
+            const h = getNoiseGroundHeight(wx, wz, biome); 
             if (wy === 0) return 14;
             if (wy < h) {
                 if (biome === 'Desert') return 7;
@@ -1405,6 +1565,381 @@ window.perlin = perlinInstance;
             }
             if (wy < SEA_LEVEL) return 4;
             return 0;
+        }
+
+       
+        function setupPointerLockControls() {
+            const el = document.body;
+            document.addEventListener('pointerlockchange', () => {
+                if (document.pointerLockElement === el) {
+                    player.canMove = true;
+                    if(isInventoryOpen) toggleInventory(); 
+                    document.getElementById('instructions').style.opacity = 0;
+                    document.getElementById('crosshair').style.opacity = 1;
+                } else {
+                    player.canMove = false;
+                    if(!isInventoryOpen) {
+                        document.getElementById('instructions').style.opacity = 1;
+                        document.getElementById('crosshair').style.opacity = 0;
+                    }
+                }
+            });
+            document.addEventListener('mousemove', e => {
+                if (!player.canMove || isInventoryOpen) return;
+                yawObject.rotation.y -= e.movementX * player.rotationSpeed;
+                pitchObject.rotation.x -= e.movementY * player.rotationSpeed;
+                pitchObject.rotation.x = Math.max(-1.5, Math.min(1.5, pitchObject.rotation.x));
+            });
+            document.getElementById('instructions').onclick = () => {
+                if(!isInventoryOpen) el.requestPointerLock();
+            };
+        }
+
+        function setupKeyboardControls() {
+            document.addEventListener('keydown', e => {
+                const k = e.key.toLowerCase();
+                if (k === 'y' || k === 'i') {
+                    toggleInventory();
+                    return;
+                }
+                if (k === 'escape' && isInventoryOpen) {
+                    toggleInventory();
+                    return;
+                }
+                if (!isInventoryOpen) {
+                    player.keys[k] = true;
+                    if (k >= '1' && k <= '9') {
+                        selectedHotbarIndex = parseInt(k) - 1;
+                        updateHotbarUI();
+                    }
+                }
+            });
+            document.addEventListener('keyup', e => player.keys[e.key.toLowerCase()] = false);
+        }
+
+      
+        
+        function generateChunkData(cx, cz) {
+             const data = new Array(CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE);
+             
+             for (let x = 0; x < CHUNK_SIZE; x++) {
+                 for (let z = 0; z < CHUNK_SIZE; z++) {
+                     const wx = cx * CHUNK_SIZE + x;
+                     const wz = cz * CHUNK_SIZE + z;
+                     
+                     // Biomes > Terrain: Calculate biome once, then use it for all column data
+                     const biome = getBiome(wx, wz); 
+                     
+                     // Height based on biome
+                     const h = getNoiseGroundHeight(wx, wz, biome);
+
+                     // Check if block is near the world boundary before applying changes
+                     const isNearBoundary = wx < WORLD_MIN_COORD + 4 || wx >= WORLD_MAX_COORD - 4 || 
+                                            wz < WORLD_MIN_COORD + 4 || wz >= WORLD_MAX_COORD - 4;
+                     
+                     const riverInfluence = getRiverMask(wx, wz);
+                     const RIVER_WIDTH_THRESHOLD = 0.1;
+                     const isRiver = riverInfluence > RIVER_WIDTH_THRESHOLD;
+                     
+                     let surfaceBlockType = 0; // Used for tree placement logic
+
+                     for (let y = 0; y < CHUNK_HEIGHT; y++) {
+                         let t = 0; // Block type
+
+                         if (y === 0) {
+                             t = 14; // Bedrock floor
+                             data[x + y*CHUNK_SIZE + z*CHUNK_SIZE*CHUNK_HEIGHT] = t;
+                             continue;
+                         }
+
+                         if (y < h) {
+                            
+                             const distFromSurface = h - 1 - y;
+
+                             if (biome === 'Desert') {
+                                 if (distFromSurface === 0) {
+                                     t = 7;
+                                     surfaceBlockType = 7;
+                                 } else if (distFromSurface < 5) {
+                                     t = 7;
+                                 } else {
+                                     t = 13;
+                                 }
+                             } else if (biome === 'Mountains') {
+                                 const isSnowCap = h > SEA_LEVEL + 26;
+                                 const cheese = perlin.noise3D(wx * 0.045, y * 0.062, wz * 0.045);
+                                 const overhang = perlin.noise3D(wx * 0.02 + 700, y * 0.03, wz * 0.02 - 300);
+                                 const density = (h - y) + cheese * 5.5 + overhang * 3.2 - ((CHUNK_HEIGHT - y) / CHUNK_HEIGHT) * 3.5;
+
+                                 if (density <= 0.4 && distFromSurface <= 22) {
+                                     t = 0; // allow cliffs/overhangs
+                                 } else if (distFromSurface === 0) {
+                                     t = isSnowCap ? 15 : 3;
+                                     surfaceBlockType = t;
+                                 } else {
+                                     t = 3;
+                                 }
+                             } else { // Plains/Forest/Ocean Biome logic
+                                 
+                                 const isBeachZone = h >= SEA_LEVEL - 1 && h <= SEA_LEVEL + 2;
+
+                                 if (distFromSurface === 0) {
+                                     if (isBeachZone) {
+                                         t = 7; // Sand for beaches
+                                         surfaceBlockType = 7;
+                                     } else {
+                                         t = 1; // Grass for Plains and Forest
+                                         surfaceBlockType = 1;
+                                     }
+                                 } else if (distFromSurface < 4) {
+                                     if (isBeachZone) {
+                                         t = 7; // Sand below beach
+                                     } else {
+                                         t = 2; // Dirt below grass
+                                     }
+                                 } else {
+                                     t = 3; // Stone deep down
+                                 }
+                             }
+                             
+                            // --- RIVER BED OVERRIDE ---
+                            if (isRiver && y < SEA_LEVEL - 1) { 
+                                // If it's part of the river path and below the water line, make it stone/dirt bed
+                                // Use sand/dirt near the surface of the riverbed
+                                if (y > SEA_LEVEL - 3) t = (biome === 'Desert' ? 7 : 2); // Sand/Dirt bed near top
+                                else t = 3; // Stone bed deep down
+                            }
+                            
+                         } else if (y < SEA_LEVEL) {
+                             t = 0; // Start as air above the land height
+                             
+                             // --- WATER FILLING ---
+                             if (isRiver) {
+                                 t = 4; // River water
+                             } 
+                             // If it's the ocean biome, fill the area above ground and below sea level with water
+                             else if (biome === 'Ocean') {
+                                 t = 4;
+                             }
+                             // Otherwise (on dry land, above h, below sea level, not river) it remains air (t=0)
+                         }
+                         
+                        // --- Cave Generation Pass (layered Perlin for bigger cave systems) ---
+                        if (y > CAVE_MIN_Y && y < h - CAVE_MAX_Y_OFFSET) {
+                            if (t === 3 || t === 2 || t === 7 || t === 13) {
+                                const n1 = perlin.noise3D(wx * CAVE_SCALE, y * CAVE_SCALE * 1.7, wz * CAVE_SCALE);
+                                const n2 = perlin.noise3D(wx * CAVE_SCALE * 2.2 + 100, y * CAVE_SCALE * 1.1, wz * CAVE_SCALE * 2.2 + 100);
+                                const caveShape = n1 * 0.7 + n2 * 0.3;
+
+                                const depth = Math.max(0, (h - y) / Math.max(1, h));
+                                const dynamicThreshold = CAVE_THRESHOLD - Math.min(0.14, depth * 0.2);
+                                const tunnelNoise = Math.abs(perlin.noise3D(wx * CAVE_SCALE * 0.7, y * CAVE_SCALE * 0.45, wz * CAVE_SCALE * 0.7));
+
+                                if (caveShape > dynamicThreshold || (depth > 0.35 && tunnelNoise < 0.06)) {
+                                    t = 0;
+                                }
+                            }
+                        }
+                         
+                         
+// 🔹 Optimized Ravine Generation
+const ravineMask = getRavineMask(wx, wz);
+
+if (ravineMask > 0.78) {
+    const strength = (ravineMask - 0.78) / 0.22;
+
+    // Limit top slightly above terrain
+    const ravineTop = Math.min(h + 6, CHUNK_HEIGHT - 1);
+
+    // Reduce max depth for smaller chunks
+    const maxDepth = 18 + Math.floor(strength * 12); // 18–30 blocks deep
+    const ravineBottom = Math.max(3, ravineTop - maxDepth);
+
+    if (y <= ravineTop && y >= ravineBottom) {
+        const mid = (ravineTop + ravineBottom) / 2;
+        const halfHeight = (ravineTop - ravineBottom) / 2;
+        const verticalFactor = 1 - Math.abs(y - mid) / halfHeight;
+
+        // Reduce noise impact
+        const widthNoise = octaveNoise2D(wx, wz, 2, 0.5, 2.0, 0.04, 812, -245);
+        const widthFactor = strength * verticalFactor + widthNoise * 0.1;
+
+        if (widthFactor > 0.25) {
+            // 🔥 Lava very deep underground (only really deep)
+            if (y < 6) {
+                t = 33;
+            }
+            // 🌊 Water below sea level
+            else if (y < SEA_LEVEL - 1) {
+                t = 4;
+            }
+            // 🌫 Air above sea level
+            else {
+                t = 0;
+            }
+        }
+    }
+}
+                             
+                             
+                             
+                                                     // Coal ore pass: mineable by hand, faster with pickaxe.
+                         if (t === 3 || t === 13 && y > 6 && y < Math.min(CHUNK_HEIGHT - 6, h - 2)) {
+                             const veinNoise = octaveNoise2D(wx, wz, 3, 0.5, 2.0, 0.09, 1450, -870);
+                             const depthBias = 1 - (y / CHUNK_HEIGHT);
+                             const oreRoll = hashRand2D(wx + y * 13, wz - y * 7, 301);
+                             if (veinNoise > 0.12 && oreRoll < (0.06 + depthBias * 0.08)) {
+                                 t = 18;
+                             }
+                         }
+                                    // copper ore pass
+                       if (t === 3 || t === 13 && y > 6 && y < Math.min(CHUNK_HEIGHT - 6, h - 2)) {
+                            const veinNoise = octaveNoise2D(wx, wz, 3, 0.5, 2.0, 0.07, 5555, -666);
+                            const depthBias = 1 - (y / CHUNK_HEIGHT);
+                            const oreRoll = hashRand2D(wx + y * 13, wz - y * 7, 302);
+
+                            if (veinNoise > 0.20 && oreRoll < (0.06 + depthBias * 0.08)) {
+                                   t = 35; // copper ore
+                                }
+                           }
+                             // Iron ore pass
+                        if (t === 3 || t === 13 && y > 4 && y < CHUNK_HEIGHT * 0.6) {
+                            const veinNoise = octaveNoise2D(wx, wz, 3, 0.5, 2.0, 0.07, 2222, -333);
+                            const depthBias = 1 - (y / CHUNK_HEIGHT);
+                            const oreRoll = hashRand2D(wx + y * 17, wz - y * 11, 777);
+
+                            if (veinNoise > 0.18 && oreRoll < (0.04 + depthBias * 0.06)) {
+                                   t = 30; // iron ore
+                                }
+                           }
+
+                             // Gold ore pass
+                      if (t === 3 || t === 13 && y > 2 && y < CHUNK_HEIGHT * 0.4) { // diamond spawns lower than iron
+                          const veinNoise = octaveNoise2D(wx, wz, 3, 0.5, 2.0, 0.08, 9999, -1234);
+                          const depthBias = 1 - (y / CHUNK_HEIGHT);
+                          const oreRoll = hashRand2D(wx + y * 19, wz - y * 13, 303);
+
+                          if (veinNoise > 0.25 && oreRoll < (0.03 + depthBias * 0.05)) {
+                                 t = 40; // gold ore
+                              }
+                        }
+                                      // diamond ore pass
+                      if (t === 3 || t === 13 && y > 2 && y < CHUNK_HEIGHT * 0.2) { // diamond spawns lower than iron
+                          const veinNoise = octaveNoise2D(wx, wz, 3, 0.5, 2.0, 0.08, 11111, -8930);
+                          const depthBias = 1 - (y / CHUNK_HEIGHT);
+                          const oreRoll = hashRand2D(wx + y * 21, wz - y * 15, 303);
+
+                          if (veinNoise > 0.30 && oreRoll < (0.02 + depthBias * 0.03)) {
+                                 t = 43; // gold ore
+                              }
+                        }
+                             
+                                                                   // emerald ore pass
+                      if (t === 3 || t === 13 && y > 2 && y < CHUNK_HEIGHT * 0.2) { // emerald spawns lower than iron
+                          const veinNoise = octaveNoise2D(wx, wz, 3, 0.5, 2.0, 0.08, 23498, -19840);
+                          const depthBias = 1 - (y / CHUNK_HEIGHT);
+                          const oreRoll = hashRand2D(wx + y * 26, wz - y * 17, 303);
+
+                          if (veinNoise > 0.34 && oreRoll < (0.025 + depthBias * 0.02)) {
+                                 t = 54; // emerald ore
+                              }
+                        }
+
+
+
+                         if (isNearBoundary && y < SEA_LEVEL && (t === 4 || t === 0)) {
+                             t = 3; 
+                         } 
+
+                         data[x + y*CHUNK_SIZE + z*CHUNK_SIZE*CHUNK_HEIGHT] = t;
+                     }
+                  
+                     // --- Tree Generation (classic oak algorithm with validity + obstruction checks) ---
+                     if (!isRiver && (biome === 'Forest' || biome === 'Plains')) {
+                         let topY = -1;
+                         let topType = 0;
+                         for (let yy = CHUNK_HEIGHT - 2; yy >= 1; yy--) {
+                             const tidx = x + yy * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
+                             const ttype = data[tidx];
+                             if (ttype !== 0 && ttype !== 4) {
+                                 topY = yy;
+                                 topType = ttype;
+                                 break;
+                             }
+                         }
+
+                         if (topY > SEA_LEVEL && (topType === 1 || topType === 2)) {
+                             const densityNoise = octaveNoise2D(wx, wz, 3, 0.55, 2.0, 0.04, 700, -350) * 0.5 + 0.5;
+                             const scatter = hashRand2D(wx, wz, 99);
+                             const localScore = densityNoise * 0.65 + scatter * 0.35;
+
+                             const cell = biome === 'Forest' ? 3 : 5;
+                             const cellKeyX = Math.floor(wx / cell);
+                             const cellKeyZ = Math.floor(wz / cell);
+                             const cellRoll = hashRand2D(cellKeyX, cellKeyZ, biome === 'Forest' ? 611 : 619);
+
+                             const threshold = biome === 'Forest' ? 0.5 : 0.82;
+                             const canSpawn = (localScore > threshold) || (biome === 'Forest' && cellRoll > 0.52 && localScore > 0.38);
+
+                             if (canSpawn) {
+                                 const heightLimit = 5 + Math.floor(hashRand2D(wx, wz, 157) * 4); // 5-8
+
+                                 // Obstruction check (only allow air/leaves in intended volume)
+                                 let obstructed = false;
+                                 for (let ty = topY + 1; ty <= Math.min(CHUNK_HEIGHT - 2, topY + heightLimit + 2) && !obstructed; ty++) {
+                                     const canopyRadius = ty >= topY + heightLimit - 2 ? 2 : 0;
+                                     for (let ox = -canopyRadius; ox <= canopyRadius && !obstructed; ox++) {
+                                         for (let oz = -canopyRadius; oz <= canopyRadius && !obstructed; oz++) {
+                                             const tx = x + ox;
+                                             const tz = z + oz;
+                                             if (tx < 0 || tx >= CHUNK_SIZE || tz < 0 || tz >= CHUNK_SIZE) continue;
+                                             const idx = tx + ty * CHUNK_SIZE + tz * CHUNK_SIZE * CHUNK_HEIGHT;
+                                             const b = data[idx];
+                                             if (b !== 0 && b !== 6) obstructed = true;
+                                         }
+                                     }
+                                 }
+
+                                 if (!obstructed) {
+                                     const baseIdx = x + topY * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
+                                     if (data[baseIdx] === 2) data[baseIdx] = 1;
+
+                                     // Straight trunk placer
+                                     for (let i = 1; i <= heightLimit; i++) {
+                                         const ty = topY + i;
+                                         if (ty >= CHUNK_HEIGHT) break;
+                                         const idx = x + ty * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
+                                         if (data[idx] === 0 || data[idx] === 6) data[idx] = 5;
+                                     }
+
+    for (let ly = -3; ly <= 1; ly++) {
+    const yAbs = topY + heightLimit + ly;
+    if (yAbs < 1 || yAbs >= CHUNK_HEIGHT) continue;
+
+    const radius = ly >= 0 ? 1 : (ly === -1 ? 2 : (ly === -2 ? 2 : 1));
+
+    for (let lx = -radius; lx <= radius; lx++) {
+        for (let lz = -radius; lz <= radius; lz++) {
+            // True circle distance check
+            if (lx*lx + lz*lz > radius*radius) continue;
+
+            const tx = x + lx;
+            const tz = z + lz;
+            if (tx < 0 || tx >= CHUNK_SIZE || tz < 0 || tz >= CHUNK_SIZE) continue;
+
+            const lidx = tx + yAbs * CHUNK_SIZE + tz * CHUNK_SIZE * CHUNK_HEIGHT;
+            if (data[lidx] === 0) data[lidx] = 6;
+        }
+    }
+}
+
+                                 }
+                             }
+                         }
+                     }
+                 }
+             }
+             return data;
         }
 
         function createChunk(cx, cz) {
