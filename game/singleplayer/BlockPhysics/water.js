@@ -56,12 +56,13 @@
 
     const below = getBlock(wx, wy - 1, wz);
 
-    // --- FLOW DOWN (INFINITE) ---
+    // --- FLOW DOWN ---
     if (below === 0) {
-      swapBlocks(wx, wy, wz, wx, wy - 1, wz);
-      setBlock(wx, wy - 1, wz, FLOW_START); // resets horizontal distance
+      setBlock(wx, wy - 1, wz, FLOW_START);
+      if (id !== WATER_SOURCE) setBlock(wx, wy, wz, 0);
       return true;
     }
+
 
     // --- HORIZONTAL SPREAD ---
     const distance = getDistance(id);

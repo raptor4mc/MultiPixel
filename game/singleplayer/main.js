@@ -29,7 +29,7 @@
         const PickaxeSystem = window.PickaxeSystem || {};
         const SpawnLighting = window.SpawnLighting || {};
 
-        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-14-15';
+        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-21-11';
         console.info('[Singleplayer build]', window.__SINGLEPLAYER_BUILD__);
 
         const TerrainModules = {};
@@ -64,6 +64,11 @@
         TerrainModules['plains'] = window.PlainsTerrain || {
             isBiome: function () { return true; },
             getHeight: function (ctx) { return ctx.BASE_LAND_Y + ctx.continentalMask * 8 + ctx.terrainNoise * 2; }
+        };
+
+        TerrainModules['snowyPlains'] = window.SnowyPlainsTerrain || {
+            isBiome: function (ctx) { return ctx.tempNoise < -0.34 && ctx.humidityNoise > -0.12 && ctx.mountainNoise < 0.58; },
+            getHeight: function (ctx) { return ctx.BASE_LAND_Y + ctx.continentalMask * 6 + ctx.terrainNoise * 2 - ctx.erosionNoise; }
         };
 
         TerrainModules['mountains'] = window.MountainsTerrain || {
@@ -114,6 +119,9 @@ window.perlin = perlinInstance;
         
         // --- NEW CRAFTING STATE VARIABLES ---
         let isCraftingTableOpen = false;
+        let isFurnaceOpen = false;
+        let activeFurnaceKey = null;
+        const furnaceStates = new Map();
         let craftingInput = new Array(4).fill(null); // 2x2 Grid
         let craftingTableInput = new Array(9).fill(null); // 3x3 Grid
         let craftingOutput = null; 
@@ -131,12 +139,38 @@ window.perlin = perlinInstance;
         let lastPhysicsTickMs = 0;
         const dirtyChunkKeys = new Set();
         let physicsCursorY = 1;
+
+        const MOBILE_ASSET_BASE = `${window.SingleplayerConfig?.REPO_BASE_PREFIX || '/MultiPixel'}/game/singleplayer/assets/mobile`;
+        const coarsePointer = window.matchMedia ? window.matchMedia('(pointer: coarse)').matches : false;
+        const noHover = window.matchMedia ? window.matchMedia('(hover: none)').matches : false;
+        const touchCapable = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+        const mobileControls = {
+            // User can choose mode from the start screen; this is the suggested default.
+            autoEnabled: coarsePointer || (touchCapable && noHover) || (touchCapable && window.innerWidth <= 1024),
+            enabled: false,
+            initialized: false,
+            moveX: 0,
+            moveY: 0,
+            sprint: false,
+            jump: false,
+            joystickPointerId: null,
+            worldTouchActive: false,
+            worldTouchStartMs: 0,
+            worldTouchPointerId: null,
+            miningTimer: null,
+            isMiningTouch: false,
+            lookPointerId: null,
+            lastLookX: 0,
+            lastLookY: 0,
+        };
      
 
       
         let scene, camera, renderer, perlin, raycaster;
         let worldSeed = 0;
         let lightingSystem = null;
+        const frustum = new THREE.Frustum();
+        const cameraViewProj = new THREE.Matrix4();
         const chunks = new Map();
         const worldGroup = new THREE.Group();
         let yawObject, pitchObject; 
@@ -265,11 +299,18 @@ window.perlin = perlinInstance;
             setupPointerLockControls();
             setupKeyboardControls();
             setupBlockInteraction();
+            setupInputModeChooser();
             setInitialPlayerPosition();
             
           
             renderHearts();
             updateHotbarUI();
+            const closeBtn = document.getElementById('inventory-close-btn');
+            const closeIcon = document.getElementById('inventory-close-icon');
+            if (closeIcon) closeIcon.src = `${window.SingleplayerConfig?.REPO_BASE_PREFIX || '/MultiPixel'}/game/singleplayer/assets/mobile/cdb_clear.png`;
+            if (closeBtn) closeBtn.addEventListener('click', () => {
+                if (isInventoryOpen) toggleInventory();
+            });
             if (window.HungerSystem) {
                 window.HungerSystem.init({ messageCallback: showGameMessage });
             }
@@ -498,6 +539,27 @@ window.perlin = perlinInstance;
 
         // Helper function for inventory item management
 
+
+        function getOrCreateFurnaceState(key) {
+            if (!key) return null;
+            if (!furnaceStates.has(key)) {
+                const state = (window.FurnaceSystem && window.FurnaceSystem.createState)
+                    ? window.FurnaceSystem.createState()
+                    : { input: null, fuel: null, output: null, burnTime: 0, maxBurnTime: 0, cookTime: 0, cookTimeTarget: 8 };
+                furnaceStates.set(key, state);
+            }
+            return furnaceStates.get(key);
+        }
+
+        function getFurnaceSlotRef(slotType) {
+            const state = getOrCreateFurnaceState(activeFurnaceKey);
+            if (!state) return null;
+            if (slotType === 'furnace-input') return { state, key: 'input' };
+            if (slotType === 'furnace-fuel') return { state, key: 'fuel' };
+            if (slotType === 'furnace-output') return { state, key: 'output' };
+            return null;
+        }
+
         function resolveInventorySlotTarget(slotIndex, slotType = 'inv') {
             let slotArray;
             let finalIndex = slotIndex;
@@ -511,6 +573,10 @@ window.perlin = perlinInstance;
                 slotArray = craftingInput;
             } else if (slotType === 'craft-table-input') {
                 slotArray = craftingTableInput;
+            } else if (slotType === 'furnace-input' || slotType === 'furnace-fuel') {
+                const ref = getFurnaceSlotRef(slotType);
+                if (ref) slotArray = [ref.state[ref.key]];
+                finalIndex = 0;
             }
 
             return { slotArray, finalIndex };
@@ -545,6 +611,32 @@ window.perlin = perlinInstance;
                 }
             }
 
+            if (slotType === 'furnace-output') return;
+            if (slotType === 'furnace-input' || slotType === 'furnace-fuel') {
+                const ref = getFurnaceSlotRef(slotType);
+                if (!ref) return;
+                const targetItem = ref.state[ref.key];
+                if (!heldItem) {
+                    if (targetItem && targetItem.count > 1) {
+                        const split = Math.ceil(targetItem.count / 2);
+                        targetItem.count -= split;
+                        heldItem = { id: targetItem.id, count: split };
+                        if (targetItem.count <= 0) ref.state[ref.key] = null;
+                    }
+                } else {
+                    if (!targetItem) {
+                        ref.state[ref.key] = { id: heldItem.id, count: 1 };
+                        heldItem.count -= 1;
+                    } else if (targetItem.id === heldItem.id && targetItem.count < 64) {
+                        targetItem.count += 1;
+                        heldItem.count -= 1;
+                    }
+                    if (heldItem && heldItem.count <= 0) heldItem = null;
+                }
+                renderInventoryScreen();
+                updateHotbarUI();
+                return;
+            }
             if (slotType === 'craft-input' || slotType === 'craft-table-input') {
                 const inputGrid = isCraftingTableOpen ? craftingTableInput : craftingInput;
                 const gridWidth = isCraftingTableOpen ? 3 : 2;
@@ -603,6 +695,22 @@ window.perlin = perlinInstance;
             
             let { slotArray, finalIndex } = resolveInventorySlotTarget(slotIndex, slotType);
             
+            if (slotType === 'furnace-output') {
+                const ref = getFurnaceSlotRef(slotType);
+                if (ref && ref.state.output) {
+                    if (!heldItem) {
+                        heldItem = { ...ref.state.output };
+                        ref.state.output = null;
+                    } else if (heldItem.id === ref.state.output.id && heldItem.count + ref.state.output.count <= 64) {
+                        heldItem.count += ref.state.output.count;
+                        ref.state.output = null;
+                    }
+                }
+                renderInventoryScreen();
+                updateHotbarUI();
+                return;
+            }
+
             if (slotType === 'output') {
                 
                 // Determine which crafting grid is active
@@ -632,11 +740,44 @@ window.perlin = perlinInstance;
                 }
             }
 
-            if (slotArray) {
+            if (slotType === 'furnace-input' || slotType === 'furnace-fuel') {
+                const ref = getFurnaceSlotRef(slotType);
+                if (ref) {
+                    const tempArray = [ref.state[ref.key]];
+                    manageSlot(tempArray[0], tempArray, 0);
+                    ref.state[ref.key] = tempArray[0];
+                }
+            } else if (slotArray) {
                 manageSlot(slotArray[finalIndex], slotArray, finalIndex);
                 
                 // If the change was in the crafting input grid, recalculate output
-                if (slotType === 'craft-input' || slotType === 'craft-table-input') {
+                if (slotType === 'furnace-output') return;
+            if (slotType === 'furnace-input' || slotType === 'furnace-fuel') {
+                const ref = getFurnaceSlotRef(slotType);
+                if (!ref) return;
+                const targetItem = ref.state[ref.key];
+                if (!heldItem) {
+                    if (targetItem && targetItem.count > 1) {
+                        const split = Math.ceil(targetItem.count / 2);
+                        targetItem.count -= split;
+                        heldItem = { id: targetItem.id, count: split };
+                        if (targetItem.count <= 0) ref.state[ref.key] = null;
+                    }
+                } else {
+                    if (!targetItem) {
+                        ref.state[ref.key] = { id: heldItem.id, count: 1 };
+                        heldItem.count -= 1;
+                    } else if (targetItem.id === heldItem.id && targetItem.count < 64) {
+                        targetItem.count += 1;
+                        heldItem.count -= 1;
+                    }
+                    if (heldItem && heldItem.count <= 0) heldItem = null;
+                }
+                renderInventoryScreen();
+                updateHotbarUI();
+                return;
+            }
+            if (slotType === 'craft-input' || slotType === 'craft-table-input') {
                     const inputGrid = isCraftingTableOpen ? craftingTableInput : craftingInput;
                     const gridWidth = isCraftingTableOpen ? 3 : 2;
                     craftingOutput = checkCraftingRecipe(inputGrid, gridWidth);
@@ -658,6 +799,10 @@ window.perlin = perlinInstance;
             // 3x3 Elements
             const craftInputGrid3x3 = document.getElementById('crafting-table-grid');
             const craftOutputSlot3x3 = document.getElementById('crafting-table-output-slot');
+            const furnaceContainer = document.getElementById('furnace-container');
+            const furnaceInputSlot = document.getElementById('furnace-input-slot');
+            const furnaceFuelSlot = document.getElementById('furnace-fuel-slot');
+            const furnaceOutputSlot = document.getElementById('furnace-output-slot');
             
             mainGrid.innerHTML = '';
             hotbarGrid.innerHTML = '';
@@ -665,6 +810,9 @@ window.perlin = perlinInstance;
             craftOutputSlot2x2.innerHTML = '';
             craftInputGrid3x3.innerHTML = '';
             craftOutputSlot3x3.innerHTML = '';
+            if (furnaceInputSlot) furnaceInputSlot.innerHTML = '';
+            if (furnaceFuelSlot) furnaceFuelSlot.innerHTML = '';
+            if (furnaceOutputSlot) furnaceOutputSlot.innerHTML = '';
 
             const mainStart = HOTBAR_SLOTS; 
             const mainEnd = TOTAL_INV_SIZE; 
@@ -801,7 +949,7 @@ window.perlin = perlinInstance;
         // --- END: Renders the item attached to the mouse cursor when inventory is open ---
 
 
-        function toggleInventory(openTableMode = false) {
+        function toggleInventory(openTableMode = false, openFurnaceMode = false, furnaceKey = null) {
             const invScreen = document.getElementById('inventory-screen');
             const hud = document.getElementById('hud');
             
@@ -813,9 +961,11 @@ window.perlin = perlinInstance;
                 // CLOSE INVENTORY
                 isInventoryOpen = false;
                 isCraftingTableOpen = false; // Reset table state
+                isFurnaceOpen = false;
+                activeFurnaceKey = null;
                 invScreen.classList.add('hidden');
                 hud.classList.remove('opacity-0');
-                document.body.requestPointerLock();
+                if (!mobileControls.enabled) document.body.requestPointerLock();
                 
                 // --- Cleanup held item when closing inventory ---
                 if (heldItem) {
@@ -835,6 +985,8 @@ window.perlin = perlinInstance;
                 // OPEN INVENTORY
                 isInventoryOpen = true;
                 isCraftingTableOpen = openTableMode;
+                isFurnaceOpen = openFurnaceMode;
+                activeFurnaceKey = furnaceKey;
                 
                 // Toggle visibility of crafting grids
                 if (isCraftingTableOpen) {
@@ -857,7 +1009,7 @@ window.perlin = perlinInstance;
                 renderInventoryScreen(); 
                 invScreen.classList.remove('hidden');
                 hud.classList.add('opacity-0');
-                document.exitPointerLock(); 
+                if (!mobileControls.enabled) document.exitPointerLock(); 
                 player.keys = {}; 
             }
         }
@@ -976,74 +1128,77 @@ window.perlin = perlinInstance;
         function setupBlockInteraction() {
             window.addEventListener('pointerdown', onPointerDown, false);
             window.addEventListener('pointerup', onPointerUp, false);
+            window.addEventListener('pointercancel', onPointerUp, false);
         }
 
         function onPointerUp(event) {
+            if (event.pointerType === 'touch') return;
             if (event.button !== 0) return;
             isLeftMouseDown = false;
             miningState.active = false;
             updateBreakingOverlay();
         }
 
-        function onPointerDown(event) {
-            if (!player.canMove || isInventoryOpen) return;
-
-            raycaster.setFromCamera({ x: 0, y: 0 }, camera); 
-            
-          
+        function interactOrPlaceAtCrosshair() {
+            raycaster.setFromCamera({ x: 0, y: 0 }, camera);
             const meshes = [];
             worldGroup.children.forEach(g => g.children.forEach(m => meshes.push(m)));
-            
             const intersects = raycaster.intersectObjects(meshes, true);
+            if (!intersects.length) return;
 
-            if (intersects.length > 0) {
-                const hit = intersects[0];
-               
-                // LEFT CLICK - Break
-                if (event.button === 0) {
-                    isLeftMouseDown = true;
-                    const target = getTargetBlockFromCrosshair();
-                    if (target) {
-                        beginMiningTarget(target);
-                        updateBreakingOverlay();
-                    }
-                } 
-                // RIGHT CLICK - Interact or Place
-                else if (event.button === 2) { 
-                    
-                    // 1. Check for Block Interaction (Crafting Table)
-                    const targetBlockPos = hit.point.clone().sub(hit.face.normal.clone().multiplyScalar(0.01));
-                    const wx = Math.floor(targetBlockPos.x);
-                    const wy = Math.floor(targetBlockPos.y);
-                    const wz = Math.floor(targetBlockPos.z);
-                    const targetBlockId = getBlockType(wx, wy, wz);
+            const hit = intersects[0];
+            const targetBlockPos = hit.point.clone().sub(hit.face.normal.clone().multiplyScalar(0.01));
+            const wx = Math.floor(targetBlockPos.x);
+            const wy = Math.floor(targetBlockPos.y);
+            const wz = Math.floor(targetBlockPos.z);
+            const targetBlockId = getBlockType(wx, wy, wz);
 
-                    if (targetBlockId === 9) { // 9 = Crafting Table
-                        toggleInventory(true); // Open in Table Mode
-                        return; 
-                    }
+            if (targetBlockId === 9) {
+                toggleInventory(true, false, null);
+                return;
+            }
+            if (targetBlockId === 23) {
+                toggleInventory(false, true, `${wx},${wy},${wz}`);
+                return;
+            }
 
-                    // 2. Place Block Logic
-                    const item = inventory[selectedHotbarIndex];
-                    if (!item || !isSolid(item.id)) return; 
+            const item = inventory[selectedHotbarIndex];
+            if (!item || !isSolid(item.id)) return;
 
-                    const placePos = hit.point.clone().add(hit.face.normal.clone().multiplyScalar(0.01));
-                    
-                    const px = Math.floor(placePos.x), py = Math.floor(placePos.y), pz = Math.floor(placePos.z);
-                    const playerBox = new THREE.Box3(
-                        new THREE.Vector3(yawObject.position.x - PLAYER_RADIUS, yawObject.position.y, yawObject.position.z - PLAYER_RADIUS),
-                        new THREE.Vector3(yawObject.position.x + PLAYER_RADIUS, yawObject.position.y + PLAYER_HEIGHT, yawObject.position.z + PLAYER_RADIUS)
-                    );
-                    const blockBox = new THREE.Box3(
-                        new THREE.Vector3(px, py, pz), new THREE.Vector3(px+1, py+1, pz+1)
-                    );
+            const placePos = hit.point.clone().add(hit.face.normal.clone().multiplyScalar(0.01));
+            const px = Math.floor(placePos.x), py = Math.floor(placePos.y), pz = Math.floor(placePos.z);
+            const playerBox = new THREE.Box3(
+                new THREE.Vector3(yawObject.position.x - PLAYER_RADIUS, yawObject.position.y, yawObject.position.z - PLAYER_RADIUS),
+                new THREE.Vector3(yawObject.position.x + PLAYER_RADIUS, yawObject.position.y + PLAYER_HEIGHT, yawObject.position.z + PLAYER_RADIUS)
+            );
+            const blockBox = new THREE.Box3(
+                new THREE.Vector3(px, py, pz), new THREE.Vector3(px + 1, py + 1, pz + 1)
+            );
 
-                    if (!playerBox.intersectsBox(blockBox)) {
-                        if (modifyWorld(placePos, item.id)) {
-                            consumeSelectedItem();
-                        }
-                    }
+            if (!playerBox.intersectsBox(blockBox)) {
+                if (modifyWorld(placePos, item.id)) consumeSelectedItem();
+            }
+        }
+
+        function onPointerDown(event) {
+            if (event.pointerType === 'touch') return;
+            if (!player.canMove || isInventoryOpen) return;
+
+            raycaster.setFromCamera({ x: 0, y: 0 }, camera);
+            const meshes = [];
+            worldGroup.children.forEach(g => g.children.forEach(m => meshes.push(m)));
+            const intersects = raycaster.intersectObjects(meshes, true);
+            if (!intersects.length) return;
+
+            if (event.button === 0) {
+                isLeftMouseDown = true;
+                const target = getTargetBlockFromCrosshair();
+                if (target) {
+                    beginMiningTarget(target);
+                    updateBreakingOverlay();
                 }
+            } else if (event.button === 2) {
+                interactOrPlaceAtCrosshair();
             }
         }
 
@@ -1087,9 +1242,10 @@ window.perlin = perlinInstance;
         let physicsTickCounter = 0;
 
         function applyBlockPhysics(nowMs) {
-            if (!window.WaterPhysics || !window.SandPhysics) return;
+            if (!window.WaterPhysics || !window.SandPhysics || !window.LavaPhysics) return;
             if (nowMs - lastPhysicsTickMs < 50) return;
             lastPhysicsTickMs = nowMs;
+            physicsTickCounter++;
 
             const centerCx = Math.floor(yawObject.position.x / CHUNK_SIZE);
             const centerCz = Math.floor(yawObject.position.z / CHUNK_SIZE);
@@ -1115,10 +1271,9 @@ window.perlin = perlinInstance;
                             const z = (i * 7 + y * 3) % CHUNK_SIZE;
                             const idx = x + y * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
                             const type = data[idx];
-                            const isWater =
-                                    type === 4 ||
-                                    (type >= 47 && type <= 53);
-                                if (!isWater && type !== 7) continue;
+                            const isWater = type === 4 || (type >= 47 && type <= 53);
+                            const isLava = type === 33 || (type >= 60 && type <= 66);
+                            if (!isWater && !isLava && type !== 7) continue;
 
 
                             const wx = cx * CHUNK_SIZE + x;
@@ -1128,6 +1283,7 @@ window.perlin = perlinInstance;
                                 getBlock: getBlockType,
                                 setBlock: (xw, yw, zw, nt) => setBlockTypeRaw(xw, yw, zw, nt, true),
                                 swapBlocks: swapBlocksRaw,
+                                gameTick: physicsTickCounter,
                                 random: Math.random,
                             };
 
@@ -1135,6 +1291,8 @@ window.perlin = perlinInstance;
                                 
                                 if (isWater) {
                                         changed = window.WaterPhysics.tryUpdate(ctx);
+                                } else if (isLava) {
+                                        changed = window.LavaPhysics.tryUpdate(ctx);
                                 } else if (type === 7) {
                                         changed = window.SandPhysics.tryUpdate(ctx);
                                 }
@@ -1216,10 +1374,14 @@ window.perlin = perlinInstance;
             if (player.keys['s']) player.direction.sub(forward);
             if (player.keys['a']) player.direction.sub(right);
             if (player.keys['d']) player.direction.add(right);
-            player.direction.normalize();
+            if (mobileControls.enabled) {
+                player.direction.add(right.clone().multiplyScalar(mobileControls.moveX));
+                player.direction.add(forward.clone().multiplyScalar(-mobileControls.moveY));
+            }
+            if (player.direction.lengthSq() > 0) player.direction.normalize();
 
             const isMoving = player.direction.lengthSq() > 0;
-            const isSprinting = isMoving && player.keys['e'];
+            const isSprinting = isMoving && (player.keys['e'] || mobileControls.sprint);
             if (window.HungerSystem) {
                 window.HungerSystem.update(performance.now(), { isMoving, isSprinting });
             }
@@ -1232,7 +1394,7 @@ window.perlin = perlinInstance;
             player.velocity.y += GRAVITY;
 
           
-            if (player.keys[' '] && !player.isJumping) {
+            if ((player.keys[' '] || mobileControls.jump) && !player.isJumping) {
                 player.velocity.y = JUMP_POWER;
                 player.isJumping = true;
             }
@@ -1361,6 +1523,7 @@ window.perlin = perlinInstance;
             { name: 'Desert', temp: 0.09, humidity: -0.12, continentalness: 0.18, erosion: 0.08, weirdness: 0.06 },
             { name: 'Forest', temp: 0.0, humidity: 0.16, continentalness: 0.14, erosion: 0.06, weirdness: -0.04 },
             { name: 'Plains', temp: -0.02, humidity: 0.02, continentalness: 0.1, erosion: 0.2, weirdness: 0.02 },
+            { name: 'Snowy Plains', temp: -0.52, humidity: 0.04, continentalness: 0.12, erosion: 0.18, weirdness: -0.02 },
         ];
 
         function sampleClimateVector(wx, wz, y = SEA_LEVEL) {
@@ -1391,44 +1554,76 @@ window.perlin = perlinInstance;
             return best;
         }
 
-        function getBiome(wx, wz) {
+
+        function clamp01(v) { return Math.max(0, Math.min(1, v)); }
+        function smoothstep(edge0, edge1, x) {
+            const t = clamp01((x - edge0) / (edge1 - edge0));
+            return t * t * (3 - 2 * t);
+        }
+        function lerp(a, b, t) { return a + (b - a) * t; }
+        function biomeWeights(wx, wz) {
             const tv = sampleTerrainVector(wx, wz);
             const climate = sampleClimateVector(wx, wz, SEA_LEVEL + 8);
-            const detailNoise = octaveNoise2D(wx, wz, 3, 0.6, 2.0, 0.003, 0, 0);
             const mountainNoise = (Math.abs(octaveNoise2D(wx, wz, 3, 0.56, 2.0, 0.0013, -400, 750)) + 1) * 0.5;
             const continentalNoise = (tv.continentalness + 1) * 0.5;
-            const distFromCenter = Math.sqrt(wx * wx + wz * wz);
-            const riverMask = getRiverMask(wx, wz);
 
-            if (TerrainModules['mountains'].isBiome({ mountainNoise, continentalNoise, climateNoise: climate.temp })) return 'Mountains';
-            if (TerrainModules['ocean'].isBiome({ continentalNoise, climateNoise: climate.temp })) return 'Ocean';
+            const oceanW = smoothstep(0.36, 0.02, continentalNoise);
+            const mountainW = smoothstep(0.50, 0.80, mountainNoise) * smoothstep(0.34, 0.90, continentalNoise);
+            const desertW = smoothstep(0.02, 0.48, climate.temp) * smoothstep(0.24, -0.30, climate.humidity) * smoothstep(0.30, 0.90, continentalNoise);
+            const snowyW = smoothstep(-0.20, -0.64, climate.temp) * smoothstep(-0.18, 0.50, climate.humidity) * smoothstep(0.22, 0.86, continentalNoise) * (1 - mountainW * 0.70);
+            const forestW = smoothstep(-0.12, 0.44, climate.humidity) * smoothstep(-0.28, 0.40, climate.temp) * (1 - desertW * 0.72);
+            const plainsW = 0.16 + smoothstep(0.14, 0.66, continentalNoise) * 0.14;
 
-            const aridNoise = octaveNoise2D(wx, wz, 3, 0.54, 2.0, 0.0016, 1400, -900);
-            const heatNoise = octaveNoise2D(wx, wz, 2, 0.58, 2.0, 0.0022, -1700, 500);
-            const likelyDesert = aridNoise > 0.18 && heatNoise > -0.05 && continentalNoise > 0.35 && mountainNoise < 0.72 && riverMask < 0.28;
-            const likelyForest = climate.humidity > 0.16 && climate.temp > -0.35 && climate.temp < 0.38;
-
-            let selected = chooseBiomeByClimate(climate);
-            if (likelyDesert) selected = 'Desert';
-            else if (likelyForest && selected !== 'Desert') selected = 'Forest';
-
-            if (selected === 'Desert') {
-                const isDesert = TerrainModules['desert'].isBiome({
-                    climateNoise: climate.temp,
-                    moistureNoise: Math.min(climate.humidity, octaveNoise2D(wx, wz, 3, 0.55, 2.0, 0.0007, 1000, 1000)),
-                    continentalNoise,
-                });
-                if (!isDesert || riverMask > 0.35) selected = 'Plains';
+            const total = oceanW + mountainW + desertW + snowyW + forestW + plainsW;
+            if (total <= 0) {
+                return {
+                    tv,
+                    climate,
+                    weights: { Ocean: 0, Mountains: 0, Desert: 0, Forest: 0, Plains: 1, 'Snowy Plains': 0 }
+                };
             }
 
-            const shouldForceForest = climate.humidity > 0.14 && detailNoise > -0.22 && climate.temp > -0.35;
-            if (selected === 'Forest' && !TerrainModules['oakForest'].isBiome({ detailNoise, humidityNoise: climate.humidity, distFromCenter, ISLAND_RADIUS }) && !shouldForceForest) {
-                selected = 'Plains';
-            } else if (selected === 'Plains' && shouldForceForest && climate.temp > -0.35) {
-                selected = 'Forest';
+            return {
+                tv,
+                climate,
+                weights: {
+                    Ocean: oceanW / total,
+                    Mountains: mountainW / total,
+                    Desert: desertW / total,
+                    Forest: forestW / total,
+                    Plains: plainsW / total,
+                    'Snowy Plains': snowyW / total,
+                }
+            };
+        }
+
+        function getBiome(wx, wz) {
+            const { climate, weights } = biomeWeights(wx, wz);
+            const contenders = ['Mountains', 'Desert', 'Forest', 'Snowy Plains', 'Ocean'];
+
+            let bestSpecial = 'Plains';
+            let bestSpecialW = 0;
+            for (const biomeName of contenders) {
+                const w = weights[biomeName] || 0;
+                if (w > bestSpecialW) {
+                    bestSpecialW = w;
+                    bestSpecial = biomeName;
+                }
             }
 
-            return selected;
+            const plainsW = weights['Plains'] || 0;
+
+            // Prefer special biomes when they are clearly present.
+            if (bestSpecialW > plainsW * 0.80 || bestSpecialW > 0.27) {
+                return bestSpecial;
+            }
+
+            // Climate nudges to avoid a plains-only world.
+            if (climate.temp < -0.38 && climate.humidity > -0.15) return 'Snowy Plains';
+            if (climate.humidity > 0.20 && climate.temp > -0.30 && climate.temp < 0.42) return 'Forest';
+            if (climate.temp > 0.18 && climate.humidity < -0.08) return 'Desert';
+
+            return 'Plains';
         }
 
         function getRavineMask(wx, wz) {
@@ -1487,49 +1682,55 @@ window.perlin = perlinInstance;
         function getNoiseGroundHeight(wx, wz, biome) {
             const tv = sampleTerrainVector(wx, wz);
             const continentalMask = (tv.continentalness + 1) * 0.5;
-            const terrainNoise = (perlin.noise2D(wx * 0.03, wz * 0.03) + 1) * 0.5;
-            const detailNoise = (perlin.noise2D(wx * 0.08, wz * 0.08) + 1) * 0.5;
+            const terrainNoise = (perlin.noise2D(wx * 0.02, wz * 0.02) + 1) * 0.5;
+            const detailNoise = (perlin.noise2D(wx * 0.045, wz * 0.045) + 1) * 0.5;
             const erosionNoise = (tv.erosion + 1) * 0.5;
             const ridgeNoise = Math.abs(perlin.noise2D(wx * 0.02 + 50, wz * 0.02 + 50));
             const peakNoise = Math.abs(perlin.noise2D(wx * 0.007 - 250, wz * 0.007 + 400));
             const jaggedNoise = Math.abs(octaveNoise2D(wx, wz, 5, 0.46, 2.25, 0.013, -1200, 950));
             const cliffNoise = Math.abs(perlin.noise2D(wx * 0.012 - 910, wz * 0.012 + 260));
             const deepNoise = (perlin.noise2D(wx * 0.01 - 200, wz * 0.01 + 430) + 1) * 0.5;
-            const duneNoise = (perlin.noise2D(wx * 0.045 + 15, wz * 0.045 - 15) + 1) * 0.5;
+            const bigDuneNoise = (perlin.noise2D(wx * 0.016 + 15, wz * 0.016 - 15) + 1) * 0.5;
+            const duneDetailNoise = (perlin.noise2D(wx * 0.038 + 120, wz * 0.038 - 70) + 1) * 0.5;
+            const rockMaskNoise = (perlin.noise2D(wx * 0.009 - 510, wz * 0.009 + 230) + 1) * 0.5;
+            const { weights } = biomeWeights(wx, wz);
 
-            let h;
-            if (biome === 'Plains') {
-                h = TerrainModules['plains'].getHeight({ BASE_LAND_Y, continentalMask, terrainNoise, erosionNoise });
-            } else if (biome === 'Forest') {
-                h = TerrainModules['oakForest'].getHeight({ BASE_LAND_Y, continentalMask, terrainNoise, erosionNoise });
-            } else if (biome === 'Desert') {
-                h = TerrainModules['desert'].getHeight({ BASE_LAND_Y, continentalMask, terrainNoise, duneNoise });
-            } else if (biome === 'Mountains') {
-                h = TerrainModules['mountains'].getHeight({
-                    BASE_LAND_Y,
-                    continentalness: tv.continentalness,
-                    erosion: tv.erosion,
-                    ridges: tv.ridges,
-                    peaksValleys: tv.peaksValleys,
-                    terrainNoise,
-                    cliffNoise,
-                    peakNoise,
-                    jaggedNoise,
-                });
-            } else {
-                h = TerrainModules['ocean'].getHeight({ SEA_LEVEL, deepNoise, terrainNoise });
-            }
+            const plainsH = TerrainModules['plains'].getHeight({ BASE_LAND_Y, continentalMask, terrainNoise, erosionNoise });
+            const forestH = TerrainModules['oakForest'].getHeight({ BASE_LAND_Y, continentalMask, terrainNoise, erosionNoise });
+            const desertH = TerrainModules['desert'].getHeight({ BASE_LAND_Y, continentalMask, bigDuneNoise, duneDetailNoise, rockMaskNoise });
+            const snowyH = TerrainModules['snowyPlains'].getHeight({ BASE_LAND_Y, continentalMask, terrainNoise, erosionNoise });
+            const mountainH = TerrainModules['mountains'].getHeight({
+                BASE_LAND_Y,
+                continentalness: tv.continentalness,
+                erosion: tv.erosion,
+                ridges: tv.ridges,
+                peaksValleys: tv.peaksValleys,
+                terrainNoise,
+                cliffNoise,
+                peakNoise,
+                jaggedNoise,
+            });
+            const oceanH = TerrainModules['ocean'].getHeight({ SEA_LEVEL, deepNoise, terrainNoise });
 
-            h += detailNoise * (biome === 'Mountains' ? 1.2 : 0.7);
+            let h =
+                plainsH * weights['Plains'] +
+                forestH * weights['Forest'] +
+                desertH * weights['Desert'] +
+                snowyH * weights['Snowy Plains'] +
+                mountainH * weights['Mountains'] +
+                oceanH * weights['Ocean'];
+
+            const mountainWeight = weights['Mountains'];
+            h += detailNoise * lerp(0.36, 1.0, mountainWeight);
 
             const riverInfluence = getRiverMask(wx, wz);
             h = TerrainModules['river'].applyHeight({ height: h, riverInfluence, SEA_LEVEL });
 
             const ravine = getRavineMask(wx, wz);
-            if (ravine > 0.84 && biome !== 'Ocean') h -= (ravine - 0.84) * 70;
+            if (ravine > 0.84 && weights['Ocean'] < 0.5) h -= (ravine - 0.84) * 55;
 
-            if (biome === 'Mountains' && h < SEA_LEVEL + 8) h = SEA_LEVEL + 8;
-            if (h < SEA_LEVEL - 6 && biome !== 'Ocean') h = SEA_LEVEL - 6;
+            if (mountainWeight > 0.5 && h < SEA_LEVEL + 8) h = SEA_LEVEL + 8;
+            if (h < SEA_LEVEL - 6 && weights['Ocean'] < 0.5) h = SEA_LEVEL - 6;
             return Math.floor(h);
         }
 
@@ -1557,20 +1758,220 @@ window.perlin = perlinInstance;
             if (wy === 0) return 14;
             if (wy < h) {
                 if (biome === 'Desert') return 7;
+                if (biome === 'Snowy Plains') return wy >= h - 1 ? 15 : 59;
                 if (biome === 'Mountains') {
                     if (wy >= h - 1 && h > SEA_LEVEL + 16) return 15;
                     return 3;
                 }
-                return 1;
+                return wy >= h - 1 ? 1 : (wy >= h - 4 ? 2 : 3);
             }
             if (wy < SEA_LEVEL) return 4;
             return 0;
         }
 
        
+
+        function setupInputModeChooser() {
+            const mobileBtn = document.getElementById('mode-mobile-btn');
+            const pcBtn = document.getElementById('mode-pc-btn');
+            if (!mobileBtn || !pcBtn) return;
+
+            const applyMode = (mode) => {
+                const mobile = mode === 'mobile';
+                mobileControls.enabled = mobile;
+                mobileBtn.classList.toggle('active', mobile);
+                pcBtn.classList.toggle('active', !mobile);
+                if (mobile) {
+                    if (mobileControls.initialized) setMobileHudVisible(true);
+                    else setupMobileControls();
+                } else {
+                    setMobileHudVisible(false);
+                }
+            };
+
+            mobileBtn.addEventListener('click', (e) => { e.preventDefault(); applyMode('mobile'); });
+            pcBtn.addEventListener('click', (e) => { e.preventDefault(); applyMode('pc'); });
+            applyMode(mobileControls.autoEnabled ? 'mobile' : 'pc');
+        }
+
+        function setMobileHudVisible(visible) {
+            const controlsEl = document.getElementById('mobile-controls');
+            const crosshair = document.getElementById('crosshair');
+            if (controlsEl) {
+                if (visible) controlsEl.classList.add('active');
+                else controlsEl.classList.remove('active');
+            }
+            if (crosshair) crosshair.style.opacity = visible ? 0 : 1;
+        }
+
+        function switchToDesktopMode() {
+            if (!mobileControls.enabled) return;
+            mobileControls.enabled = false;
+            mobileControls.moveX = 0;
+            mobileControls.moveY = 0;
+            mobileControls.sprint = false;
+            mobileControls.jump = false;
+            mobileControls.worldTouchActive = false;
+            mobileControls.lookPointerId = null;
+            setMobileHudVisible(false);
+            if (!isInventoryOpen) {
+                const el = document.body;
+                if (document.pointerLockElement !== el) {
+                    el.requestPointerLock();
+                }
+            }
+        }
+
+
+
+        function setupMobileControls() {
+            if (!mobileControls.enabled || mobileControls.initialized) return;
+            mobileControls.initialized = true;
+
+            const controlsEl = document.getElementById('mobile-controls');
+            const joyWrap = document.getElementById('mobile-joystick');
+            const joyBg = document.getElementById('mobile-joystick-bg');
+            const joyCenter = document.getElementById('mobile-joystick-center');
+            const jumpBtn = document.getElementById('mobile-jump-btn');
+            const invBtn = document.getElementById('mobile-inventory-btn');
+            const fastBtn = document.getElementById('mobile-fast-btn');
+
+            if (!controlsEl || !joyWrap || !joyBg || !joyCenter || !jumpBtn || !invBtn || !fastBtn) return;
+
+            setMobileHudVisible(true);
+            joyBg.src = `${MOBILE_ASSET_BASE}/joystick_off.png`;
+            joyCenter.src = `${MOBILE_ASSET_BASE}/joystick_center.png`;
+            jumpBtn.src = `${MOBILE_ASSET_BASE}/jump_btn.png`;
+            invBtn.src = `${MOBILE_ASSET_BASE}/inventory_btn.png`;
+            fastBtn.src = `${MOBILE_ASSET_BASE}/fast_btn.png`;
+            document.getElementById('instructions').style.opacity = 0;
+            player.canMove = true;
+
+            function resetJoystick() {
+                mobileControls.moveX = 0;
+                mobileControls.moveY = 0;
+                mobileControls.joystickPointerId = null;
+                joyCenter.style.left = '40px';
+                joyCenter.style.top = '40px';
+                joyBg.src = `${MOBILE_ASSET_BASE}/joystick_off.png`;
+            }
+
+            joyBg.addEventListener('pointerdown', (e) => {
+                mobileControls.joystickPointerId = e.pointerId;
+                joyBg.setPointerCapture(e.pointerId);
+                joyBg.src = `${MOBILE_ASSET_BASE}/joystick_bg.png`;
+                e.preventDefault();
+            });
+
+            joyBg.addEventListener('pointermove', (e) => {
+                if (mobileControls.joystickPointerId !== e.pointerId) return;
+                const rect = joyWrap.getBoundingClientRect();
+                const cx = rect.left + rect.width / 2;
+                const cy = rect.top + rect.height / 2;
+                const dx = e.clientX - cx;
+                const dy = e.clientY - cy;
+                const maxR = 44;
+                const len = Math.hypot(dx, dy) || 1;
+                const clamped = Math.min(maxR, len);
+                const nx = (dx / len) * clamped;
+                const ny = (dy / len) * clamped;
+                mobileControls.moveX = nx / maxR;
+                mobileControls.moveY = ny / maxR;
+                joyCenter.style.left = `${40 + nx}px`;
+                joyCenter.style.top = `${40 + ny}px`;
+            });
+
+            const releaseJoystick = (e) => {
+                if (mobileControls.joystickPointerId !== e.pointerId) return;
+                resetJoystick();
+            };
+            joyBg.addEventListener('pointerup', releaseJoystick);
+            joyBg.addEventListener('pointercancel', releaseJoystick);
+
+            const holdButton = (el, key) => {
+                const start = (e) => { mobileControls[key] = true; e.preventDefault(); };
+                const end = (e) => { mobileControls[key] = false; e.preventDefault(); };
+                el.addEventListener('pointerdown', start);
+                el.addEventListener('pointerup', end);
+                el.addEventListener('pointercancel', end);
+                el.addEventListener('pointerleave', end);
+            };
+
+            holdButton(jumpBtn, 'jump');
+            holdButton(fastBtn, 'sprint');
+
+            invBtn.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                toggleInventory();
+            });
+
+            const mobileControlTargets = new Set([joyBg, jumpBtn, invBtn, fastBtn]);
+            window.addEventListener('pointerdown', (e) => {
+                if (!mobileControls.enabled || !player.canMove || isInventoryOpen) return;
+                if (mobileControlTargets.has(e.target)) return;
+                if (e.pointerType !== 'touch') return;
+                mobileControls.worldTouchActive = true;
+                mobileControls.worldTouchPointerId = e.pointerId;
+                mobileControls.worldTouchStartMs = performance.now();
+                mobileControls.isMiningTouch = false;
+                mobileControls.lookPointerId = e.pointerId;
+                mobileControls.lastLookX = e.clientX;
+                mobileControls.lastLookY = e.clientY;
+                if (mobileControls.miningTimer) clearTimeout(mobileControls.miningTimer);
+                mobileControls.miningTimer = setTimeout(() => {
+                    if (!mobileControls.worldTouchActive) return;
+                    const target = getTargetBlockFromCrosshair();
+                    if (!target) return;
+                    isLeftMouseDown = true;
+                    mobileControls.isMiningTouch = true;
+                    beginMiningTarget(target);
+                    updateBreakingOverlay();
+                }, 180);
+            }, { passive: false });
+
+            window.addEventListener('pointermove', (e) => {
+                if (!mobileControls.enabled || isInventoryOpen || !player.canMove) return;
+                if (e.pointerType !== 'touch') return;
+                if (mobileControls.lookPointerId !== e.pointerId) return;
+
+                const dx = e.clientX - mobileControls.lastLookX;
+                const dy = e.clientY - mobileControls.lastLookY;
+                mobileControls.lastLookX = e.clientX;
+                mobileControls.lastLookY = e.clientY;
+
+                yawObject.rotation.y -= dx * player.rotationSpeed * 0.85;
+                pitchObject.rotation.x -= dy * player.rotationSpeed * 0.85;
+                pitchObject.rotation.x = Math.max(-1.5, Math.min(1.5, pitchObject.rotation.x));
+            }, { passive: true });
+
+            const endWorldTouch = (e) => {
+                if (!mobileControls.enabled || e.pointerType !== 'touch') return;
+                if (mobileControls.worldTouchPointerId !== e.pointerId) return;
+                if (mobileControls.miningTimer) clearTimeout(mobileControls.miningTimer);
+
+                const wasMining = mobileControls.isMiningTouch;
+                const touchDuration = performance.now() - mobileControls.worldTouchStartMs;
+                mobileControls.worldTouchActive = false;
+                mobileControls.worldTouchPointerId = null;
+                mobileControls.isMiningTouch = false;
+                mobileControls.lookPointerId = null;
+                isLeftMouseDown = false;
+                miningState.active = false;
+                updateBreakingOverlay();
+
+                if (!wasMining && touchDuration < 220) {
+                    interactOrPlaceAtCrosshair();
+                }
+            };
+
+            window.addEventListener('pointerup', endWorldTouch, { passive: false });
+            window.addEventListener('pointercancel', endWorldTouch, { passive: false });
+        }
+
         function setupPointerLockControls() {
             const el = document.body;
             document.addEventListener('pointerlockchange', () => {
+                if (mobileControls.enabled) return;
                 if (document.pointerLockElement === el) {
                     player.canMove = true;
                     if(isInventoryOpen) toggleInventory(); 
@@ -1580,17 +1981,22 @@ window.perlin = perlinInstance;
                     player.canMove = false;
                     if(!isInventoryOpen) {
                         document.getElementById('instructions').style.opacity = 1;
-                        document.getElementById('crosshair').style.opacity = 0;
-                    }
+                                }
                 }
             });
             document.addEventListener('mousemove', e => {
+                if (mobileControls.enabled) return;
                 if (!player.canMove || isInventoryOpen) return;
                 yawObject.rotation.y -= e.movementX * player.rotationSpeed;
                 pitchObject.rotation.x -= e.movementY * player.rotationSpeed;
                 pitchObject.rotation.x = Math.max(-1.5, Math.min(1.5, pitchObject.rotation.x));
             });
             document.getElementById('instructions').onclick = () => {
+                if (mobileControls.enabled) {
+                    player.canMove = true;
+                    document.getElementById('instructions').style.opacity = 0;
+                    return;
+                }
                 if(!isInventoryOpen) el.requestPointerLock();
             };
         }
@@ -1664,6 +2070,13 @@ window.perlin = perlinInstance;
                                      t = 7;
                                  } else {
                                      t = 13;
+                                 }
+                             } else if (biome === 'Snowy Plains') {
+                                 if (distFromSurface === 0) {
+                                     t = 15;
+                                     surfaceBlockType = 15;
+                                 } else {
+                                     t = 59;
                                  }
                              } else if (biome === 'Mountains') {
                                  const isSnowCap = h > SEA_LEVEL + 26;
@@ -1869,6 +2282,8 @@ if (ravineMask > 0.78) {
                          }
 
                          if (topY > SEA_LEVEL && (topType === 1 || topType === 2)) {
+                             // Keep trees away from chunk borders so canopy doesn't get cut into one-sided shapes.
+                             if (x < 2 || x > CHUNK_SIZE - 3 || z < 2 || z > CHUNK_SIZE - 3) continue;
                              const densityNoise = octaveNoise2D(wx, wz, 3, 0.55, 2.0, 0.04, 700, -350) * 0.5 + 0.5;
                              const scatter = hashRand2D(wx, wz, 99);
                              const localScore = densityNoise * 0.65 + scatter * 0.35;
@@ -1945,11 +2360,35 @@ if (ravineMask > 0.78) {
         function createChunk(cx, cz) {
             const data = generateChunkData(cx, cz);
             const group = new THREE.Group();
-            group.userData = { chunkData: data, cx, cz };
+            group.userData = { chunkData: data, cx, cz, meshHash: null, frustumRadius: Math.sqrt((CHUNK_SIZE*CHUNK_SIZE)*0.5 + (CHUNK_HEIGHT*CHUNK_HEIGHT)*0.25) };
             updateChunkGeometry(group, data);
             chunks.set(`${cx},${cz}`, group);
             worldGroup.add(group);
             return group;
+        }
+
+
+        function computeChunkHash(data) {
+            let h = 2166136261 >>> 0;
+            for (let i = 0; i < data.length; i++) {
+                h ^= data[i] & 0xff;
+                h = Math.imul(h, 16777619) >>> 0;
+            }
+            return h >>> 0;
+        }
+
+        function updateChunkFrustumCulling() {
+            camera.updateMatrixWorld();
+            cameraViewProj.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+            frustum.setFromProjectionMatrix(cameraViewProj);
+            for (const group of chunks.values()) {
+                const center = new THREE.Vector3(
+                    group.userData.cx * CHUNK_SIZE + CHUNK_SIZE * 0.5,
+                    CHUNK_HEIGHT * 0.5,
+                    group.userData.cz * CHUNK_SIZE + CHUNK_SIZE * 0.5
+                );
+                group.visible = frustum.intersectsSphere(new THREE.Sphere(center, group.userData.frustumRadius || 40));
+            }
         }
 
         function updateChunkAndNeighbors(centerGroup, lx, lz) {
@@ -1992,7 +2431,10 @@ if (ravineMask > 0.78) {
         }
 
         function updateChunkGeometry(group, data) {
-         
+            const nextHash = computeChunkHash(data);
+            if (group.userData.meshHash === nextHash && group.children.length > 0) return;
+            group.userData.meshHash = nextHash;
+
             while(group.children.length) group.remove(group.children[0]);
             
             // Map to hold position/normal/uv data arrays for each material key
@@ -2019,6 +2461,66 @@ if (ravineMask > 0.78) {
                 return data[x + y*16 + z*16*96];
             };
 
+            // Greedy meshing for top faces (largest perf win in terrain worlds).
+            const topCovered = new Uint8Array(data.length);
+            for (let y = 0; y < 96; y++) {
+                const mask = new Array(16 * 16).fill(null);
+                for (let z = 0; z < 16; z++) {
+                    for (let x = 0; x < 16; x++) {
+                        const id = get(x, y, z);
+                        if (id === 0) continue;
+                        const mat = blockMaterials[id];
+                        if (!mat || mat.transparent || (mat.textured && mat.textureKey === 'LEAVES')) continue;
+                        const above = get(x, y + 1, z);
+                        const aboveMat = blockMaterials[above];
+                        if (above !== 0 && !(aboveMat && aboveMat.transparent)) continue;
+                        mask[x + z * 16] = id;
+                    }
+                }
+
+                for (let z = 0; z < 16; z++) {
+                    for (let x = 0; x < 16; ) {
+                        const id = mask[x + z * 16];
+                        if (!id) { x++; continue; }
+
+                        let w = 1;
+                        while (x + w < 16 && mask[x + w + z * 16] === id) w++;
+
+                        let h = 1;
+                        outer: while (z + h < 16) {
+                            for (let k = 0; k < w; k++) {
+                                if (mask[x + k + (z + h) * 16] !== id) break outer;
+                            }
+                            h++;
+                        }
+
+                        const materialKey = getMaterialKey(id, [0,1,0]);
+                        if (!geometryData[materialKey]) geometryData[materialKey] = { pos: [], norm: [], col: [], uv: [] };
+                        const gd = geometryData[materialKey];
+                        const wx0 = x + cx * 16, wz0 = z + cz * 16;
+                        const wx1 = wx0 + w, wz1 = wz0 + h, yy = y + 1;
+
+                        gd.pos.push(wx0, yy, wz1, wx1, yy, wz1, wx1, yy, wz0, wx0, yy, wz0);
+                        gd.norm.push(0,1,0, 0,1,0, 0,1,0, 0,1,0);
+                        if (materials[materialKey] && materials[materialKey].map) {
+                            gd.uv.push(0,1, 0,0, 1,0, 1,1);
+                        } else {
+                            const c = new THREE.Color(blockMaterials[id].color || 0xd1c17e);
+                            gd.col.push(c.r,c.g,c.b, c.r,c.g,c.b, c.r,c.g,c.b, c.r,c.g,c.b);
+                        }
+
+                        for (let dz = 0; dz < h; dz++) {
+                            for (let dx = 0; dx < w; dx++) {
+                                topCovered[(x + dx) + y * 16 + (z + dz) * 16 * 96] = 1;
+                                mask[x + dx + (z + dz) * 16] = null;
+                            }
+                        }
+
+                        x += w;
+                    }
+                }
+            }
+
             for(let x=0; x<16; x++){
                 for(let y=0; y<96; y++){
                     for(let z=0; z<16; z++){
@@ -2029,6 +2531,7 @@ if (ravineMask > 0.78) {
                         const isTrans = mat.transparent || (mat.textured && mat.textureKey === 'LEAVES'); 
                         
                         for(let i=0; i<6; i++){
+                            if (i === 2 && topCovered[x + y*16 + z*16*96]) continue;
                             const f = faces[i];
                             const nid = get(x+f.dir[0], y+f.dir[1], z+f.dir[2]);
                             const neighborMat = blockMaterials[nid];
@@ -2079,6 +2582,7 @@ if (ravineMask > 0.78) {
                 
                 const geom = new THREE.BufferGeometry();
                 geom.setAttribute('position', new THREE.Float32BufferAttribute(gd.pos, 3));
+                geom.getAttribute('position').setUsage(THREE.StaticDrawUsage);
                 geom.setAttribute('normal', new THREE.Float32BufferAttribute(gd.norm, 3));
                 
                 let currentMaterial = materials[key];
@@ -2103,7 +2607,9 @@ if (ravineMask > 0.78) {
                 for(let i=0; i<gd.pos.length/3; i+=4) idx.push(i, i+1, i+2, i, i+2, i+3);
                 geom.setIndex(idx);
 
-                group.add(new THREE.Mesh(geom, currentMaterial));
+                const mesh = new THREE.Mesh(geom, currentMaterial);
+                mesh.frustumCulled = true;
+                group.add(mesh);
             }
         }
 
@@ -2243,6 +2749,12 @@ if (ravineMask > 0.78) {
                 updatePlayerMovement();
                 updateMining(delta);
                 applyBlockPhysics(time);
+                updateChunkFrustumCulling();
+                const dtSec = delta / 1000;
+                if (window.FurnaceSystem) {
+                    for (const state of furnaceStates.values()) window.FurnaceSystem.updateState(state, dtSec);
+                    if (isInventoryOpen && isFurnaceOpen) renderInventoryScreen();
+                }
             } else {
                 miningState.active = false;
                 updateBreakingOverlay();
