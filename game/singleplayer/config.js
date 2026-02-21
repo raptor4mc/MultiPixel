@@ -39,6 +39,10 @@
     FOOD: getAssetPath('ui/food_full.png'),
     OAK_PLANK: getAssetPath('textures/oak_planks.png'),
     CRAFTING_TABLE_SIDE: getAssetPath('textures/crafting_table_side.png'),
+    CRAFTING_TABLE_TOP: getAssetPath('textures/crafting_table/crafting_table_top.png'),
+    CRAFTING_TABLE_SIDE_ALT: getAssetPath('textures/crafting_table/crafting_table_side1.png'),
+    CRAFTING_TABLE_FRONT: getAssetPath('textures/crafting_table/crafting_table_front.png'),
+    CRAFTING_TABLE_FRONT_ALT: getAssetPath('textures/crafting_table/crafting_table_front1.png'),
     STICK: getAssetPath('textures/item/stick.png'),
     SAND_STONE: getAssetPath('textures/sand/normal/sand_stone.png'),
     COBBLESTONE: getAssetPath('textures/cobblestone.png'),
@@ -83,6 +87,7 @@
     STONE_PICKAXE: getAssetPath('textures/item/tool/pickaxe/stone_pickaxe.png'),
     BLACK_DYE: getAssetPath('textures/item/black_dye.png'),
     GREEN_DYE: getAssetPath('textures/item/green_dye.png'),
+    ICE: getAssetPath('textures/ice.png'),
   };
 
   const blockMaterials = {
@@ -95,7 +100,20 @@
     6: { name: 'Leaves', id: 6, textured: true, textureKey: 'LEAVES', transparent: true, opacity: 1 },
     7: { name: 'Sand', id: 7, textured: true, textureKey: 'SAND' },
     8: { name: 'Oak Planks', id: 8, textured: true, textureKey: 'OAK_PLANK' },
-    9: { name: 'Crafting Table', id: 9, textured: true, textureKey: 'CRAFTING_TABLE_SIDE' },
+    9: {
+      name: 'Crafting Table',
+      id: 9,
+      textured: true,
+      textureKey: 'CRAFTING_TABLE_SIDE',
+      textureByFace: {
+        top: 'CRAFTING_TABLE_TOP',
+        bottom: 'OAK_PLANK',
+        posX: 'CRAFTING_TABLE_FRONT',
+        negX: 'CRAFTING_TABLE_FRONT_ALT',
+        posZ: 'CRAFTING_TABLE_SIDE',
+        negZ: 'CRAFTING_TABLE_SIDE_ALT'
+      }
+    },
     10: { name: 'Stick', id: 10, textured: true, textureKey: 'STICK' },
     11: { name: 'Wooden Pickaxe', id: 11, textured: true, textureKey: 'WOODEN_PICKAXE', toolType: 'pickaxe', tier: 1 },
     12: { name: 'Stone Pickaxe', id: 12, textured: true, textureKey: 'STONE_PICKAXE', toolType: 'pickaxe', tier: 2  },
@@ -145,6 +163,14 @@
     56: { name: 'Emerald', id: 56, textured: true, textureKey: 'EMERALD' },
     57: { name: 'Black Dye', id: 57, textured: true, textureKey: 'BLACK_DYE' },
     58: { name: 'Green Dye', id: 58, textured: true, textureKey: 'GREEN_DYE' },
+    59: { name: 'Ice', id: 59, textured: true, textureKey: 'ICE' },
+    60: { name: 'Flowing Lava', id: 60, textured: true, textureKey: 'LAVA_LIQUID' },
+    61: { name: 'Flowing Lava', id: 61, textured: true, textureKey: 'LAVA_LIQUID' },
+    62: { name: 'Flowing Lava', id: 62, textured: true, textureKey: 'LAVA_LIQUID' },
+    63: { name: 'Flowing Lava', id: 63, textured: true, textureKey: 'LAVA_LIQUID' },
+    64: { name: 'Flowing Lava', id: 64, textured: true, textureKey: 'LAVA_LIQUID' },
+    65: { name: 'Flowing Lava', id: 65, textured: true, textureKey: 'LAVA_LIQUID' },
+    66: { name: 'Flowing Lava', id: 66, textured: true, textureKey: 'LAVA_LIQUID' },
   }; 
 
   window.SingleplayerConfig = {
@@ -154,8 +180,8 @@
     INV_COLS, INV_ROWS, HOTBAR_SLOTS, TOTAL_INV_SIZE,
     REPO_BASE_PREFIX,
     ASSET_FILEPATHS, blockMaterials,
-    SOLID_BLOCKS: [1, 2, 3, 5, 6, 7, 8, 9, 13, 14, 15, 17, 18, 20, 21, 23, 24, 26, 27, 28, 29, 30, 32, 34, 35, 36, 37, 39, 40, 41, 43, 45, 54, 55],
-    LIQUID_BLOCKS: [4, 33, 47, 48, 49, 50, 51, 52, 53],
+    SOLID_BLOCKS: [1, 2, 3, 5, 6, 7, 8, 9, 13, 14, 15, 17, 18, 20, 21, 23, 24, 26, 27, 28, 29, 30, 32, 34, 35, 36, 37, 39, 40, 41, 43, 45, 54, 55, 59],
+    LIQUID_BLOCKS: [4, 33, 47, 48, 49, 50, 51, 52, 53, 60, 61, 62, 63, 64, 65, 66],
     DEFAULT_PLAYER: {
       moveSpeed: 0.12,
       sprintMultiplier: 1.7,
