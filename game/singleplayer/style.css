@@ -329,6 +329,6 @@
         .slot-grid-single,
         .slot-grid-single .inv-slot,
         .slot-grid .inv-slot {
-            width: 38px;
-            height: 38px;
+            width: 30px;
+            height: 30px;
         }
