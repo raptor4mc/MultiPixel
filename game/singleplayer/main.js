@@ -2401,7 +2401,8 @@ if (ravineMask > 0.78) {
                                  const density = treeNoise * 0.6 + scatter * 0.4;
                                  const chance = biome === 'Forest' ? 0.10 : 0.03;
                                  const denseBonus = biome === 'Forest' ? 0.08 : 0.03;
-                                 const shouldTrySpawn = density > (1.0 - (chance + treeNoise * denseBonus));
+                                     const spawnThreshold = chance + treeNoise * denseBonus;
+                                     const shouldTrySpawn = scatter < spawnThreshold;
 
                                  if (shouldTrySpawn) {
                                      const heightLimit = 4 + Math.floor(hashRand2D(wx, wz, 157) * 3); // 4-6
