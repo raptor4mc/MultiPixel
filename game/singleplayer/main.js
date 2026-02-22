@@ -2380,7 +2380,7 @@ if (ravineMask > 0.78) {
                      }
                   
                      // --- Tree Generation (deterministic + chunk-safe placement) ---
-                     if (!isRiver)
+                     if (!isRiver) {
                          let topY = -1;
                          for (let yy = CHUNK_HEIGHT - 2; yy >= 1; yy--) {
                              const tidx = x + yy * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
