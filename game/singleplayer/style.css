@@ -374,19 +374,12 @@ body {
 /* ===== GRIDS & SIZES ===== */
 
 /*FUrnace */
+/* Furnace slots size */
 #furnace-input-slot,
- {
-    width: 42px;   /* smaller than default 42px, adjust as needed */
-    height: 42px;  /* adjust to match the furnace UI texture */
-}
-#furnace-fuel-slot
- {
-    width: 42px;   /* smaller than default 42px, adjust as needed */
-    height: 42px;  /* adjust to match the furnace UI texture */
-}
+#furnace-fuel-slot,
 #furnace-output-slot {
-    width: 42px;   /* smaller than default 42px, adjust as needed */
-    height: 42px;  /* adjust to match the furnace UI texture */
+    width: 42px;   /* adjust size as needed */
+    height: 42px;  /* adjust size as needed */
 }
 
 /* Crafting 2x2 */
