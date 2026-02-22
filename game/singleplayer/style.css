@@ -321,8 +321,8 @@ body {
 
 /* 3x3 Crafting (if used) */
 .grid-3x3 {
-    grid-template-columns: repeat(3, 34px);
-    grid-template-rows: repeat(3, 34px);
+    grid-template-columns: repeat(3, 42px);
+    grid-template-rows: repeat(3, 42px);
 }
 
 /* Inventory */
