@@ -305,12 +305,12 @@ body {
 
 /* Crafting 2x2 */
 .grid-2x2 {
-    grid-template-columns: repeat(2, 40px);
-    grid-template-rows: repeat(2, 40px);
+    grid-template-columns: repeat(2, 42px);
+    grid-template-rows: repeat(2, 20px);
 }
 #crafting-input-grid .inv-slot {
-    width: 40px;
-    height: 40px;
+    width: 42px;
+    height: 42px;
 }
 
 /* Crafting Output Slot */
@@ -327,20 +327,20 @@ body {
 
 /* Inventory */
 .grid-9x3 {
-    grid-template-columns: repeat(9, 40px);
-    grid-template-rows: repeat(3, 40px);
+    grid-template-columns: repeat(9, 42px);
+    grid-template-rows: repeat(3, 42px);
 }
 .grid-9x1 {
-    grid-template-columns: repeat(9, 40px);
+    grid-template-columns: repeat(9, 42px);
     margin-top: 8px;
 }
 .menu-lower .inv-slot {
-    width: 40px;
-    height: 40px;
+    width: 42px;
+    height: 42px;
 }
 
 /* Crafting / Furnace positions */
-#crafting-input-grid { position: absolute; left: 260px; top: 50px; }
+#crafting-input-grid { position: absolute; left: 270px; top: 50px; }
 #crafting-output-slot-container { position: absolute; left: 410px; top: 70px; }
 
 #crafting-table-grid { position: absolute; left: 50px; top: 50px; }
