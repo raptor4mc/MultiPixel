@@ -264,8 +264,8 @@ body {
 
 .menu-lower {
     position: absolute;
-    left: 65px;
-    top: 190px;
+    left: 40px;
+    top: 159px;
     width: 350px;
 }
 
@@ -278,7 +278,7 @@ body {
 
 /* Crafting 2x2 */
 .grid-2x2 {
-    grid-template-columns: repeat(2, 34px);
+    grid-template-columns: repeat(2, 33px);
     grid-template-rows: repeat(2, 34px);
 }
 #crafting-input-grid .inv-slot {
