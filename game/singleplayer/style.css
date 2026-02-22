@@ -340,8 +340,8 @@ body {
 }
 
 /* Crafting / Furnace positions */
-#crafting-input-grid { position: absolute; left: 250px; top: 50px; }
-#crafting-output-slot-container { position: absolute; left: 420px; top: 70px; }
+#crafting-input-grid { position: absolute; left: 260px; top: 50px; }
+#crafting-output-slot-container { position: absolute; left: 410px; top: 70px; }
 
 #crafting-table-grid { position: absolute; left: 50px; top: 50px; }
 #crafting-table-output-slot { position: absolute; left: 150px; top: 20px; }
