@@ -140,7 +140,7 @@ window.perlin = perlinInstance;
         const dirtyChunkKeys = new Set();
         let physicsCursorY = 1;
 
-        const MOBILE_ASSET_BASE = `${window.SingleplayerConfig?.REPO_BASE_PREFIX || '/MultiPixel'}/game/singleplayer/assets/mobile`;
+        const MOBILE_ASSET_BASE = `${window.SingleplayerConfig?.REPO_BASE_PREFIX || ''}/game/singleplayer/assets/mobile`;
         const coarsePointer = window.matchMedia ? window.matchMedia('(pointer: coarse)').matches : false;
         const noHover = window.matchMedia ? window.matchMedia('(hover: none)').matches : false;
         const touchCapable = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
@@ -331,7 +331,7 @@ window.perlin = perlinInstance;
             const editSkinIcon = document.getElementById('edit-skin-icon');
             const furnaceCloseBtn = document.getElementById('furnace-close-btn');
             const furnaceCloseIcon = document.getElementById('furnace-close-icon');
-            const assetBasePath = `${window.SingleplayerConfig?.REPO_BASE_PREFIX || '/MultiPixel'}/game/singleplayer/assets`;
+            const assetBasePath = `${window.SingleplayerConfig?.REPO_BASE_PREFIX || ''}/game/singleplayer/assets`;
             const closeIconPath = `${assetBasePath}/mobile/cdb_clear.png`;
             const editSkinIconPath = `${assetBasePath}/ui/inventory/edit_skin_button.png`;
             if (closeIcon) closeIcon.src = closeIconPath;

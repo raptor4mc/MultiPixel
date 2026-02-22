@@ -272,10 +272,10 @@ body {
 
 #inventory-skin-preview {
     position: absolute;
-    left: 468px;
-    top: 72px;
+    left: 106px;
+    top: 54px;
     width: 90px;
-    height: 128px;
+    height: 92px;
     pointer-events: none;
     display: flex;
     align-items: flex-start;
@@ -293,6 +293,16 @@ body {
     image-rendering: pixelated;
     transform: rotateY(var(--skin-look-x, 0deg)) rotateX(var(--skin-look-y, 0deg));
     transform-origin: center;
+}
+
+#inventory-screen.hidden #edit-skin-btn,
+#inventory-screen.hidden #inventory-skin-preview {
+    display: none;
+}
+
+#inventory-panel:not(.inventory-mode) #edit-skin-btn,
+#inventory-panel:not(.inventory-mode) #inventory-skin-preview {
+    display: none;
 }
 
 .inventory-close-btn {
@@ -335,15 +345,15 @@ body {
 }
 
 #inventory-panel.inventory-mode {
-    background-image: url('/MultiPixel/game/singleplayer/assets/ui/inventory/inventory.png');
+    background-image: url('./assets/ui/inventory/inventory.png');
 }
 
 #inventory-panel:not(.inventory-mode) {
-    background-image: url('/MultiPixel/game/singleplayer/assets/ui/craftingtable/crafting_table.png');
+    background-image: url('./assets/ui/craftingtable/crafting_table.png');
 }
 
 #furnace-workbench-panel {
-    background-image: url('/MultiPixel/game/singleplayer/assets/ui/furnace/furnace.png');
+    background-image: url('./assets/ui/furnace/furnace.png');
 }
 
 /* Layouts */
