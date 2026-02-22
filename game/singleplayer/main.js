@@ -2391,7 +2391,7 @@ if (ravineMask > 0.78) {
                              }
                          }
 
-                         if (topY > SEA_LEVEL) {
+                         if (topY >= SEA_LEVEL) {
                              const topIdx = x + topY * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
                              const topType = data[topIdx];
                              const validGround = (topType === 1 || topType === 2);
