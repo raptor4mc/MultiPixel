@@ -192,14 +192,6 @@
       id: 29, 
       textured: true, 
       textureKey: 'SMOOTH_SANDSTONE_BLOCK',
-      textureByFace: {
-        top: 'FURNACE_TOP',
-        bottom: 'COBBLESTONE',
-        posX: 'FURNACE_FRONT',
-        negX: 'FURNACE_SIDE',
-        posZ: 'FURNACE_SIDE',
-        negZ: 'FURNACE_SIDE'
-      }  
     },
     
     30: { name: 'Iron Ore Block', id: 30, textured: true, textureKey: 'IRON_ORE_BLOCK' },
