@@ -190,6 +190,33 @@ body {
     -webkit-user-drag: none;
     user-select: none;
 }
+/* === RIGHT SIDE MOBILE BUTTON POSITIONS === */
+
+#mobile-right-controls {
+    position: absolute;   /* IMPORTANT */
+    right: 14px;
+    bottom: 16px;
+    width: 192px;
+    height: 192px;
+}
+
+/* Sprint button (bottom right) */
+#mobile-sprint-btn {
+    right: 0;
+    bottom: 0;
+}
+
+/* Jump button (above sprint) */
+#mobile-jump-btn {
+    right: 0;
+    bottom: 90px;
+}
+
+/* Inventory button (left of sprint) */
+#mobile-inventory-btn {
+    right: 90px;
+    bottom: 0;
+}
 
 /* Buttons */
 .mode-btn {
@@ -313,8 +340,8 @@ body {
 }
 
 /* Crafting / Furnace positions */
-#crafting-input-grid { position: absolute; left: 300px; top: 50px; }
-#crafting-output-slot-container { position: absolute; left: 400px; top: 70px; }
+#crafting-input-grid { position: absolute; left: 250px; top: 50px; }
+#crafting-output-slot-container { position: absolute; left: 420px; top: 70px; }
 
 #crafting-table-grid { position: absolute; left: 50px; top: 50px; }
 #crafting-table-output-slot { position: absolute; left: 150px; top: 20px; }
