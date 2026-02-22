@@ -267,8 +267,8 @@
 
         .menu-panel {
             position: relative;
-            width: 384px;
-            height: 288px;
+            width: 480px;
+            height: 360px;
             border: 0;
             box-shadow: none;
             image-rendering: pixelated;
