@@ -378,16 +378,16 @@ body {
  {
     width: 36px;   /* smaller than default 42px, adjust as needed */
     height: 36px;  /* adjust to match the furnace UI texture */
-},
+}
 #furnace-fuel-slot
  {
     width: 36px;   /* smaller than default 42px, adjust as needed */
     height: 36px;  /* adjust to match the furnace UI texture */
-},
+}
 #furnace-output-slot {
     width: 36px;   /* smaller than default 42px, adjust as needed */
     height: 36px;  /* adjust to match the furnace UI texture */
-},
+}
 
 /* Crafting 2x2 */
 .grid-2x2 {
