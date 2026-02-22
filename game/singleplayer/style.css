@@ -327,11 +327,11 @@ body {
 
 /* Inventory */
 .grid-9x3 {
-    grid-template-columns: repeat(9, 34px);
-    grid-template-rows: repeat(3, 34px);
+    grid-template-columns: repeat(9, 40px);
+    grid-template-rows: repeat(3, 40px);
 }
 .grid-9x1 {
-    grid-template-columns: repeat(9, 34px);
+    grid-template-columns: repeat(9, 40px);
     margin-top: 8px;
 }
 .menu-lower .inv-slot {
