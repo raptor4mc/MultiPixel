@@ -251,16 +251,16 @@ body {
 
 
 .edit-skin-btn {
-    width: 46px;
-    height: 46px;
+    width: 42px;
+    height: 42px;
     padding: 0;
     border: none;
     background: transparent;
     cursor: pointer;
     pointer-events: auto;
     position: absolute;
-    left: 180px;
-    top: 100px;
+    left: 200px;
+    top: 150px;
     z-index: 5;
 }
 
