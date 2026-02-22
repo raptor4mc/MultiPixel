@@ -153,7 +153,7 @@
         posZ: 'SANDSTONE',
         negZ: 'SANDSTONE' 
       },
-    }
+    },
     
     14: { name: 'Bedrock', id: 14, textured: true, textureKey: 'BEDROCK', unbreakable: true },
     15: { name: 'Snow Block', id: 15, textured: true, textureKey: 'SNOW_BLOCK', color: 0xf2f7ff },
