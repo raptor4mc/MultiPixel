@@ -140,6 +140,7 @@
     10: { name: 'Stick', id: 10, textured: true, textureKey: 'STICK' },
     11: { name: 'Wooden Pickaxe', id: 11, textured: true, textureKey: 'WOODEN_PICKAXE', toolType: 'pickaxe', tier: 1 },
     12: { name: 'Stone Pickaxe', id: 12, textured: true, textureKey: 'STONE_PICKAXE', toolType: 'pickaxe', tier: 2  },
+    
     13: { 
       name: 'Sand stone', 
       id: 13, 
@@ -179,12 +180,28 @@
         negZ: 'FURNACE_SIDE'
       } 
     },
+    
     24: { name: 'Cracked Stone Brick', id: 24, textured: true, textureKey: 'CRACKED_STONE_BRICK' },
     25: { name: 'Charcoal', id: 25, textured: true, textureKey: 'CHARCOAL' },
     26: { name: 'Glass', id: 26, textured: true, textureKey: 'GLASS_BLOCK', transparent: true, opacity: 0.8 },
     27: { name: 'Smooth Stone', id: 27, textured: true, textureKey: 'SMOOTH_STONE_BLOCK' }, 
     28: { name: 'gravel', id: 28, textured: true, textureKey: 'GRAVEL' },
-    29: { name: 'Smooth SandStone', id: 29, textured: true, textureKey: 'SMOOTH_SANDSTONE_BLOCK' },
+    
+    29: {
+      name: 'Smooth SandStone', 
+      id: 29, 
+      textured: true, 
+      textureKey: 'SMOOTH_SANDSTONE_BLOCK',
+      textureByFace: {
+        top: 'FURNACE_TOP',
+        bottom: 'COBBLESTONE',
+        posX: 'FURNACE_FRONT',
+        negX: 'FURNACE_SIDE',
+        posZ: 'FURNACE_SIDE',
+        negZ: 'FURNACE_SIDE'
+      }  
+    },
+    
     30: { name: 'Iron Ore Block', id: 30, textured: true, textureKey: 'IRON_ORE_BLOCK' },
     31: { name: 'Iron Ore', id: 31, textured: true, textureKey: 'IRON_ORE' },
     32: { name: 'Block of raw iron', id: 32, textured: true, textureKey: 'RAW_IRON_BLOCK' },
