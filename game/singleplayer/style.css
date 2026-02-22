@@ -308,7 +308,7 @@
 
         .slot-grid {
             display: grid;
-            gap: 6px;
+            gap: 1px;
         }
 
         .grid-2x2 { grid-template-columns: repeat(2, 30px); }
