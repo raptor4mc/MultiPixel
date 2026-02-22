@@ -236,15 +236,15 @@ body {
 }
 
 .inventory-close-btn {
-    width:40px;
-    height: 40px;
+    width:50px;
+    height: 50px;
     padding: 0;
     border: none;
     background: transparent;
     cursor: pointer;
     pointer-events: auto;
     position: absolute;
-    right: 100px;
+    right: 140px;
     top: 8px;
     z-index: 5;
 }
