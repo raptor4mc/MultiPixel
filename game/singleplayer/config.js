@@ -44,7 +44,9 @@
     CRAFTING_TABLE_FRONT: getAssetPath('textures/crafting_table/crafting_table_front.png'),
     CRAFTING_TABLE_FRONT_ALT: getAssetPath('textures/crafting_table/crafting_table_front_1.png'),
     STICK: getAssetPath('textures/item/stick.png'),
-    SAND_STONE: getAssetPath('textures/sand/normal/sand_stone.png'),
+    SANDSTONE: getAssetPath('textures/sand/sandstone/sandstone.png'),
+    SANDSTONE_BOTTOM: getAssetPath('textures/sand/sandstone/sandstone_bottom.png'),
+    SANDSTONE_TOP: getAssetPath('textures/sand/sandstone/sandstone_top.png'),
     COBBLESTONE: getAssetPath('textures/cobblestone.png'),
     SNOW_BLOCK: getAssetPath('textures/snow.png'),
     SNOWBALL: getAssetPath('textures/item/snowball.png'),
@@ -113,7 +115,9 @@
         negX: 'WOOD_LOG',
         posZ: 'WOOD_LOG',
         negZ: 'WOOD_LOG'
-      } },
+      } 
+    },
+    
     6: { name: 'Leaves', id: 6, textured: true, textureKey: 'LEAVES', transparent: true, opacity: 1 },
     7: { name: 'Sand', id: 7, textured: true, textureKey: 'SAND' },
     8: { name: 'Oak Planks', id: 8, textured: true, textureKey: 'OAK_PLANK' },
@@ -136,7 +140,21 @@
     10: { name: 'Stick', id: 10, textured: true, textureKey: 'STICK' },
     11: { name: 'Wooden Pickaxe', id: 11, textured: true, textureKey: 'WOODEN_PICKAXE', toolType: 'pickaxe', tier: 1 },
     12: { name: 'Stone Pickaxe', id: 12, textured: true, textureKey: 'STONE_PICKAXE', toolType: 'pickaxe', tier: 2  },
-    13: { name: 'Sand stone', id: 13, textured: true, textureKey: 'SAND_STONE' },
+    13: { 
+      name: 'Sand stone', 
+      id: 13, 
+      textured: true, 
+      textureKey: 'SAND_STONE', 
+      textureByFace: {
+        top: 'SANDSTONE_TOP',
+        bottom: 'SANDSTONE_BOTTOM',
+        posX: 'SANDSTONE',
+        negX: 'SANDSTONE',
+        posZ: 'SANDSTONE',
+        negZ: 'SANDSTONE' 
+      },
+    }
+    
     14: { name: 'Bedrock', id: 14, textured: true, textureKey: 'BEDROCK', unbreakable: true },
     15: { name: 'Snow Block', id: 15, textured: true, textureKey: 'SNOW_BLOCK', color: 0xf2f7ff },
     16: { name: 'Snowball', id: 16, textured: true, textureKey: 'SNOWBALL', color: 0xe7eefc },
