@@ -244,7 +244,7 @@ body {
     cursor: pointer;
     pointer-events: auto;
     position: absolute;
-    right: 8px;
+    right: 0px;
     top: 8px;
     z-index: 5;
 }
