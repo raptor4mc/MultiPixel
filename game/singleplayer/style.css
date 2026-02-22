@@ -312,11 +312,11 @@
         }
 
         .grid-2x2 { grid-template-columns: repeat(2, 30px); }
-        .grid-3x3 { grid-template-columns: repeat(3, 38px); }
-        .grid-9x3 { grid-template-columns: repeat(9, 38px); grid-template-rows: repeat(3, 30px); }
-        .grid-9x1 { grid-template-columns: repeat(9, 38px); margin-top: 8px; }
+        .grid-3x3 { grid-template-columns: repeat(3, 3+px); }
+        .grid-9x3 { grid-template-columns: repeat(9, 30px); grid-template-rows: repeat(3, 30px); }
+        .grid-9x1 { grid-template-columns: repeat(9, 30px); margin-top: 8px; }
 
-        #crafting-input-grid { position: absolute; left: 210px; top: 50px; }
+        #crafting-input-grid { position: absolute; left: 210px; top: 30px; }
         #crafting-output-slot-container { position: absolute; left: 313px; top: 53px; }
 
         #crafting-table-grid { position: absolute; left: 50px; top: 50px; }
@@ -329,6 +329,6 @@
         .slot-grid-single,
         .slot-grid-single .inv-slot,
         .slot-grid .inv-slot {
-            width: 32px;
-            height: 32px;
+            width: 30px;
+            height: 30px;
         }
