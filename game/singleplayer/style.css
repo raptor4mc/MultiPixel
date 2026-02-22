@@ -259,8 +259,8 @@ body {
     cursor: pointer;
     pointer-events: auto;
     position: absolute;
-    left: 120px;
-    top: 60px;
+    left: 180px;
+    top: 100px;
     z-index: 5;
 }
 
