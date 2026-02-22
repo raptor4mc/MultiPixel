@@ -376,17 +376,17 @@ body {
 /*FUrnace */
 #furnace-input-slot,
  {
-    width: 36px;   /* smaller than default 42px, adjust as needed */
-    height: 36px;  /* adjust to match the furnace UI texture */
+    width: 42px;   /* smaller than default 42px, adjust as needed */
+    height: 42px;  /* adjust to match the furnace UI texture */
 }
 #furnace-fuel-slot
  {
-    width: 36px;   /* smaller than default 42px, adjust as needed */
-    height: 36px;  /* adjust to match the furnace UI texture */
+    width: 42px;   /* smaller than default 42px, adjust as needed */
+    height: 42px;  /* adjust to match the furnace UI texture */
 }
 #furnace-output-slot {
-    width: 36px;   /* smaller than default 42px, adjust as needed */
-    height: 36px;  /* adjust to match the furnace UI texture */
+    width: 42px;   /* smaller than default 42px, adjust as needed */
+    height: 42px;  /* adjust to match the furnace UI texture */
 }
 
 /* Crafting 2x2 */
