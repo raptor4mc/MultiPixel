@@ -176,6 +176,7 @@ window.perlin = perlinInstance;
         let yawObject, pitchObject; 
         let isThirdPersonView = false;
         let playerAvatar = null;
+        let skinSystem = null;
         
         // Calculate the world boundary coordinates
         const WORLD_MAX_COORD = (WORLD_RADIUS + 0.5) * CHUNK_SIZE;
@@ -325,6 +326,7 @@ window.perlin = perlinInstance;
           
             renderHearts();
             updateHotbarUI();
+            skinSystem = window.SingleplayerSkinSystem?.create({ showGameMessage }) || null;
             const closeBtn = document.getElementById('inventory-close-btn');
             const closeIcon = document.getElementById('inventory-close-icon');
             const editSkinBtn = document.getElementById('edit-skin-btn');
@@ -2080,6 +2082,10 @@ window.perlin = perlinInstance;
         }
 
         function toggleInventorySkinPreview() {
+            if (skinSystem) {
+                skinSystem.toggleInventorySkinPreview();
+                return;
+            }
             showGameMessage('Skin editor opened in preview mode');
             const preview = document.getElementById('inventory-skin-preview');
             if (!preview) return;
@@ -2087,6 +2093,10 @@ window.perlin = perlinInstance;
         }
 
         function updateSkinPreviewLook(clientX, clientY) {
+            if (skinSystem) {
+                skinSystem.updateSkinPreviewLook(clientX, clientY, isInventoryOpen);
+                return;
+            }
             const head = document.getElementById('inventory-skin-head');
             const wrap = document.getElementById('inventory-skin-preview');
             if (!head || !wrap || !isInventoryOpen) return;
