@@ -236,7 +236,7 @@ body {
 }
 
 .inventory-close-btn {
-    width:404px;
+    width:40px;
     height: 40px;
     padding: 0;
     border: none;
@@ -306,7 +306,7 @@ body {
 /* Crafting 2x2 */
 .grid-2x2 {
     grid-template-columns: repeat(2, 42px);
-    grid-template-rows: repeat(2, 20px);
+    grid-template-rows: repeat(2, 42px);
 }
 #crafting-input-grid .inv-slot {
     width: 42px;
