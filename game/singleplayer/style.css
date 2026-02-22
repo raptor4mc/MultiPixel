@@ -324,6 +324,10 @@ body {
     grid-template-columns: repeat(3, 42px);
     grid-template-rows: repeat(3, 42px);
 }
+#crafting-table-output-slot .inv-slot {
+    width: 42px;
+    height: 42px;
+}
 
 /* Inventory */
 .grid-9x3 {
