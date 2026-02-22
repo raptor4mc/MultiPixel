@@ -201,13 +201,19 @@ window.perlin = perlinInstance;
                         path, // <-- DIRECTLY using the calculated path
                         (texture) => {
                             texture.magFilter = THREE.NearestFilter; // Sharp pixel look
-                            texture.minFilter = THREE.NearestFilter;
+                            texture.minFilter = THREE.NearestMipmapNearestFilter;
+                            texture.generateMipmaps = true;
+                            if (renderer && renderer.capabilities) {
+                                texture.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
+                            }
                             const matId = getMaterialIdByTextureKey(key);
                             const matCfg = matId >= 0 ? blockMaterials[matId] : {};
                             materials[key] = new THREE.MeshStandardMaterial({
                                 map: texture,
                                 side: key === 'LEAVES' ? THREE.DoubleSide : THREE.FrontSide,
                                 transparent: matCfg.transparent || false,
+                                alphaTest: key === 'LEAVES' ? 0.5 : 0,
+                                depthWrite: true,
                                 opacity: matCfg.opacity || 1.0,
                             });
                             resolve();
@@ -2570,22 +2576,18 @@ if (ravineMask > 0.78) {
                                 const wx = x + cx*16;
                                 const wz = z + cz*16;
                                 
-                                for(let c of f.corners) {
+                                const triOrder = [0, 1, 2, 0, 2, 3];
+                                for (const ti of triOrder) {
+                                    const c = f.corners[ti];
                                     gd.pos.push(wx + c[0], y + c[1], wz + c[2]);
                                     gd.norm.push(f.dir[0], f.dir[1], f.dir[2]);
-                                }
-                                
-                                
-                                if (materials[materialKey] && materials[materialKey].map) {
-                                    gd.uv.push(...f.uv);
-                                } else {
-                                    // Vertex color for non-textured blocks (like wood/water) or blocks whose texture failed to load
-                                    const color = blockMaterials[id].color || 0xd1c17e; // Fallback color
-                                    
-                                    // Use THREE.Color object to get RGB components if the color is a number
-                                    const c = new THREE.Color(color);
-                                    
-                                    gd.col.push(c.r, c.g, c.b, c.r, c.g, c.b, c.r, c.g, c.b, c.r, c.g, c.b);
+                                    if (materials[materialKey] && materials[materialKey].map) {
+                                        gd.uv.push(f.uv[ti * 2], f.uv[ti * 2 + 1]);
+                                    } else {
+                                        const color = blockMaterials[id].color || 0xd1c17e;
+                                        const cc = new THREE.Color(color);
+                                        gd.col.push(cc.r, cc.g, cc.b);
+                                    }
                                 }
                             }
                         }
@@ -2617,20 +2619,20 @@ if (ravineMask > 0.78) {
                 }
 
                 const geom = new THREE.BufferGeometry();
-                geom.setAttribute('position', new THREE.Float32BufferAttribute(triPos, 3));
+                geom.setAttribute('position', new THREE.Float32BufferAttribute(gd.pos, 3));
                 geom.getAttribute('position').setUsage(THREE.StaticDrawUsage);
-                geom.setAttribute('normal', new THREE.Float32BufferAttribute(triNorm, 3));
+                geom.setAttribute('normal', new THREE.Float32BufferAttribute(gd.norm, 3));
 
                 let currentMaterial = materials[key];
 
                 // Set UVs if material is textured (i.e., it has a map)
-                if (currentMaterial && currentMaterial.map && triUv.length > 0) {
-                    geom.setAttribute('uv', new THREE.Float32BufferAttribute(triUv, 2));
+                if (currentMaterial && currentMaterial.map && gd.uv.length > 0) {
+                    geom.setAttribute('uv', new THREE.Float32BufferAttribute(gd.uv, 2));
                 }
 
                 // Set vertex colors if data was accumulated (means texture failed or block is color-only)
-                if (triCol.length > 0) {
-                    geom.setAttribute('color', new THREE.Float32BufferAttribute(triCol, 3));
+                if (gd.col.length > 0) {
+                    geom.setAttribute('color', new THREE.Float32BufferAttribute(gd.col, 3));
 
                     // If we have vertex colors AND it's not the transparent WATER material, use COLORED_OPAQUE.
                     if (key !== 'WATER') {
