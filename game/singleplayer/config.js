@@ -88,6 +88,7 @@
     BLACK_DYE: getAssetPath('textures/item/black_dye.png'),
     GREEN_DYE: getAssetPath('textures/item/green_dye.png'),
     ICE: getAssetPath('textures/ice.png'),
+    OAK_LOG_TOP: getAssetPath('textures/oak/oak_log_top.png'),
   };
 
   const blockMaterials = {
@@ -96,7 +97,19 @@
     2: { name: 'Dirt', id: 2, textured: true, textureKey: 'DIRT' },
     3: { name: 'Stone', id: 3, textured: true, textureKey: 'STONE' },
     4: { name: 'Water', id: 4, transparent: true, opacity: 0.9, textured: true, textureKey: 'WATER' },
-    5: { name: 'Wood Log', id: 5, textured: true, textureKey: 'WOOD_LOG' },
+    5: { 
+      name: 'Wood Log', 
+      id: 5, 
+      textured: true, 
+      textureKey: 'WOOD_LOG', 
+      textureByFace: {
+        top: 'OAK_LOG_TOP',
+        bottom: 'OAK_LOG_TOP',
+        posX: 'WOOD_LOG',
+        negX: 'WOOD_LOG',
+        posZ: 'WOOD_LOG',
+        negZ: 'WOOD_LOG'
+      } },
     6: { name: 'Leaves', id: 6, textured: true, textureKey: 'LEAVES', transparent: true, opacity: 1 },
     7: { name: 'Sand', id: 7, textured: true, textureKey: 'SAND' },
     8: { name: 'Oak Planks', id: 8, textured: true, textureKey: 'OAK_PLANK' },
