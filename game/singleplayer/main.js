@@ -2598,32 +2598,45 @@ if (ravineMask > 0.78) {
                 const gd = geometryData[key];
                 if (gd.pos.length === 0) continue;
                 
-                const geom = new THREE.BufferGeometry();
-                geom.setAttribute('position', new THREE.Float32BufferAttribute(gd.pos, 3));
-                geom.getAttribute('position').setUsage(THREE.StaticDrawUsage);
-                geom.setAttribute('normal', new THREE.Float32BufferAttribute(gd.norm, 3));
-                
-                let currentMaterial = materials[key];
-                
-                // Set UVs if material is textured (i.e., it has a map)
-                if (currentMaterial && currentMaterial.map) {
-                    geom.setAttribute('uv', new THREE.Float32BufferAttribute(gd.uv, 2));
-                } 
-                
-                // Set vertex colors if data was accumulated (means texture failed or block is color-only)
-                if (gd.col.length > 0) {
-                    geom.setAttribute('color', new THREE.Float32BufferAttribute(gd.col, 3));
-                    
-                    // If we have vertex colors AND it's not the transparent WATER material, use COLORED_OPAQUE.
-                    if (key !== 'WATER') { 
-                       currentMaterial = materials.COLORED_OPAQUE;
-                    } 
+                const triPos = [];
+                const triNorm = [];
+                const triUv = [];
+                const triCol = [];
+                const hasUv = gd.uv.length > 0;
+                const hasCol = gd.col.length > 0;
+
+                for (let i = 0; i < gd.pos.length / 3; i += 4) {
+                    const triOrder = [0, 1, 2, 0, 2, 3];
+                    for (const o of triOrder) {
+                        const vi = i + o;
+                        triPos.push(gd.pos[vi * 3], gd.pos[vi * 3 + 1], gd.pos[vi * 3 + 2]);
+                        triNorm.push(gd.norm[vi * 3], gd.norm[vi * 3 + 1], gd.norm[vi * 3 + 2]);
+                        if (hasUv) triUv.push(gd.uv[vi * 2], gd.uv[vi * 2 + 1]);
+                        if (hasCol) triCol.push(gd.col[vi * 3], gd.col[vi * 3 + 1], gd.col[vi * 3 + 2]);
+                    }
                 }
-                
-                // Indices
-                const idx = [];
-                for(let i=0; i<gd.pos.length/3; i+=4) idx.push(i, i+1, i+2, i, i+2, i+3);
-                geom.setIndex(new THREE.BufferAttribute(new Uint32Array(idx), 1));
+
+                const geom = new THREE.BufferGeometry();
+                geom.setAttribute('position', new THREE.Float32BufferAttribute(triPos, 3));
+                geom.getAttribute('position').setUsage(THREE.StaticDrawUsage);
+                geom.setAttribute('normal', new THREE.Float32BufferAttribute(triNorm, 3));
+
+                let currentMaterial = materials[key];
+
+                // Set UVs if material is textured (i.e., it has a map)
+                if (currentMaterial && currentMaterial.map && triUv.length > 0) {
+                    geom.setAttribute('uv', new THREE.Float32BufferAttribute(triUv, 2));
+                }
+
+                // Set vertex colors if data was accumulated (means texture failed or block is color-only)
+                if (triCol.length > 0) {
+                    geom.setAttribute('color', new THREE.Float32BufferAttribute(triCol, 3));
+
+                    // If we have vertex colors AND it's not the transparent WATER material, use COLORED_OPAQUE.
+                    if (key !== 'WATER') {
+                       currentMaterial = materials.COLORED_OPAQUE;
+                    }
+                }
 
                 const mesh = new THREE.Mesh(geom, currentMaterial);
                 mesh.frustumCulled = true;
