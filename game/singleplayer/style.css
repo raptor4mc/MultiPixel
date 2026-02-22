@@ -236,6 +236,27 @@ body {
     box-shadow: 0 0 0 2px rgba(57, 255, 20, 0.35) inset;
 }
 
+
+.edit-skin-btn {
+    width: 112px;
+    height: 34px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    pointer-events: auto;
+    position: absolute;
+    left: 96px;
+    top: 14px;
+    z-index: 5;
+}
+
+#edit-skin-icon {
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+}
+
 .inventory-close-btn {
     width:60px;
     height: 60px;

@@ -321,13 +321,21 @@ window.perlin = perlinInstance;
             updateHotbarUI();
             const closeBtn = document.getElementById('inventory-close-btn');
             const closeIcon = document.getElementById('inventory-close-icon');
+            const editSkinBtn = document.getElementById('edit-skin-btn');
+            const editSkinIcon = document.getElementById('edit-skin-icon');
             const furnaceCloseBtn = document.getElementById('furnace-close-btn');
             const furnaceCloseIcon = document.getElementById('furnace-close-icon');
-            const closeIconPath = `${window.SingleplayerConfig?.REPO_BASE_PREFIX || '/MultiPixel'}/game/singleplayer/assets/mobile/cdb_clear.png`;
+            const assetBasePath = `${window.SingleplayerConfig?.REPO_BASE_PREFIX || '/MultiPixel'}/game/singleplayer/assets`;
+            const closeIconPath = `${assetBasePath}/mobile/cdb_clear.png`;
+            const editSkinIconPath = `${assetBasePath}/ui/inventory/edit_skin_button.png`;
             if (closeIcon) closeIcon.src = closeIconPath;
+            if (editSkinIcon) editSkinIcon.src = editSkinIconPath;
             if (furnaceCloseIcon) furnaceCloseIcon.src = closeIconPath;
             if (closeBtn) closeBtn.addEventListener('click', () => {
                 if (isInventoryOpen) toggleInventory();
+            });
+            if (editSkinBtn) editSkinBtn.addEventListener('click', () => {
+                showGameMessage('Skin editor coming soon!');
             });
             if (furnaceCloseBtn) furnaceCloseBtn.addEventListener('click', () => {
                 if (isInventoryOpen) toggleInventory();
