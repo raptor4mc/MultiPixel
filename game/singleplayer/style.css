@@ -1,334 +1,324 @@
+body {
+    margin: 0;
+    overflow: hidden;
+    font-family: 'Inter', sans-serif;
+    background-color: #1a1a2e;
+    user-select: none;
+    touch-action: none;
+}
 
-        
-        body {
-            margin: 0;
-            overflow: hidden;
-            font-family: 'Inter', sans-serif;
-            background-color: #1a1a2e;
-            user-select: none;
-            touch-action: none;
-        }
-        #info-panel {
-            position: absolute;
-            top: 0;
-            left: 0;
-            padding: 1rem;
-            background-color: rgba(0, 0, 0, 0.6);
-            color: white;
-            z-index: 200;
-            border-bottom-right-radius: 8px;
-            font-size: 0.8rem;
-        }
-        #instructions {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            padding: 1.5rem;
-            background-color: rgba(0, 0, 0, 0.85);
-            color: white;
-            border-radius: 12px;
-            text-align: center;
-            line-height: 1.6;
-            z-index: 100;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
-            cursor: pointer;
-            transition: opacity 0.3s ease-in-out;
-        }
-        #crosshair {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 14px;
-            height: 14px;
-            margin-top: -7px;
-            margin-left: -7px;
-            /* SVG Crosshair style */
-            background-image: url('data:image/svg+xml;utf8,<svg width="14" height="14" viewBox="0 0 14 14" xmlns="http://www.w3.org/2000/svg"><path d="M7 0V14M0 7H14" stroke="white" stroke-width="2" stroke-linecap="round" style="filter: drop-shadow(0px 0px 1px black);"/></svg>');
-            z-index: 99;
-            pointer-events: none;
-        }
-        
-        #held-item-cursor {
-            position: absolute;
-            pointer-events: none;
-            width: 40px;
-            height: 40px;
-            z-index: 201;
-            transition: opacity 0.1s;
-        }
+#info-panel {
+    position: absolute;
+    top: 0;
+    left: 0;
+    padding: 1rem;
+    background-color: rgba(0, 0, 0, 0.6);
+    color: white;
+    z-index: 200;
+    border-bottom-right-radius: 8px;
+    font-size: 0.8rem;
+}
 
-        #inventory-screen {
-            background-color: rgba(0, 0, 0, 0.75);
-            backdrop-filter: blur(2px);
-        }
-        .inv-slot {
-            background-color: #8b8b8b;
-            border-top: 2px solid #373737; 
-            border-left: 2px solid #373737;
-            border-bottom: 2px solid #ffffff; 
-            border-right: 2px solid #ffffff;
-            position: relative;
-            cursor: pointer;
-            display: flex; 
-            justify-content: center;
-            align-items: center;
-        }
-        .inv-slot:hover {
-            background-color: #a0a0a0;
-        }
-        .inv-slot.selected {
-            border: 3px solid #39ff14;
-            transform: scale(1.05);
-            z-index: 10;
-        }
-        .item-count {
-            position: absolute;
-            bottom: 0;
-            right: 2px;
-            font-size: 10px;
-            font-weight: bold;
-            color: white;
-            text-shadow: 1px 1px 0 #000;
-            pointer-events: none;
-        }
-        
-        /* New style for displaying textures in UI */
-        .texture-icon {
-            width: 100%;
-            height: 100%;
-            image-rendering: pixelated;
-        }
-  
-        .heart-icon {
-            width: 22px;
-            height: 22px;
-            image-rendering: pixelated;
-            filter: drop-shadow(2px 2px 0px #000);
-        }
+#instructions {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 1.5rem;
+    background-color: rgba(0, 0, 0, 0.85);
+    color: white;
+    border-radius: 12px;
+    text-align: center;
+    line-height: 1.6;
+    z-index: 100;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    cursor: pointer;
+    transition: opacity 0.3s ease-in-out;
+}
 
-        .text-neon-green {
-          color: #39ff14; }
+#crosshair {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 14px;
+    height: 14px;
+    margin-top: -7px;
+    margin-left: -7px;
+    background-image: url('data:image/svg+xml;utf8,<svg width="14" height="14" viewBox="0 0 14 14" xmlns="http://www.w3.org/2000/svg"><path d="M7 0V14M0 7H14" stroke="white" stroke-width="2" stroke-linecap="round" style="filter: drop-shadow(0px 0px 1px black);"/></svg>');
+    z-index: 99;
+    pointer-events: none;
+}
 
-        .food-icon {
-            width: 22px;
-            height: 22px;
-            image-rendering: pixelated;
-            filter: drop-shadow(1px 1px 0px #000);
-        }
+#held-item-cursor {
+    position: absolute;
+    pointer-events: none;
+    width: 40px;
+    height: 40px;
+    z-index: 201;
+    transition: opacity 0.1s;
+}
 
+#inventory-screen {
+    background-color: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(2px);
+}
 
-        #breaking-overlay {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 72px;
-            height: 72px;
-            margin-left: -36px;
-            margin-top: -36px;
-            pointer-events: none;
-            opacity: 0;
-            z-index: 98;
-            image-rendering: pixelated;
-            background-size: contain;
-            background-repeat: no-repeat;
-            background-position: center;
-        }
+.inv-slot {
+    background-color: #8b8b8b;
+    border-top: 2px solid #373737; 
+    border-left: 2px solid #373737;
+    border-bottom: 2px solid #ffffff; 
+    border-right: 2px solid #ffffff;
+    position: relative;
+    cursor: pointer;
+    display: flex; 
+    justify-content: center;
+    align-items: center;
+}
 
-        #mobile-controls {
-            position: absolute;
-            inset: 0;
-            z-index: 180;
-            pointer-events: none;
-        }
+.inv-slot:hover {
+    background-color: #a0a0a0;
+}
 
-        #mobile-controls.active {
-            display: block !important;
-        }
+.inv-slot.selected {
+    border: 3px solid #39ff14;
+    transform: scale(1.05);
+    z-index: 10;
+}
 
-        .mobile-btn-area {
-            position: absolute;
-            pointer-events: none;
-        }
+.item-count {
+    position: absolute;
+    bottom: 0;
+    right: 2px;
+    font-size: 10px;
+    font-weight: bold;
+    color: white;
+    text-shadow: 1px 1px 0 #000;
+    pointer-events: none;
+}
 
-        #mobile-joystick {
-            left: 16px;
-            bottom: 16px;
-            width: 132px;
-            height: 132px;
-        }
+/* Textures and icons */
+.texture-icon {
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+}
 
-        #mobile-joystick-bg {
-            position: absolute;
-            inset: 0;
-            width: 132px;
-            height: 132px;
-            image-rendering: pixelated;
-            pointer-events: auto;
-            touch-action: none;
-            -webkit-user-drag: none;
-            user-select: none;
-            touch-action: none;
-        }
+.heart-icon, .food-icon {
+    width: 22px;
+    height: 22px;
+    image-rendering: pixelated;
+    filter: drop-shadow(1px 1px 0px #000);
+}
 
-        #mobile-joystick-center {
-            position: absolute;
-            left: 40px;
-            top: 40px;
-            width: 52px;
-            height: 52px;
-            image-rendering: pixelated;
-            pointer-events: none;
-        }
+.text-neon-green {
+    color: #39ff14;
+}
 
-        #mobile-right-controls {
-            right: 14px;
-            bottom: 16px;
-            width: 192px;
-            height: 192px;
-        }
+#breaking-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 72px;
+    height: 72px;
+    margin-left: -36px;
+    margin-top: -36px;
+    pointer-events: none;
+    opacity: 0;
+    z-index: 98;
+    image-rendering: pixelated;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
 
-        .mobile-btn {
-            position: absolute;
-            width: 72px;
-            height: 72px;
-            pointer-events: auto;
-            touch-action: none;
-            image-rendering: pixelated;
-            -webkit-user-drag: none;
-            user-select: none;
-            touch-action: none;
-        }
+/* Mobile controls */
+#mobile-controls {
+    position: absolute;
+    inset: 0;
+    z-index: 180;
+    pointer-events: none;
+}
 
-        #mobile-inventory-btn {
-            right: 0;
-            bottom: 0;
-        }
+#mobile-controls.active { display: block !important; }
 
-        #mobile-jump-btn {
-            right: 84px;
-            bottom: 0;
-        }
+.mobile-btn-area { position: absolute; pointer-events: none; }
 
-        #mobile-fast-btn {
-            right: 0;
-            bottom: 84px;
-        }
+#mobile-joystick {
+    left: 16px;
+    bottom: 16px;
+    width: 132px;
+    height: 132px;
+}
 
-        @media (pointer: coarse), (max-width: 900px) {
-            #mobile-controls {
-                display: block;
-            }
-            #instructions {
-                top: 36%;
-                font-size: 0.92rem;
-            }
-        }
+#mobile-joystick-bg {
+    position: absolute;
+    inset: 0;
+    width: 132px;
+    height: 132px;
+    image-rendering: pixelated;
+    pointer-events: auto;
+    touch-action: none;
+    -webkit-user-drag: none;
+    user-select: none;
+}
 
+#mobile-joystick-center {
+    position: absolute;
+    left: 40px;
+    top: 40px;
+    width: 52px;
+    height: 52px;
+    image-rendering: pixelated;
+    pointer-events: none;
+}
 
-        .mode-btn {
-            pointer-events: auto;
-            padding: 0.45rem 0.95rem;
-            border-radius: 8px;
-            border: 2px solid #39ff14;
-            background: rgba(20, 20, 20, 0.85);
-            color: #fff;
-            font-weight: 700;
-            min-width: 86px;
-        }
+#mobile-right-controls {
+    right: 14px;
+    bottom: 16px;
+    width: 192px;
+    height: 192px;
+}
 
-        .mode-btn.active {
-            background: rgba(57, 255, 20, 0.2);
-            box-shadow: 0 0 0 2px rgba(57, 255, 20, 0.35) inset;
-        }
+.mobile-btn {
+    position: absolute;
+    width: 72px;
+    height: 72px;
+    pointer-events: auto;
+    touch-action: none;
+    image-rendering: pixelated;
+    -webkit-user-drag: none;
+    user-select: none;
+}
 
+/* Buttons */
+.mode-btn {
+    pointer-events: auto;
+    padding: 0.45rem 0.95rem;
+    border-radius: 8px;
+    border: 2px solid #39ff14;
+    background: rgba(20, 20, 20, 0.85);
+    color: #fff;
+    font-weight: 700;
+    min-width: 86px;
+}
 
-        .inventory-close-btn {
-            width: 34px;
-            height: 34px;
-            padding: 0;
-            border: none;
-            background: transparent;
-            cursor: pointer;
-            pointer-events: auto;
-            position: absolute;
-            right: 8px;
-            top: 8px;
-            z-index: 5;
-        }
+.mode-btn.active {
+    background: rgba(57, 255, 20, 0.2);
+    box-shadow: 0 0 0 2px rgba(57, 255, 20, 0.35) inset;
+}
 
-        #inventory-close-icon,
-        #furnace-close-icon {
-            width: 100%;
-            height: 100%;
-            image-rendering: pixelated;
-            display: block;
-        }
+.inventory-close-btn {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    pointer-events: auto;
+    position: absolute;
+    right: 8px;
+    top: 8px;
+    z-index: 5;
+}
 
-        .menu-panel {
-            position: relative;
-            width: 480px;
-            height: 360px;
-            border: 0;
-            box-shadow: none;
-            image-rendering: pixelated;
-            background-size: 100% auto;
-            background-position: 26px top;
-            background-repeat: no-repeat;
-            overflow: hidden;
-        }
+#inventory-close-icon,
+#furnace-close-icon {
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+}
 
-        #inventory-screen .menu-panel {
-            transform: translateY(-40px);
-        }
+/* Panels */
+.menu-panel {
+    position: relative;
+    width: 480px;
+    height: 360px;
+    border: 0;
+    box-shadow: none;
+    image-rendering: pixelated;
+    background-size: 100% auto;
+    background-position: 26px top;
+    background-repeat: no-repeat;
+    overflow: hidden;
+}
 
-        #inventory-panel.inventory-mode {
-            background-image: url('/MultiPixel/game/singleplayer/assets/ui/inventory/inventory.png');
-        }
+#inventory-screen .menu-panel {
+    transform: translateY(-40px);
+}
 
-        #inventory-panel:not(.inventory-mode) {
-            background-image: url('/MultiPixel/game/singleplayer/assets/ui/craftingtable/crafting_table.png');
-        }
+#inventory-panel.inventory-mode {
+    background-image: url('/MultiPixel/game/singleplayer/assets/ui/inventory/inventory.png');
+}
 
-        #furnace-workbench-panel {
-            background-image: url('/MultiPixel/game/singleplayer/assets/ui/furnace/furnace.png');
-        }
+#inventory-panel:not(.inventory-mode) {
+    background-image: url('/MultiPixel/game/singleplayer/assets/ui/craftingtable/crafting_table.png');
+}
 
-        .menu-top-layout {
-            position: absolute;
-            inset: 0;
-        }
+#furnace-workbench-panel {
+    background-image: url('/MultiPixel/game/singleplayer/assets/ui/furnace/furnace.png');
+}
 
-        .menu-lower {
-            position: absolute;
-            left: 65px;
-            top: 190px;
-            width: 350px;
-        }
+/* Layouts */
+.menu-top-layout { position: absolute; inset: 0; }
 
-        .slot-grid {
-            display: grid;
-            gap: 2px;
-        }
+.menu-lower {
+    position: absolute;
+    left: 65px;
+    top: 190px;
+    width: 350px;
+}
 
-        .grid-2x2 { grid-template-columns: repeat(2, 30px); }
-        .grid-3x3 { grid-template-columns: repeat(3, 3+px); }
-        .grid-9x3 { grid-template-columns: repeat(9, 30px); grid-template-rows: repeat(3, 30px); }
-        .grid-9x1 { grid-template-columns: repeat(9, 30px); margin-top: 8px; }
+.slot-grid {
+    display: grid;
+    gap: 2px;
+}
 
-        #crafting-input-grid { position: absolute; left: 210px; top: 30px; }
-        #crafting-output-slot-container { position: absolute; left: 313px; top: 53px; }
+/* ===== GRIDS & SIZES ===== */
 
-        #crafting-table-grid { position: absolute; left: 50px; top: 50px; }
-        #crafting-table-output-slot { position: absolute; left: 150px; top: 20px; }
+/* Crafting 2x2 */
+.grid-2x2 {
+    grid-template-columns: repeat(2, 34px);
+    grid-template-rows: repeat(2, 34px);
+}
+#crafting-input-grid .inv-slot {
+    width: 34px;
+    height: 34px;
+}
 
-        #furnace-input-slot { position: absolute; left: 62px; top: 30px; }
-        #furnace-fuel-slot { position: absolute; left: 62px; top: 74px; }
-        #furnace-output-slot { position: absolute; left: 130px; top: 50px; }
+/* Crafting Output Slot */
+#crafting-output-slot-container .inv-slot {
+    width: 32px;
+    height: 32px;
+}
 
-        .slot-grid-single,
-        .slot-grid-single .inv-slot,
-        .slot-grid .inv-slot {
-            width: 30px;
-            height: 30px;
-        }
+/* 3x3 Crafting (if used) */
+.grid-3x3 {
+    grid-template-columns: repeat(3, 34px);
+    grid-template-rows: repeat(3, 34px);
+}
+
+/* Inventory */
+.grid-9x3 {
+    grid-template-columns: repeat(9, 30px);
+    grid-template-rows: repeat(3, 30px);
+}
+.grid-9x1 {
+    grid-template-columns: repeat(9, 30px);
+    margin-top: 8px;
+}
+.menu-lower .inv-slot {
+    width: 30px;
+    height: 30px;
+}
+
+/* Crafting / Furnace positions */
+#crafting-input-grid { position: absolute; left: 210px; top: 30px; }
+#crafting-output-slot-container { position: absolute; left: 313px; top: 53px; }
+
+#crafting-table-grid { position: absolute; left: 50px; top: 50px; }
+#crafting-table-output-slot { position: absolute; left: 150px; top: 20px; }
+
+#furnace-input-slot { position: absolute; left: 62px; top: 30px; }
+#furnace-fuel-slot { position: absolute; left: 62px; top: 74px; }
+#furnace-output-slot { position: absolute; left: 130px; top: 50px; }
