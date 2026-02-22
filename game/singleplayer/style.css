@@ -219,6 +219,19 @@ body {
     bottom: 0;
 }
 
+#mobile-fast-btn {
+    right: 0;
+    bottom: 0;
+}
+
+#mobile-camera-btn {
+    position: fixed;
+    width: 56px;
+    height: 56px;
+    left: calc(50vw - 28px);
+    top: 16px;
+}
+
 /* Buttons */
 .mode-btn {
     pointer-events: auto;
@@ -255,6 +268,31 @@ body {
     width: 100%;
     height: 100%;
     image-rendering: pixelated;
+}
+
+#inventory-skin-preview {
+    position: absolute;
+    left: 468px;
+    top: 72px;
+    width: 90px;
+    height: 128px;
+    pointer-events: none;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    transform-style: preserve-3d;
+    perspective: 360px;
+}
+
+#inventory-skin-head {
+    width: 44px;
+    height: 44px;
+    margin-top: 8px;
+    background: linear-gradient(180deg, #f5d6b2 0%, #dfb58d 100%);
+    border: 2px solid #3a2d22;
+    image-rendering: pixelated;
+    transform: rotateY(var(--skin-look-x, 0deg)) rotateX(var(--skin-look-y, 0deg));
+    transform-origin: center;
 }
 
 .inventory-close-btn {
