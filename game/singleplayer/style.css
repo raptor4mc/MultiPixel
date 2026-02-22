@@ -291,8 +291,8 @@ body {
 
 .menu-lower {
     position: absolute;
-    left: 54px;
-    top: 196px;
+    left: 48px;
+    top: 203px;
     width: 350px;
 }
 
@@ -347,7 +347,7 @@ body {
 #crafting-input-grid { position: absolute; left: 271px; top: 40px; }
 #crafting-output-slot-container { position: absolute; left: 410px; top: 70px; }
 
-#crafting-table-grid { position: absolute; left: 170px; top: 52px; }
+#crafting-table-grid { position: absolute; left: 150px; top: 50px; }
 #crafting-table-output-slot { position: absolute; left: 410px; top: 70px; }
 
 #furnace-input-slot { position: absolute; left: 62px; top: 30px; }
