@@ -140,7 +140,7 @@ window.perlin = perlinInstance;
         const dirtyChunkKeys = new Set();
         let physicsCursorY = 1;
 
-        const MOBILE_ASSET_BASE = `${window.SingleplayerConfig?.REPO_BASE_PREFIX || '/MultiPixel'}/game/singleplayer/assets/mobile`;
+        const MOBILE_ASSET_BASE = `${window.SingleplayerConfig?.REPO_BASE_PREFIX || ''}/game/singleplayer/assets/mobile`;
         const coarsePointer = window.matchMedia ? window.matchMedia('(pointer: coarse)').matches : false;
         const noHover = window.matchMedia ? window.matchMedia('(hover: none)').matches : false;
         const touchCapable = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
@@ -174,6 +174,8 @@ window.perlin = perlinInstance;
         const chunks = new Map();
         const worldGroup = new THREE.Group();
         let yawObject, pitchObject; 
+        let isThirdPersonView = false;
+        let playerAvatar = null;
         
         // Calculate the world boundary coordinates
         const WORLD_MAX_COORD = (WORLD_RADIUS + 0.5) * CHUNK_SIZE;
@@ -300,6 +302,10 @@ window.perlin = perlinInstance;
             yawObject.add(pitchObject);
             scene.add(yawObject);
 
+            playerAvatar = createPlayerAvatar();
+            playerAvatar.visible = false;
+            yawObject.add(playerAvatar);
+
             // Lighting (Made global: ambientLight, dirLight)
             ambientLight = new THREE.AmbientLight(0x606060, 1.2); 
             scene.add(ambientLight);
@@ -321,13 +327,21 @@ window.perlin = perlinInstance;
             updateHotbarUI();
             const closeBtn = document.getElementById('inventory-close-btn');
             const closeIcon = document.getElementById('inventory-close-icon');
+            const editSkinBtn = document.getElementById('edit-skin-btn');
+            const editSkinIcon = document.getElementById('edit-skin-icon');
             const furnaceCloseBtn = document.getElementById('furnace-close-btn');
             const furnaceCloseIcon = document.getElementById('furnace-close-icon');
-            const closeIconPath = `${window.SingleplayerConfig?.REPO_BASE_PREFIX || '/MultiPixel'}/game/singleplayer/assets/mobile/cdb_clear.png`;
+            const assetBasePath = `${window.SingleplayerConfig?.REPO_BASE_PREFIX || ''}/game/singleplayer/assets`;
+            const closeIconPath = `${assetBasePath}/mobile/cdb_clear.png`;
+            const editSkinIconPath = `${assetBasePath}/ui/inventory/edit_skin_button.png`;
             if (closeIcon) closeIcon.src = closeIconPath;
+            if (editSkinIcon) editSkinIcon.src = editSkinIconPath;
             if (furnaceCloseIcon) furnaceCloseIcon.src = closeIconPath;
             if (closeBtn) closeBtn.addEventListener('click', () => {
                 if (isInventoryOpen) toggleInventory();
+            });
+            if (editSkinBtn) editSkinBtn.addEventListener('click', () => {
+                toggleInventorySkinPreview();
             });
             if (furnaceCloseBtn) furnaceCloseBtn.addEventListener('click', () => {
                 if (isInventoryOpen) toggleInventory();
@@ -361,6 +375,7 @@ window.perlin = perlinInstance;
                 if (isInventoryOpen && heldDiv) {
                     heldDiv.style.left = `${e.clientX + 10}px`;
                     heldDiv.style.top = `${e.clientY + 10}px`;
+                    updateSkinPreviewLook(e.clientX, e.clientY);
                 }
             });
             
@@ -1864,6 +1879,7 @@ window.perlin = perlinInstance;
             const jumpBtn = document.getElementById('mobile-jump-btn');
             const invBtn = document.getElementById('mobile-inventory-btn');
             const fastBtn = document.getElementById('mobile-fast-btn');
+            const camBtn = document.getElementById('mobile-camera-btn');
 
             if (!controlsEl || !joyWrap || !joyBg || !joyCenter || !jumpBtn || !invBtn || !fastBtn) return;
 
@@ -1873,6 +1889,7 @@ window.perlin = perlinInstance;
             jumpBtn.src = `${MOBILE_ASSET_BASE}/jump_btn.png`;
             invBtn.src = `${MOBILE_ASSET_BASE}/inventory_btn.png`;
             fastBtn.src = `${MOBILE_ASSET_BASE}/fast_btn.png`;
+            if (camBtn) camBtn.src = `${MOBILE_ASSET_BASE}/camera_btn.png`;
             document.getElementById('instructions').style.opacity = 0;
             player.canMove = true;
 
@@ -1933,8 +1950,12 @@ window.perlin = perlinInstance;
                 e.preventDefault();
                 toggleInventory();
             });
+            if (camBtn) camBtn.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                toggleCameraViewMode();
+            });
 
-            const mobileControlTargets = new Set([joyBg, jumpBtn, invBtn, fastBtn]);
+            const mobileControlTargets = new Set([joyBg, jumpBtn, invBtn, fastBtn, camBtn]);
             window.addEventListener('pointerdown', (e) => {
                 if (!mobileControls.enabled || !player.canMove || isInventoryOpen) return;
                 if (mobileControlTargets.has(e.target)) return;
@@ -1959,7 +1980,11 @@ window.perlin = perlinInstance;
             }, { passive: false });
 
             window.addEventListener('pointermove', (e) => {
-                if (!mobileControls.enabled || isInventoryOpen || !player.canMove) return;
+                if (!mobileControls.enabled || !player.canMove) return;
+                if (isInventoryOpen) {
+                    updateSkinPreviewLook(e.clientX, e.clientY);
+                    return;
+                }
                 if (e.pointerType !== 'touch') return;
                 if (mobileControls.lookPointerId !== e.pointerId) return;
 
@@ -2030,6 +2055,50 @@ window.perlin = perlinInstance;
             };
         }
 
+        function createPlayerAvatar() {
+            const avatar = new THREE.Group();
+            const body = new THREE.Mesh(
+                new THREE.BoxGeometry(0.75, 1.0, 0.35),
+                new THREE.MeshStandardMaterial({ color: 0x4f95ff, roughness: 0.9 })
+            );
+            body.position.y = 0.95;
+            const head = new THREE.Mesh(
+                new THREE.BoxGeometry(0.52, 0.52, 0.52),
+                new THREE.MeshStandardMaterial({ color: 0xe5bf9f, roughness: 0.85 })
+            );
+            head.position.y = 1.72;
+            avatar.add(body);
+            avatar.add(head);
+            return avatar;
+        }
+
+        function toggleCameraViewMode() {
+            isThirdPersonView = !isThirdPersonView;
+            camera.position.set(0, isThirdPersonView ? 0.1 : 0, isThirdPersonView ? 3.6 : 0);
+            if (playerAvatar) playerAvatar.visible = isThirdPersonView;
+            showGameMessage(isThirdPersonView ? 'Third-person view enabled' : 'First-person view enabled');
+        }
+
+        function toggleInventorySkinPreview() {
+            showGameMessage('Skin editor opened in preview mode');
+            const preview = document.getElementById('inventory-skin-preview');
+            if (!preview) return;
+            preview.classList.toggle('active');
+        }
+
+        function updateSkinPreviewLook(clientX, clientY) {
+            const head = document.getElementById('inventory-skin-head');
+            const wrap = document.getElementById('inventory-skin-preview');
+            if (!head || !wrap || !isInventoryOpen) return;
+            const rect = wrap.getBoundingClientRect();
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top + rect.height / 2;
+            const dx = Math.max(-1, Math.min(1, (clientX - cx) / (rect.width / 2)));
+            const dy = Math.max(-1, Math.min(1, (clientY - cy) / (rect.height / 2)));
+            head.style.setProperty('--skin-look-x', `${dx * 28}deg`);
+            head.style.setProperty('--skin-look-y', `${-dy * 20}deg`);
+        }
+
         function setupKeyboardControls() {
             document.addEventListener('keydown', e => {
                 const k = e.key.toLowerCase();
@@ -2039,6 +2108,10 @@ window.perlin = perlinInstance;
                 }
                 if (k === 'escape' && isInventoryOpen) {
                     toggleInventory();
+                    return;
+                }
+                if (k === 'c') {
+                    toggleCameraViewMode();
                     return;
                 }
                 if (!isInventoryOpen) {
