@@ -373,16 +373,25 @@ body {
 
 /* ===== GRIDS & SIZES ===== */
 
-/* === Furnace slots: input, fuel, output === */
+/* ===== Furnace slot sizing ===== */
 #furnace-input-slot,
 #furnace-fuel-slot,
 #furnace-output-slot {
-    width: 42px;          /* uniform slot size */
-    height: 42px;
-    padding: 0;
-    margin: 0;
-    box-sizing: border-box; /* include border in size */
-    background-size: cover;
+    width: 42px;               /* correct width */
+    height: 42px;              /* correct height */
+    display: flex;             /* center content */
+    align-items: center;
+    justify-content: center;
+    background-size: contain;  /* texture fits */
+    background-repeat: no-repeat;
+    background-position: center;
+    box-sizing: border-box;    /* include border in size */
+}
+
+/* If slot-grid-single has styles that override height, reset them */
+.slot-grid-single {
+    width: auto !important;
+    height: auto !important;
 }
 
 /* Crafting 2x2 */
