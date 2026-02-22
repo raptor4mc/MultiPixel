@@ -219,6 +219,19 @@ body {
     bottom: 0;
 }
 
+#mobile-fast-btn {
+    right: 0;
+    bottom: 0;
+}
+
+#mobile-camera-btn {
+    position: fixed;
+    width: 56px;
+    height: 56px;
+    left: calc(50vw - 28px);
+    top: 16px;
+}
+
 /* Buttons */
 .mode-btn {
     pointer-events: auto;
@@ -234,6 +247,62 @@ body {
 .mode-btn.active {
     background: rgba(57, 255, 20, 0.2);
     box-shadow: 0 0 0 2px rgba(57, 255, 20, 0.35) inset;
+}
+
+
+.edit-skin-btn {
+    width: 112px;
+    height: 34px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    pointer-events: auto;
+    position: absolute;
+    left: 96px;
+    top: 14px;
+    z-index: 5;
+}
+
+#edit-skin-icon {
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+}
+
+#inventory-skin-preview {
+    position: absolute;
+    left: 106px;
+    top: 54px;
+    width: 90px;
+    height: 92px;
+    pointer-events: none;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    transform-style: preserve-3d;
+    perspective: 360px;
+}
+
+#inventory-skin-head {
+    width: 44px;
+    height: 44px;
+    margin-top: 8px;
+    background: linear-gradient(180deg, #f5d6b2 0%, #dfb58d 100%);
+    border: 2px solid #3a2d22;
+    image-rendering: pixelated;
+    transform: rotateY(var(--skin-look-x, 0deg)) rotateX(var(--skin-look-y, 0deg));
+    transform-origin: center;
+}
+
+#inventory-screen.hidden #edit-skin-btn,
+#inventory-screen.hidden #inventory-skin-preview {
+    display: none;
+}
+
+#inventory-panel:not(.inventory-mode) #edit-skin-btn,
+#inventory-panel:not(.inventory-mode) #inventory-skin-preview {
+    display: none;
 }
 
 .inventory-close-btn {
@@ -276,15 +345,15 @@ body {
 }
 
 #inventory-panel.inventory-mode {
-    background-image: url('/MultiPixel/game/singleplayer/assets/ui/inventory/inventory.png');
+    background-image: url('./assets/ui/inventory/inventory.png');
 }
 
 #inventory-panel:not(.inventory-mode) {
-    background-image: url('/MultiPixel/game/singleplayer/assets/ui/craftingtable/crafting_table.png');
+    background-image: url('./assets/ui/craftingtable/crafting_table.png');
 }
 
 #furnace-workbench-panel {
-    background-image: url('/MultiPixel/game/singleplayer/assets/ui/furnace/furnace.png');
+    background-image: url('./assets/ui/furnace/furnace.png');
 }
 
 /* Layouts */

@@ -24,6 +24,7 @@
     <script src="BlockPhysics/water.js?v=10"></script>
     <script src="BlockPhysics/sand.js?v=10"></script>
     <script src="BlockPhysics/lava.js?v=10"></script>
+    <script src="skin/init.js?v=1"></script>
     <script src="main.js?v=14"></script>
     <!-- Removed external script links to ensure functionality in this single-file preview -->
 </head>
@@ -74,6 +75,12 @@
             <button id="inventory-close-btn" class="inventory-close-btn" type="button" aria-label="Close inventory">
                 <img id="inventory-close-icon" alt="close inventory" draggable="false" />
             </button>
+            <button id="edit-skin-btn" class="edit-skin-btn" type="button" aria-label="Edit skin">
+                <img id="edit-skin-icon" alt="edit skin" draggable="false" />
+            </button>
+            <div id="inventory-skin-preview" aria-hidden="true">
+                <div id="inventory-skin-head"></div>
+            </div>
 
             <div id="crafting-2x2-container" class="menu-top-layout">
                 <div id="crafting-input-grid" class="slot-grid grid-2x2"></div>
@@ -119,6 +126,7 @@
             <img id="mobile-jump-btn" class="mobile-btn" alt="jump" draggable="false" />
             <img id="mobile-inventory-btn" class="mobile-btn" alt="inventory" draggable="false" />
             <img id="mobile-fast-btn" class="mobile-btn" alt="sprint" draggable="false" />
+            <img id="mobile-camera-btn" class="mobile-btn" alt="camera" draggable="false" />
         </div>
     </div>
     <div id="crosshair"></div>
