@@ -56,6 +56,9 @@
     STONE_BRICK_BLOCK: getAssetPath('textures/stone_bricks.png'),
     TORCH: getAssetPath('textures/item/torch.png'),
     FURNACE: getAssetPath('textures/furnace_off.png'),
+    FURNACE_TOP: getAssetPath('textures/furnace/furnace_top.png'),
+    FURNACE_SIDE: getAssetPath('textures/furnace/furnace_side.png'),
+    FURNACE_FRONT: getAssetPath('textures/furnace/furnace_front.png'),
     CRACKED_STONE_BRICK: getAssetPath('textures/cracked_stone_bricks.png'),
     CHARCOAL: getAssetPath('textures/item/charcoal.png'),
     GLASS_BLOCK: getAssetPath('textures/building/glass_block.png'),
@@ -97,6 +100,7 @@
     2: { name: 'Dirt', id: 2, textured: true, textureKey: 'DIRT' },
     3: { name: 'Stone', id: 3, textured: true, textureKey: 'STONE' },
     4: { name: 'Water', id: 4, transparent: true, opacity: 0.9, textured: true, textureKey: 'WATER' },
+    
     5: { 
       name: 'Wood Log', 
       id: 5, 
@@ -113,6 +117,7 @@
     6: { name: 'Leaves', id: 6, textured: true, textureKey: 'LEAVES', transparent: true, opacity: 1 },
     7: { name: 'Sand', id: 7, textured: true, textureKey: 'SAND' },
     8: { name: 'Oak Planks', id: 8, textured: true, textureKey: 'OAK_PLANK' },
+    
     9: {
       name: 'Crafting Table',
       id: 9,
@@ -127,6 +132,7 @@
         negZ: 'CRAFTING_TABLE_SIDE_ALT'
       }
     },
+    
     10: { name: 'Stick', id: 10, textured: true, textureKey: 'STICK' },
     11: { name: 'Wooden Pickaxe', id: 11, textured: true, textureKey: 'WOODEN_PICKAXE', toolType: 'pickaxe', tier: 1 },
     12: { name: 'Stone Pickaxe', id: 12, textured: true, textureKey: 'STONE_PICKAXE', toolType: 'pickaxe', tier: 2  },
@@ -140,7 +146,21 @@
     20: { name: 'Coal Block', id: 20, textured: true, textureKey: 'COAL_BLOCK' },
     21: { name: 'Stone Brick', id: 21, textured: true, textureKey: 'STONE_BRICK_BLOCK' },
     22: { name: 'torch', id: 22, textured: true, textureKey: 'TORCH', transparent: true, opacity: 0 },
-    23: { name: 'Furnace', id: 23, textured: true, textureKey: 'FURNACE' },
+    
+    23: { 
+      name: 'Furnace', 
+      id: 23, 
+      textured: true, 
+      textureKey: 'FURNACE',  
+      textureByFace: {
+        top: 'FURNACE_TOP',
+        bottom: 'COBBLESTONE',
+        posX: 'FURNACE_FRONT',
+        negX: 'FURNACE_SIDE',
+        posZ: 'FURNACE_SIDE',
+        negZ: 'FURNACE_SIDE'
+      } 
+    },
     24: { name: 'Cracked Stone Brick', id: 24, textured: true, textureKey: 'CRACKED_STONE_BRICK' },
     25: { name: 'Charcoal', id: 25, textured: true, textureKey: 'CHARCOAL' },
     26: { name: 'Glass', id: 26, textured: true, textureKey: 'GLASS_BLOCK', transparent: true, opacity: 0.8 },
