@@ -101,7 +101,6 @@
     1: { name: 'Grass', id: 1, textured: true, textureKey: 'GRASS' },
     2: { name: 'Dirt', id: 2, textured: true, textureKey: 'DIRT' },
     3: { name: 'Stone', id: 3, textured: true, textureKey: 'STONE' },
-    4: { name: 'Water', id: 4, transparent: true, opacity: 0.9, textured: true, textureKey: 'WATER' },
     
     5: { 
       name: 'Wood Log', 
@@ -160,7 +159,6 @@
     15: { name: 'Snow Block', id: 15, textured: true, textureKey: 'SNOW_BLOCK', color: 0xf2f7ff },
     16: { name: 'Snowball', id: 16, textured: true, textureKey: 'SNOWBALL', color: 0xe7eefc },
     17: { name: 'Cobblestone', id: 17, textured: true, textureKey: 'COBBLESTONE' },
-    18: { name: 'Coal Ore', id: 18, textured: true, textureKey: 'COAL_ORE_BLOCK' },
     19: { name: 'Coal', id: 19, textured: true, textureKey: 'COAL' },
     20: { name: 'Coal Block', id: 20, textured: true, textureKey: 'COAL_BLOCK' },
     21: { name: 'Stone Brick', id: 21, textured: true, textureKey: 'STONE_BRICK_BLOCK' },
@@ -194,23 +192,26 @@
       textureKey: 'SMOOTH_SANDSTONE_BLOCK',
     },
     
-    30: { name: 'Iron Ore Block', id: 30, textured: true, textureKey: 'IRON_ORE_BLOCK' },
     31: { name: 'Iron Ore', id: 31, textured: true, textureKey: 'IRON_ORE' },
-    32: { name: 'Block of raw iron', id: 32, textured: true, textureKey: 'RAW_IRON_BLOCK' },
-    33: { name: 'Lava', id: 33, textured: true, textureKey: 'LAVA_LIQUID' },
-    34: { name: 'Copper Block', id: 34, textured: true, textureKey: 'COPPER_BLOCK' },
-    35: { name: 'Copper ore', id: 35, textured: true, textureKey: 'COPPER_ORE' },
-    36: { name: 'Raw copper block', id: 36, textured: true, textureKey: 'RAW_COPPER_BLOCK' },
-    37: { name: 'Weathered Copper Block', id: 37, textured: true, textureKey: 'WEATHERED_COPPER_BLOCK' },
     38: { name: 'raw copper', id: 38, textured: true, textureKey: 'RAW_COPPER_ITEM' },
     39: { name: 'Obsidian Block', id: 39, textured: true, textureKey: 'OBSIDIAN_BLOCK' },
-    40: { name: 'Gold Ore', id: 40, textured: true, textureKey: 'GOLD_ORE_BLOCK' },
-    41: { name: 'Raw Gold Block', id: 41, textured: true, textureKey: 'RAW_GOLD_BLOCK' },
     42: { name: 'Gold Ore', id: 42, textured: true, textureKey: 'GOLD_ORE' },
-    43: { name: 'Diamond Ore', id: 43, textured: true, textureKey: 'DIAMOND_ORE' },
     44: { name: 'Diamond', id: 44, textured: true, textureKey: 'DIAMOND' },
     45: { name: 'Diamond Block', id: 45, textured: true, textureKey: 'DIAMOND_BLOCK' },
     46: { name: 'Flint', id: 46, id: 46, textured: true, textureKey: 'FLINT' },
+    
+    /* Raw block*/
+    36: { name: 'Raw copper block', id: 36, textured: true, textureKey: 'RAW_COPPER_BLOCK' },
+    41: { name: 'Raw Gold Block', id: 41, textured: true, textureKey: 'RAW_GOLD_BLOCK' },
+    32: { name: 'Block of raw iron', id: 32, textured: true, textureKey: 'RAW_IRON_BLOCK' },
+    
+    /* Copper*/
+    34: { name: 'Copper Block', id: 34, textured: true, textureKey: 'COPPER_BLOCK' },
+    35: { name: 'Copper ore', id: 35, textured: true, textureKey: 'COPPER_ORE' },
+    37: { name: 'Weathered Copper Block', id: 37, textured: true, textureKey: 'WEATHERED_COPPER_BLOCK' },
+    
+    /* water*/
+    4: { name: 'Water', id: 4, transparent: true, opacity: 0.9, textured: true, textureKey: 'WATER' },
     47: { name: 'Flowing Water', id: 47, transparent: true, opacity: 0.9, textured: true, textureKey: 'WATER' },
     48: { name: 'Flowing Water', id: 48, transparent: true, opacity: 0.9, textured: true, textureKey: 'WATER' },
     49: { name: 'Flowing Water', id: 49, transparent: true, opacity: 0.9, textured: true, textureKey: 'WATER' },
@@ -218,12 +219,9 @@
     51: { name: 'Flowing Water', id: 51, transparent: true, opacity: 0.9, textured: true, textureKey: 'WATER' },
     52: { name: 'Flowing Water', id: 52, transparent: true, opacity: 0.9, textured: true, textureKey: 'WATER' },
     53: { name: 'Flowing Water', id: 53, transparent: true, opacity: 0.9, textured: true, textureKey: 'WATER' },
-    54: { name: 'Emerald ore', id: 54, textured: true, textureKey: 'EMERALD_ORE' },
-    55: { name: 'Emerald Block', id: 55, textured: true, textureKey: 'EMERALD_BLOCK' },
-    56: { name: 'Emerald', id: 56, textured: true, textureKey: 'EMERALD' },
-    57: { name: 'Black Dye', id: 57, textured: true, textureKey: 'BLACK_DYE' },
-    58: { name: 'Green Dye', id: 58, textured: true, textureKey: 'GREEN_DYE' },
-    59: { name: 'Ice', id: 59, textured: true, textureKey: 'ICE' },
+
+    /*Flowing lava*/
+    33: { name: 'Lava', id: 33, textured: true, textureKey: 'LAVA_LIQUID' },
     60: { name: 'Flowing Lava', id: 60, textured: true, textureKey: 'LAVA_LIQUID' },
     61: { name: 'Flowing Lava', id: 61, textured: true, textureKey: 'LAVA_LIQUID' },
     62: { name: 'Flowing Lava', id: 62, textured: true, textureKey: 'LAVA_LIQUID' },
@@ -231,6 +229,22 @@
     64: { name: 'Flowing Lava', id: 64, textured: true, textureKey: 'LAVA_LIQUID' },
     65: { name: 'Flowing Lava', id: 65, textured: true, textureKey: 'LAVA_LIQUID' },
     66: { name: 'Flowing Lava', id: 66, textured: true, textureKey: 'LAVA_LIQUID' },
+    
+    /*ORes*/
+    54: { name: 'Emerald ore', id: 54, textured: true, textureKey: 'EMERALD_ORE' },
+    40: { name: 'Gold Ore', id: 40, textured: true, textureKey: 'GOLD_ORE_BLOCK' },
+    43: { name: 'Diamond Ore', id: 43, textured: true, textureKey: 'DIAMOND_ORE' },
+    35: { name: 'Copper ore', id: 35, textured: true, textureKey: 'COPPER_ORE' },
+    18: { name: 'Coal Ore', id: 18, textured: true, textureKey: 'COAL_ORE_BLOCK' },
+    30: { name: 'Iron Ore Block', id: 30, textured: true, textureKey: 'IRON_ORE_BLOCK' },
+    
+    /*Dyes*/
+    57: { name: 'Black Dye', id: 57, textured: true, textureKey: 'BLACK_DYE' },
+    58: { name: 'Green Dye', id: 58, textured: true, textureKey: 'GREEN_DYE' },
+ 
+    55: { name: 'Emerald Block', id: 55, textured: true, textureKey: 'EMERALD_BLOCK' },
+    56: { name: 'Emerald', id: 56, textured: true, textureKey: 'EMERALD' },
+    59: { name: 'Ice', id: 59, textured: true, textureKey: 'ICE' },
   }; 
 
   window.SingleplayerConfig = {
