@@ -11,7 +11,7 @@
     },
     recipes: {
       17: { out: 3, cookTimeSec: 8 },
-      7: { out: 13, cookTimeSec: 7 },
+      7: { out: 27, cookTimeSec: 7 },
       30: { out: 31, cookTimeSec: 10 },
       35: { out: 38, cookTimeSec: 10 },
       40: { out: 42, cookTimeSec: 10 },
