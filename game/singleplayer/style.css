@@ -374,19 +374,17 @@ body {
 /* ===== GRIDS & SIZES ===== */
 
 /* Furnace slots */
-#furnace-input-slot,
-#furnace-fuel-slot,
-#furnace-output-slot {
+.furnace-input-slot, {
     width: 50px;
     height: 50px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background-size: contain;
-    background-position: center;
-    background-repeat: no-repeat;
-    box-sizing: border-box;
-    border: 2px solid #373737;
+}
+.furnace-fuel-slot {
+    width: 50px;
+    height: 50px;
+}
+.furnace-output-slot {
+     width: 50px;
+    height: 50px;
 }
 
 /* Crafting 2x2 */
