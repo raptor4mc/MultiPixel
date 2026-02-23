@@ -55,7 +55,7 @@ body {
     pointer-events: none;
     width: 40px;
     height: 40px;
-    z-index: 201;
+    z-index: 9999;
     transition: opacity 0.1s;
 }
 
