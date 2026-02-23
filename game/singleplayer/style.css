@@ -376,8 +376,8 @@ body {
 #furnace-input-slot .inv-slot,
 #furnace-fuel-slot .inv-slot,
 #furnace-output-slot .inv-slot {
-    width: 46px;
-    height: 46px;
+    width: 44px;
+    height: 44px;
 }
 
 /* Crafting 2x2 */
@@ -427,6 +427,6 @@ body {
 #crafting-table-grid { position: absolute; left: 150px; top: 50px; }
 #crafting-table-output-slot { position: absolute; left: 410px; top: 70px; }
 
-#furnace-input-slot { position: absolute; left: 100px; top: 40px; }
-#furnace-fuel-slot { position: absolute; left: 100px; top: 10px; }
-#furnace-output-slot { position: absolute; left: 230px; top: 50px; }
+#furnace-input-slot { position: absolute; left: 120px; top: 50px; }
+#furnace-fuel-slot { position: absolute; left: 120px; top: 90px; }
+#furnace-output-slot { position: absolute; left: 270px; top: 70px; }
