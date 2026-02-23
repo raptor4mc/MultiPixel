@@ -373,21 +373,31 @@ body {
 
 /* ===== GRIDS & SIZES ===== */
 
-/* ===== Furnace slot sizing ===== */
+/* Furnace slots */
 #furnace-input-slot,
 #furnace-fuel-slot,
 #furnace-output-slot {
-    width: 42px;               /* correct width */
-    height: 42px;              /* correct height */
-    display: flex;             /* center content */
-    align-items: center;
+    width: 42px;
+    height: 42px;
+    display: flex;
     justify-content: center;
-    background-size: contain;  /* texture fits */
-    background-repeat: no-repeat;
+    align-items: center;
+    background-size: contain;
     background-position: center;
-    box-sizing: border-box;    /* include border in size */
+    background-repeat: no-repeat;
+    box-sizing: border-box;
+    border: 2px solid #373737;
 }
 
+/* Images inside slots */
+#furnace-input-slot img,
+#furnace-fuel-slot img,
+#furnace-output-slot img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    image-rendering: pixelated;
+}
 /* If slot-grid-single has styles that override height, reset them */
 .slot-grid-single {
     width: auto !important;
