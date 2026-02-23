@@ -97,11 +97,20 @@
   };
 
   const blockMaterials = {
-    0: { name: 'Air', id: 0, textured: false },
-    1: { name: 'Grass', id: 1, textured: true, textureKey: 'GRASS' },
-    2: { name: 'Dirt', id: 2, textured: true, textureKey: 'DIRT' },
-    3: { name: 'Stone', id: 3, textured: true, textureKey: 'STONE' },
     
+    /*Iligals*/
+    0: { name: 'Air', id: 0, textured: false },
+    14: { name: 'Bedrock', id: 14, textured: true, textureKey: 'BEDROCK', unbreakable: true },
+    
+    /*terrain*/
+    1: { name: 'Grass', id: 1, textured: true, textureKey: 'GRASS' },
+    2: { name: 'Dirt', id: 2, textured: true, textureKey: 'DIRT' }, 
+    3: { name: 'Stone', id: 3, textured: true, textureKey: 'STONE' },
+    6: { name: 'Leaves', id: 6, textured: true, textureKey: 'LEAVES', transparent: true, opacity: 1 },
+    7: { name: 'Sand', id: 7, textured: true, textureKey: 'SAND' },
+    15: { name: 'Snow Block', id: 15, textured: true, textureKey: 'SNOW_BLOCK', color: 0xf2f7ff },
+    59: { name: 'Ice', id: 59, textured: true, textureKey: 'ICE' },
+    28: { name: 'gravel', id: 28, textured: true, textureKey: 'GRAVEL' },
     5: { 
       name: 'Wood Log', 
       id: 5, 
@@ -116,12 +125,37 @@
         negZ: 'WOOD_LOG'
       } 
     },
-    
-    6: { name: 'Leaves', id: 6, textured: true, textureKey: 'LEAVES', transparent: true, opacity: 1 },
-    7: { name: 'Sand', id: 7, textured: true, textureKey: 'SAND' },
+     13: { 
+      name: 'Sand stone', 
+      id: 13, 
+      textured: true, 
+      textureKey: 'SANDSTONE', 
+      textureByFace: {
+        top: 'SANDSTONE_TOP',
+        bottom: 'SANDSTONE_BOTTOM',
+        posX: 'SANDSTONE',
+        negX: 'SANDSTONE',
+        posZ: 'SANDSTONE',
+        negZ: 'SANDSTONE' 
+      },
+    },
+
+    /*Building ig*/
     8: { name: 'Oak Planks', id: 8, textured: true, textureKey: 'OAK_PLANK' },
+    17: { name: 'Cobblestone', id: 17, textured: true, textureKey: 'COBBLESTONE' },
+    22: { name: 'torch', id: 22, textured: true, textureKey: 'TORCH', transparent: true, opacity: 0 },
+    26: { name: 'Glass', id: 26, textured: true, textureKey: 'GLASS_BLOCK', transparent: true, opacity: 0.8 },
+
+    /*Important later*/
+    39: { name: 'Obsidian Block', id: 39, textured: true, textureKey: 'OBSIDIAN_BLOCK' },
+
+    /* Well, valuable ore blocks*/
+    45: { name: 'Diamond Block', id: 45, textured: true, textureKey: 'DIAMOND_BLOCK' },
+    55: { name: 'Emerald Block', id: 55, textured: true, textureKey: 'EMERALD_BLOCK' },
+    20: { name: 'Coal Block', id: 20, textured: true, textureKey: 'COAL_BLOCK' },
     
-    9: {
+    /*Utility*/
+       9: {
       name: 'Crafting Table',
       id: 9,
       textured: true,
@@ -135,36 +169,8 @@
         negZ: 'CRAFTING_TABLE_SIDE_ALT'
       }
     },
-    
-    10: { name: 'Stick', id: 10, textured: true, textureKey: 'STICK' },
-    11: { name: 'Wooden Pickaxe', id: 11, textured: true, textureKey: 'WOODEN_PICKAXE', toolType: 'pickaxe', tier: 1 },
-    12: { name: 'Stone Pickaxe', id: 12, textured: true, textureKey: 'STONE_PICKAXE', toolType: 'pickaxe', tier: 2  },
-    
-    13: { 
-      name: 'Sand stone', 
-      id: 13, 
-      textured: true, 
-      textureKey: 'SAND_STONE', 
-      textureByFace: {
-        top: 'SANDSTONE_TOP',
-        bottom: 'SANDSTONE_BOTTOM',
-        posX: 'SANDSTONE',
-        negX: 'SANDSTONE',
-        posZ: 'SANDSTONE',
-        negZ: 'SANDSTONE' 
-      },
-    },
-    
-    14: { name: 'Bedrock', id: 14, textured: true, textureKey: 'BEDROCK', unbreakable: true },
-    15: { name: 'Snow Block', id: 15, textured: true, textureKey: 'SNOW_BLOCK', color: 0xf2f7ff },
-    16: { name: 'Snowball', id: 16, textured: true, textureKey: 'SNOWBALL', color: 0xe7eefc },
-    17: { name: 'Cobblestone', id: 17, textured: true, textureKey: 'COBBLESTONE' },
-    19: { name: 'Coal', id: 19, textured: true, textureKey: 'COAL' },
-    20: { name: 'Coal Block', id: 20, textured: true, textureKey: 'COAL_BLOCK' },
-    21: { name: 'Stone Brick', id: 21, textured: true, textureKey: 'STONE_BRICK_BLOCK' },
-    22: { name: 'torch', id: 22, textured: true, textureKey: 'TORCH', transparent: true, opacity: 0 },
-    
-    23: { 
+
+       23: { 
       name: 'Furnace', 
       id: 23, 
       textured: true, 
@@ -179,26 +185,18 @@
       } 
     },
     
-    24: { name: 'Cracked Stone Brick', id: 24, textured: true, textureKey: 'CRACKED_STONE_BRICK' },
-    25: { name: 'Charcoal', id: 25, textured: true, textureKey: 'CHARCOAL' },
-    26: { name: 'Glass', id: 26, textured: true, textureKey: 'GLASS_BLOCK', transparent: true, opacity: 0.8 },
-    27: { name: 'Smooth Stone', id: 27, textured: true, textureKey: 'SMOOTH_STONE_BLOCK' }, 
-    28: { name: 'gravel', id: 28, textured: true, textureKey: 'GRAVEL' },
-    
-    29: {
+    /*Stone*/
+     21: { name: 'Stone Brick', id: 21, textured: true, textureKey: 'STONE_BRICK_BLOCK' },
+     24: { name: 'Cracked Stone Brick', id: 24, textured: true, textureKey: 'CRACKED_STONE_BRICK' },
+     27: { name: 'Smooth Stone', id: 27, textured: true, textureKey: 'SMOOTH_STONE_BLOCK' }, 
+
+    /*Sandstone*/
+      29: {
       name: 'Smooth SandStone', 
       id: 29, 
       textured: true, 
       textureKey: 'SMOOTH_SANDSTONE_BLOCK',
     },
-    
-    31: { name: 'Iron Ore', id: 31, textured: true, textureKey: 'IRON_ORE' },
-    38: { name: 'raw copper', id: 38, textured: true, textureKey: 'RAW_COPPER_ITEM' },
-    39: { name: 'Obsidian Block', id: 39, textured: true, textureKey: 'OBSIDIAN_BLOCK' },
-    42: { name: 'Gold Ore', id: 42, textured: true, textureKey: 'GOLD_ORE' },
-    44: { name: 'Diamond', id: 44, textured: true, textureKey: 'DIAMOND' },
-    45: { name: 'Diamond Block', id: 45, textured: true, textureKey: 'DIAMOND_BLOCK' },
-    46: { name: 'Flint', id: 46, id: 46, textured: true, textureKey: 'FLINT' },
     
     /* Raw block*/
     36: { name: 'Raw copper block', id: 36, textured: true, textureKey: 'RAW_COPPER_BLOCK' },
@@ -207,7 +205,6 @@
     
     /* Copper*/
     34: { name: 'Copper Block', id: 34, textured: true, textureKey: 'COPPER_BLOCK' },
-    35: { name: 'Copper ore', id: 35, textured: true, textureKey: 'COPPER_ORE' },
     37: { name: 'Weathered Copper Block', id: 37, textured: true, textureKey: 'WEATHERED_COPPER_BLOCK' },
     
     /* water*/
@@ -241,10 +238,22 @@
     /*Dyes*/
     57: { name: 'Black Dye', id: 57, textured: true, textureKey: 'BLACK_DYE' },
     58: { name: 'Green Dye', id: 58, textured: true, textureKey: 'GREEN_DYE' },
- 
-    55: { name: 'Emerald Block', id: 55, textured: true, textureKey: 'EMERALD_BLOCK' },
+
+    /*Items*/
     56: { name: 'Emerald', id: 56, textured: true, textureKey: 'EMERALD' },
-    59: { name: 'Ice', id: 59, textured: true, textureKey: 'ICE' },
+    46: { name: 'Flint', id: 46, textured: true, textureKey: 'FLINT' },
+    31: { name: 'Raw Iron', id: 31, textured: true, textureKey: 'IRON_ORE' },
+    38: { name: 'Raw Copper', id: 38, textured: true, textureKey: 'RAW_COPPER_ITEM' },
+    10: { name: 'Stick', id: 10, textured: true, textureKey: 'STICK' },
+    16: { name: 'Snowball', id: 16, textured: true, textureKey: 'SNOWBALL', color: 0xe7eefc },
+    25: { name: 'Charcoal', id: 25, textured: true, textureKey: 'CHARCOAL' },
+    42: { name: 'Raw Gold', id: 42, textured: true, textureKey: 'GOLD_ORE' },
+    44: { name: 'Diamond', id: 44, textured: true, textureKey: 'DIAMOND' },
+    19: { name: 'Coal', id: 19, textured: true, textureKey: 'COAL' },
+
+    /*Tools*/
+    11: { name: 'Wooden Pickaxe', id: 11, textured: true, textureKey: 'WOODEN_PICKAXE', toolType: 'pickaxe', tier: 1 },
+    12: { name: 'Stone Pickaxe', id: 12, textured: true, textureKey: 'STONE_PICKAXE', toolType: 'pickaxe', tier: 2  },
   }; 
 
   window.SingleplayerConfig = {
