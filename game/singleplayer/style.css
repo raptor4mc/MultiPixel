@@ -376,8 +376,8 @@ body {
 #furnace-input-slot .inv-slot,
 #furnace-fuel-slot .inv-slot,
 #furnace-output-slot .inv-slot {
-    width: 60px;
-    height: 60px;
+    width: 46px;
+    height: 46px;
 }
 
 /* Crafting 2x2 */
