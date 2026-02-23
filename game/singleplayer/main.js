@@ -2648,7 +2648,7 @@ if (ravineMask > 0.78) {
             }
         }
 
-        const SPAWN_MIN_LIGHT_LEVEL = 11;
+        const SPAWN_MIN_LIGHT_LEVEL = 13;
 
         function isSafeSpawnSpot(x, z) {
             const wx = Math.floor(x);
