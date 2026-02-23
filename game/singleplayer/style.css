@@ -373,18 +373,11 @@ body {
 
 /* ===== GRIDS & SIZES ===== */
 
-/* Furnace slots */
-.furnace-input-slot, {
-    width: 50px;
-    height: 50px;
-}
-.furnace-fuel-slot {
-    width: 50px;
-    height: 50px;
-}
-.furnace-output-slot {
-     width: 50px;
-    height: 50px;
+#furnace-input-slot .inv-slot,
+#furnace-fuel-slot .inv-slot,
+#furnace-output-slot .inv-slot {
+    width: 60px;
+    height: 60px;
 }
 
 /* Crafting 2x2 */
