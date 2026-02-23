@@ -427,6 +427,6 @@ body {
 #crafting-table-grid { position: absolute; left: 150px; top: 50px; }
 #crafting-table-output-slot { position: absolute; left: 410px; top: 70px; }
 
-#furnace-input-slot { position: absolute; left: 62px; top: 30px; }
-#furnace-fuel-slot { position: absolute; left: 62px; top: 74px; }
-#furnace-output-slot { position: absolute; left: 130px; top: 50px; }
+#furnace-input-slot { position: absolute; left: 100px; top: 40px; }
+#furnace-fuel-slot { position: absolute; left: 100px; top: 10px; }
+#furnace-output-slot { position: absolute; left: 230px; top: 50px; }
