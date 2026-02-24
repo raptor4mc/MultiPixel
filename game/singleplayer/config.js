@@ -292,7 +292,7 @@
     72: { name: 'Gold Pickaxe', id: 72, textured: true, textureKey: 'GOLDEN_PICKAXE', toolType: 'pickaxe', tier: 3 },
     73: { name: 'Copper Pickaxe', id: 73, textured: true, textureKey: 'COPPER_PICKAXE', toolType: 'pickaxe', tier: 4 },
     74: { name: 'Iron Pickaxe', id: 74, textured: true, textureKey: 'IRON_PICKAXE', toolType: 'pickaxe', tier: 5 },
-    75: { name: 'Diamond Pickaxe', id: 75, textured: true, textureKey: 'DIAMOND_PICKAXE', toolType: 'pickaxe', tier: 6 }.
+    75: { name: 'Diamond Pickaxe', id: 75, textured: true, textureKey: 'DIAMOND_PICKAXE', toolType: 'pickaxe', tier: 6 },
   }; 
 
   window.SingleplayerConfig = {
