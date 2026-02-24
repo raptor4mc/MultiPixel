@@ -392,6 +392,12 @@ window.perlin = perlinInstance;
             addToInventory(73, 42);      
             addToInventory(74, 42);      
             addToInventory(75, 42);      
+            addToInventory(34, 42);      
+            addToInventory(37, 42);      
+            addToInventory(76, 42);      
+            addToInventory(77, 42);      
+            addToInventory(78, 42);      
+            addToInventory(36, 42);      
 
             
             // Set initial sky state
