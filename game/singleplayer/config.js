@@ -103,6 +103,7 @@
     STEEL_BLOCK: getAssetPath('textures/iron_block.png'),
     COPPER_INGOT: getAssetPath('textures/item/copper_ingot.png'),
     GOLD_INGOT: getAssetPath('textures/item/gold_ingot.png'),
+    COPPER_GRATE: getAssetPath('textures/copper/copper_grate.png'),
     /*Pickaxes*/
     WOODEN_PICKAXE: getAssetPath('textures/item/tool/pickaxe/wooden_pickaxe.png'),
     STONE_PICKAXE: getAssetPath('textures/item/tool/pickaxe/stone_pickaxe.png'),
@@ -238,6 +239,7 @@
     /* Copper*/
     34: { name: 'Copper Block', id: 34, textured: true, textureKey: 'COPPER_BLOCK' },
     37: { name: 'Weathered Copper Block', id: 37, textured: true, textureKey: 'WEATHERED_COPPER_BLOCK' },
+    76: { name: 'Copper Grate', id: 76, textured: true, textureKey: 'COPPER_GRATE', transparent: true, opacity: 1 },
     
     /* water*/
     4: { name: 'Water', id: 4, transparent: true, opacity: 0.9, textured: true, textureKey: 'WATER' },
