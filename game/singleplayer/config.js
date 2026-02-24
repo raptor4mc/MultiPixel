@@ -53,17 +53,20 @@
     COBBLESTONE: getAssetPath('textures/cobblestone.png'),
     SNOW_BLOCK: getAssetPath('textures/snow.png'),
     SNOWBALL: getAssetPath('textures/item/snowball.png'),
-    WOODEN_PICKAXE: getAssetPath('textures/item/tool/pickaxe/wooden_pickaxe.png'),
     BEDROCK: getAssetPath('textures/bedrock.png'),
     COAL: getAssetPath('textures/item/coal.png'),
     COAL_ORE_BLOCK: getAssetPath('textures/coal_ore.png'),
     COAL_BLOCK: getAssetPath('textures/coal_block.png'),
     STONE_BRICK_BLOCK: getAssetPath('textures/stone_bricks.png'),
     TORCH: getAssetPath('textures/item/torch.png'),
-    FURNACE: getAssetPath('textures/furnace_off.png'),
+
+    /*FUrnace*/
     FURNACE_TOP: getAssetPath('textures/furnace/furnace_top.png'),
+    FURNACE: getAssetPath('textures/furnace_off.png'),
     FURNACE_SIDE: getAssetPath('textures/furnace/furnace_side.png'),
     FURNACE_FRONT: getAssetPath('textures/furnace/furnace_front.png'),
+    FURNACE_FRONT_LIT: getAssetPath('textures/furnace/furnace_front_on.png'),
+    
     CRACKED_STONE_BRICK: getAssetPath('textures/cracked_stone_bricks.png'),
     CHARCOAL: getAssetPath('textures/item/charcoal.png'),
     GLASS_BLOCK: getAssetPath('textures/building/glass_block.png'),
@@ -92,7 +95,6 @@
     EMERALD_ORE: getAssetPath('textures/emerald_ore.png'),
     EMERALD_BLOCK: getAssetPath('textures/emerald_block.png'),
     EMERALD:  getAssetPath('textures/item/emerald.png'),
-    STONE_PICKAXE: getAssetPath('textures/item/tool/pickaxe/stone_pickaxe.png'),
     BLACK_DYE: getAssetPath('textures/item/black_dye.png'),
     GREEN_DYE: getAssetPath('textures/item/green_dye.png'),
     ICE: getAssetPath('textures/ice.png'),
@@ -101,7 +103,13 @@
     STEEL_BLOCK: getAssetPath('textures/iron_block.png'),
     COPPER_INGOT: getAssetPath('textures/item/copper_ingot.png'),
     GOLD_INGOT: getAssetPath('textures/item/gold_ingot.png'),
-    FURNACE_FRONT_LIT: getAssetPath('textures/furnace/furnace_front_on.png'),
+    /*Pickaxes*/
+    WOODEN_PICKAXE: getAssetPath('textures/item/tool/pickaxe/wooden_pickaxe.png'),
+    STONE_PICKAXE: getAssetPath('textures/item/tool/pickaxe/stone_pickaxe.png'),
+    GOLDEN_PICKAXE: getAssetPath('textures/item/tool/pickaxe/golden_pickaxe.png'),
+    COPPER_PICKAXE: getAssetPath('textures/item/tool/pickaxe/copper_pickaxe.png'),
+    IRON_PICKAXE: getAssetPath('textures/item/tool/pickaxe/iron_pickaxe.png'),
+    DIAMOND_PICKAXE: getAssetPath('textures/item/tool/pickaxe/diamond_pickaxe.png'),
   };
 
   const blockMaterials = {
@@ -281,6 +289,10 @@
     /*Tools*/
     11: { name: 'Wooden Pickaxe', id: 11, textured: true, textureKey: 'WOODEN_PICKAXE', toolType: 'pickaxe', tier: 1 },
     12: { name: 'Stone Pickaxe', id: 12, textured: true, textureKey: 'STONE_PICKAXE', toolType: 'pickaxe', tier: 2  },
+    72: { name: 'Gold Pickaxe', id: 72, textured: true, textureKey: 'GOLDEN_PICKAXE', toolType: 'pickaxe', tier: 3 },
+    73: { name: 'Copper Pickaxe', id: 73, textured: true, textureKey: 'COPPER_PICKAXE', toolType: 'pickaxe', tier: 4 },
+    74: { name: 'Iron Pickaxe', id: 74, textured: true, textureKey: 'IRON_PICKAXE', toolType: 'pickaxe', tier: 5 },
+    75: { name: 'Diamond Pickaxe', id: 75, textured: true, textureKey: 'DIAMOND_PICKAXE', toolType: 'pickaxe', tier: 6 }.
   }; 
 
   window.SingleplayerConfig = {
