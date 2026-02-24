@@ -32,6 +32,10 @@
     { name: 'Steel', output: { id: 67, count: 9}, shape: [[68]] },
     { name: 'copper block', output: { id: 34, count: 1}, shape: [[69, 69, 69], [69, 69, 69], [69, 69, 69]] },
     { name: 'Copper ingot', output: { id: 69, count: 9}, shape: [[34]] }, 
+    { name: 'Gold Pickaxe', output: { id: 72, count: 1}, shape: [[70, 70, 70], [0, 10, 0], [0, 10, 0]] },
+    { name: 'Copper Pickaxe', output: { id: 73, count: 1}, shape: [[69, 69, 69], [0, 10, 0], [0, 10, 0]] },
+    { name: 'Iron Pickaxe', output: { id: 74, count: 1}, shape: [[67, 67, 67 ], [0, 10, 0], [0, 10, 0]] },
+    { name: 'Diamond Pickaxe', output: { id: 75, count: 1}, shape: [[44, 44, 44], [0, 10, 0], [0, 10, 0]] },
   ];
 
   function checkCraftingRecipe(inputSlots, gridWidth) {
