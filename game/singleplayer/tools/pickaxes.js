@@ -4,7 +4,40 @@
     12: { name: 'Stone Pickaxe', tier: 2, hardBlockSpeed: 0.38, softBlockPenalty: 1.02 },
   };
 
-  const HARD_BLOCKS = new Set([3, 13, 17, 14, 20, 30]);
+const HARD_BLOCKS = new Set([
+  // --- Natural stone ---
+  3,   // Stone
+  13,  // Sandstone
+  21,  // Stone Brick
+  24,  // Cracked Stone Brick
+  27,  // Smooth Stone
+  29,  // Smooth Sandstone
+
+  // --- Ores ---
+  18,  // Coal Ore
+  30,  // Iron Ore
+  35,  // Copper Ore
+  40,  // Gold Ore
+  43,  // Diamond Ore
+  54,  // Emerald Ore
+
+  // --- Mineral / metal blocks ---
+  17,  // Cobblestone
+  20,  // Coal Block
+  32,  // Raw Iron Block
+  34,  // Copper Block
+  36,  // Raw Copper Block
+  37,  // Weathered Copper Block
+  41,  // Raw Gold Block
+  45,  // Diamond Block
+  55,  // Emerald Block
+  68,  // Steel Block
+
+  // --- Special heavy blocks ---
+  23,  // Furnace
+  71,  // Lit Furnace
+  39   // Obsidian
+]);
 
   function getEquippedPickaxe(item) {
     if (!item) return null;
