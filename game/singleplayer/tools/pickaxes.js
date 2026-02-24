@@ -1,7 +1,11 @@
 (function () {
   const PICKAXE_BY_ITEM_ID = {
-    11: { name: 'Wooden Pickaxe', tier: 1, hardBlockSpeed: 0.56, softBlockPenalty: 1.05 },
-    12: { name: 'Stone Pickaxe', tier: 2, hardBlockSpeed: 0.38, softBlockPenalty: 1.02 },
+    11: { name: 'Wooden Pickaxe', tier: 1, hardBlockSpeed: 0.56, softBlockPenalty: 1 },
+    12: { name: 'Stone Pickaxe', tier: 2, hardBlockSpeed: 0.38, softBlockPenalty: 1 },
+    72: { name: 'Gold Pickaxe', tier: 3, hardBlockSpeed: 0.10, softBlockPenalty: 1 },
+    73: { name: 'Copper Pickaxe', tier: 4, hardBlockSpeed: 0.30, softBlockPenalty: 1 },
+    74: { name: 'Iron Pickaxe', tier: 5, hardBlockSpeed: 0.18, softBlockPenalty: 1 },
+    75: { name: 'Diamond Pickaxe', tier: 6, hardBlockSpeed: 0.14, softBlockPenalty: 1 },
   };
 
 const HARD_BLOCKS = new Set([
