@@ -3,8 +3,6 @@
     { name: 'Oak Planks', output: { id: 8, count: 4 }, shape: [[5]] },
     { name: 'Crafting Table', output: { id: 9, count: 1 }, shape: [[8, 8], [8, 8]] },
     { name: 'Stick', output: { id: 10, count: 4 }, shape: [[8], [8]] },
-    { name: 'Wooden Pickaxe', output: { id: 11, count: 1 }, shape: [[8, 8, 8], [0, 10, 0], [0, 10, 0]] },
-    { name: 'Stone Pickaxe', output: { id: 12, count: 1 }, shape: [[17, 17, 17], [0, 10, 0], [0, 10, 0]] },
     { name: 'Sand Stone', output: { id: 13, count: 4 }, shape: [[7, 7], [7, 7]] },
     { name: 'Snow Block', output: { id: 15, count: 1 }, shape: [[16, 16], [16, 16]] },
     { name: 'Coal Block', output: { id: 20, count: 1 }, shape: [[19, 19, 19], [19, 19, 19], [19, 19, 19]] },
@@ -32,6 +30,11 @@
     { name: 'Steel', output: { id: 67, count: 9}, shape: [[68]] },
     { name: 'copper block', output: { id: 34, count: 1}, shape: [[69, 69, 69], [69, 69, 69], [69, 69, 69]] },
     { name: 'Copper ingot', output: { id: 69, count: 9}, shape: [[34]] }, 
+    
+    /*Åickaxes*/
+    { name: 'Wooden Pickaxe', output: { id: 11, count: 1 }, shape: [[8, 8, 8], [0, 10, 0], [0, 10, 0]] },
+    { name: 'Stone Pickaxe', output: { id: 12, count: 1 }, shape: [[17, 17, 17], [0, 10, 0], [0, 10, 0]] },
+    { name: 'Stone Pickaxe', output: { id: 12, count: 1 }, shape: [[3, 3, 3], [0, 10, 0], [0, 10, 0]] },
     { name: 'Gold Pickaxe', output: { id: 72, count: 1}, shape: [[70, 70, 70], [0, 10, 0], [0, 10, 0]] },
     { name: 'Copper Pickaxe', output: { id: 73, count: 1}, shape: [[69, 69, 69], [0, 10, 0], [0, 10, 0]] },
     { name: 'Iron Pickaxe', output: { id: 74, count: 1}, shape: [[67, 67, 67 ], [0, 10, 0], [0, 10, 0]] },
