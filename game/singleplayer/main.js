@@ -382,22 +382,17 @@ window.perlin = perlinInstance;
             });
             
             // Dummy items for testing inventory fix
-            addToInventory(1, 1); // Grass
             addToInventory(2, 64); // Dirt
-            addToInventory(3, 12); // Stone
             addToInventory(5, 5); // Wood Log (for crafting)
             addToInventory(6, 1); // Leaves
-            addToInventory(7, 32); // Sand
-            addToInventory(26, 32);
-            addToInventory(27, 32);
-            addToInventory(28, 32);
-            addToInventory(30, 42);
-            addToInventory(35, 42);
-            addToInventory(34, 42);
-            addToInventory(37, 42);
-            addToInventory(33, 42);
-            addToInventory(39, 42);
-            addToInventory(4, 42);
+            addToInventory(14, 42);
+            addToInventory(11, 42);
+            addToInventory(12, 42);      
+            addToInventory(72, 42);      
+            addToInventory(73, 42);      
+            addToInventory(74, 42);      
+            addToInventory(75, 42);      
+
             
             // Set initial sky state
             updateSkyAndSun(); 
