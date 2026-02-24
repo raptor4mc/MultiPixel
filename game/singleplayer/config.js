@@ -94,6 +94,8 @@
     GREEN_DYE: getAssetPath('textures/item/green_dye.png'),
     ICE: getAssetPath('textures/ice.png'),
     OAK_LOG_TOP: getAssetPath('textures/oak/oak_log_top.png'),
+    STEEL_INGOT: getAssetPath('textures/item/iron_ingot.png'),
+    STEEL_BLOCK: getAssetPath('textures/iron_block.png'),
   };
 
   const blockMaterials = {
@@ -153,6 +155,7 @@
     45: { name: 'Diamond Block', id: 45, textured: true, textureKey: 'DIAMOND_BLOCK' },
     55: { name: 'Emerald Block', id: 55, textured: true, textureKey: 'EMERALD_BLOCK' },
     20: { name: 'Coal Block', id: 20, textured: true, textureKey: 'COAL_BLOCK' },
+    68: { name: 'Steel Block', id: 68, textured: true, textureKey: 'STEEL_BLOCK' },
     
     /*Utility*/
        9: {
@@ -250,6 +253,7 @@
     42: { name: 'Raw Gold', id: 42, textured: true, textureKey: 'GOLD_ORE' },
     44: { name: 'Diamond', id: 44, textured: true, textureKey: 'DIAMOND' },
     19: { name: 'Coal', id: 19, textured: true, textureKey: 'COAL' },
+    67: { name: 'steel ingot', id: 67, textured: true, textureKey: 'STEEL_INGOT' }, 
 
     /*Tools*/
     11: { name: 'Wooden Pickaxe', id: 11, textured: true, textureKey: 'WOODEN_PICKAXE', toolType: 'pickaxe', tier: 1 },
