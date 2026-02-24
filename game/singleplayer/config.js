@@ -96,6 +96,7 @@
     OAK_LOG_TOP: getAssetPath('textures/oak/oak_log_top.png'),
     STEEL_INGOT: getAssetPath('textures/item/iron_ingot.png'),
     STEEL_BLOCK: getAssetPath('textures/iron_block.png'),
+    COPPER_INGOT: getAssetPath('textures/item/copper_ingot.png'),
   };
 
   const blockMaterials = {
@@ -254,6 +255,7 @@
     44: { name: 'Diamond', id: 44, textured: true, textureKey: 'DIAMOND' },
     19: { name: 'Coal', id: 19, textured: true, textureKey: 'COAL' },
     67: { name: 'steel ingot', id: 67, textured: true, textureKey: 'STEEL_INGOT' }, 
+    69: { name: 'copper ingot', id: 69, textured: true, textureKey: 'COPPER_INGOT' }, 
 
     /*Tools*/
     11: { name: 'Wooden Pickaxe', id: 11, textured: true, textureKey: 'WOODEN_PICKAXE', toolType: 'pickaxe', tier: 1 },
