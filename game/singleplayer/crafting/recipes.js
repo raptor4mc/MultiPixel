@@ -30,6 +30,7 @@
     { name: 'Steel', output: { id: 67, count: 9}, shape: [[68]] },
     { name: 'copper block', output: { id: 34, count: 1}, shape: [[69, 69, 69], [69, 69, 69], [69, 69, 69]] },
     { name: 'Copper ingot', output: { id: 69, count: 9}, shape: [[34]] }, 
+    { name: 'Copper Grate', output: { id: 76, count: 1}, shape: [[0, 34, 0], [34, 0, 34], [0, 34, 0]
     
     /*Åickaxes*/
     { name: 'Wooden Pickaxe', output: { id: 11, count: 1 }, shape: [[8, 8, 8], [0, 10, 0], [0, 10, 0]] },
