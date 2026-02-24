@@ -104,6 +104,9 @@
     COPPER_INGOT: getAssetPath('textures/item/copper_ingot.png'),
     GOLD_INGOT: getAssetPath('textures/item/gold_ingot.png'),
     COPPER_GRATE: getAssetPath('textures/copper/copper_grate.png'),
+    CHISELED_COPPER: getAssetPath('textures/copper/chiseled_copper.png'),
+    CUT_COPPER: getAssetPath('textures/copper/cut_copper.png'),
+    
     /*Pickaxes*/
     WOODEN_PICKAXE: getAssetPath('textures/item/tool/pickaxe/wooden_pickaxe.png'),
     STONE_PICKAXE: getAssetPath('textures/item/tool/pickaxe/stone_pickaxe.png'),
@@ -239,7 +242,9 @@
     /* Copper*/
     34: { name: 'Copper Block', id: 34, textured: true, textureKey: 'COPPER_BLOCK' },
     37: { name: 'Weathered Copper Block', id: 37, textured: true, textureKey: 'WEATHERED_COPPER_BLOCK' },
-    76: { name: 'Copper Grate', id: 76, textured: true, textureKey: 'COPPER_GRATE', transparent: true, opacity: 1 },
+    76: { name: 'Copper Grate Block', id: 76, textured: true, textureKey: 'COPPER_GRATE', transparent: true, opacity: 1 },
+    77: { name: 'Chiseled Copper Block', id: 77, textured: true, textureKey: 'CHISELED_COPPER' },
+    78: { name: 'Cut Copper Block', id: 78, textured: true, textureKey: 'CUT_COPPER' },
     
     /* water*/
     4: { name: 'Water', id: 4, transparent: true, opacity: 0.9, textured: true, textureKey: 'WATER' },
@@ -304,7 +309,7 @@
     INV_COLS, INV_ROWS, HOTBAR_SLOTS, TOTAL_INV_SIZE,
     REPO_BASE_PREFIX,
     ASSET_FILEPATHS, blockMaterials,
-    SOLID_BLOCKS: [1, 2, 3, 5, 6, 7, 8, 9, 13, 14, 15, 17, 18, 20, 21, 23, 24, 26, 27, 28, 29, 30, 32, 34, 35, 36, 37, 39, 40, 41, 43, 45, 54, 55, 59, 68, 71, 76],
+    SOLID_BLOCKS: [1, 2, 3, 5, 6, 7, 8, 9, 13, 14, 15, 17, 18, 20, 21, 23, 24, 26, 27, 28, 29, 30, 32, 34, 35, 36, 37, 39, 40, 41, 43, 45, 54, 55, 59, 68, 71, 76, 77, 78],
     LIQUID_BLOCKS: [4, 33, 47, 48, 49, 50, 51, 52, 53, 60, 61, 62, 63, 64, 65, 66],
     DEFAULT_PLAYER: {
       moveSpeed: 0.12,
