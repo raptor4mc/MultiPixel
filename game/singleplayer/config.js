@@ -101,6 +101,7 @@
     STEEL_BLOCK: getAssetPath('textures/iron_block.png'),
     COPPER_INGOT: getAssetPath('textures/item/copper_ingot.png'),
     GOLD_INGOT: getAssetPath('textures/item/gold_ingot.png'),
+    FURNACE_FRONT_LIT: getAssetPath('textures/furnace/furnace_front_on.png'),
   };
 
   const blockMaterials = {
@@ -192,6 +193,21 @@
         negZ: 'FURNACE_SIDE'
       } 
     },
+
+    71: {
+  name: 'Lit Furnace',
+  id: 71,
+  textured: true,
+  textureKey: 'FURNACE',
+  textureByFace: {
+    top: 'FURNACE_TOP',
+    bottom: 'COBBLESTONE',
+    posX: 'FURNACE_FRONT_LIT',
+    negX: 'FURNACE_SIDE',
+    posZ: 'FURNACE_SIDE',
+    negZ: 'FURNACE_SIDE'
+  }
+},
     
     /*Stone*/
      21: { name: 'Stone Brick', id: 21, textured: true, textureKey: 'STONE_BRICK_BLOCK' },
