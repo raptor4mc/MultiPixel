@@ -319,7 +319,7 @@
 
     <!-- Background Music -->
     <audio id="bg-music" loop>
-        <source src="game/singleplayer/assets/sounds/music/main-menu/song.mp4" type="audio/mp4">
+        <source src="assets/sounds/music/main-menu/song.mp4" type="audio/mp4">
     </audio>
 
     <!-- 1. Boot Screen -->
@@ -329,7 +329,7 @@
 
     <!-- 2. Splash Screen -->
     <div id="splash-screen">
-        <img src="game/singleplayer/assets/main-menu/logo.png" alt="Luanti Logo" onerror="this.outerHTML='<h1 style=\'color:black; font-size:5rem;\'>MultiPixel</h1>'">
+        <img src="assets/main-menu/logo.png" alt="Luanti Logo" onerror="this.outerHTML='<h1 style=\'color:black; font-size:5rem;\'>MultiPixel</h1>'">
     </div>
 
     <!-- 3. Black Flash -->
@@ -340,7 +340,7 @@
         
         <!-- Header Image -->
         <div id="main-header">
-            <img src="game/singleplayer/assets/main-menu/header.png" alt="Minetest Header" onerror="this.outerHTML='<h1 style=\'font-size: 4rem; letter-spacing: 5px; text-shadow: 3px 3px 0px #000;\'>MultiPixel FallBack</h1>'">
+            <img src="assets/main-menu/header.png" alt="Minetest Header" onerror="this.outerHTML='<h1 style=\'font-size: 4rem; letter-spacing: 5px; text-shadow: 3px 3px 0px #000;\'>MultiPixel FallBack</h1>'">
         </div>
 
         <div id="main-menu">
@@ -359,7 +359,7 @@
                 <div id="view-singleplayer" class="view active">
                     <div class="centered-view">
                         <!-- Instantly directs to singleplayer.html -->
-                        <button id="btn-singleplayer" class="action-btn" onclick="window.location.href='game/singleplayer/singleplayer.html'">
+                        <button id="btn-singleplayer" class="action-btn" onclick="window.location.href='singleplayer.html'">
                             New World
                         </button>
                     </div>
@@ -368,7 +368,7 @@
                 <!-- MULTIPLAYER -->
                 <div id="view-multiplayer" class="view">
                     <div class="centered-view">
-                        <img src="game/singleplayer/assets/main-menu/multiplayer.png" style="max-width: 100%; max-height: 100%; border:1px solid #555;" onerror="this.outerHTML='<h2>Multiplayer Placeholder Image</h2>'">
+                        <img src="assets/main-menu/multiplayer.png" style="max-width: 100%; max-height: 100%; border:1px solid #555;" onerror="this.outerHTML='<h2>Multiplayer Placeholder Image</h2>'">
                     </div>
                 </div>
 
@@ -377,7 +377,7 @@
                     <div class="credits-container">
                         <!-- Left Side Logo -->
                         <div class="credits-left">
-                            <img src="game/singleplayer/assets/main-menu/logo.png" alt="Dev Logo" onerror="this.outerHTML='<div style=\'width:100px;height:100px;background:#555;display:flex;align-items:center;justify-content:center;\'>LOGO</div>'">
+                            <img src="assets/main-menu/logo.png" alt="Dev Logo" onerror="this.outerHTML='<div style=\'width:100px;height:100px;background:#555;display:flex;align-items:center;justify-content:center;\'>LOGO</div>'">
                         </div>
                         <!-- Right Side List -->
                         <div class="credits-right">
@@ -446,9 +446,9 @@
                             <!-- Unified Color Picker -->
                             <select id="sel-color-unified" onchange="updateButtonTheme()">
                                 <option value="none">Default Grey</option>
-                                <option value="game/singleplayer/main-menu/buttons/new-world/blue.png">Blue</option>
-                                <option value="game/singleplayer/main-menu/buttons/new-world/red.png">Red</option>
-                                <option value="game/singleplayer/main-menu/buttons/new-world/green.png">Green</option>
+                                <option value="main-menu/buttons/new-world/blue.png">Blue</option>
+                                <option value="main-menu/buttons/new-world/red.png">Red</option>
+                                <option value="main-menu/buttons/new-world/green.png">Green</option>
                             </select>
 
                             <!-- Separate Color Pickers (Hidden by default) -->
@@ -457,16 +457,16 @@
                                     <label style="font-size:0.8rem">Singleplayer Btn</label>
                                     <select id="sel-color-sp" onchange="updateButtonTheme()">
                                         <option value="none">Default</option>
-                                        <option value="game/singleplayer/main-menu/buttons/new-world/blue.png">Blue</option>
-                                        <option value="game/singleplayer/main-menu/buttons/new-world/red.png">Red</option>
+                                        <option value="assets/main-menu/buttons/new-world/blue.png">Blue</option>
+                                        <option value="assets/main-menu/buttons/new-world/red.png">Red</option>
                                     </select>
                                 </div>
                                 <div>
                                     <label style="font-size:0.8rem">Github Btn</label>
                                     <select id="sel-color-gh" onchange="updateButtonTheme()">
                                         <option value="none">Default</option>
-                                        <option value="game/singleplayer/main-menu/buttons/new-world/blue.png">Blue</option>
-                                        <option value="game/singleplayer/main-menu/buttons/new-world/green.png">Green</option>
+                                        <option value="main-menu/buttons/new-world/blue.png">Blue</option>
+                                        <option value="main-menu/buttons/new-world/green.png">Green</option>
                                     </select>
                                 </div>
                             </div>
@@ -478,9 +478,9 @@
                             <select onchange="changeBackgroundMode(this.value)">
                                 <option value="rotating">Rotating (6 Default Images)</option>
                                 <!-- Clear where to add more static backgrounds -->
-                                <option value="game/singleplayer/assets/background/dirt.png">Dirt</option>
-                                <option value="game/singleplayer/assets/background/stone.png">Stone</option>
-                                <option value="game/singleplayer/assets/background/grass.png">Grass</option>
+                                <option value="assets/background/dirt.png">Dirt</option>
+                                <option value="assets/background/stone.png">Stone</option>
+                                <option value="assets/background/grass.png">Grass</option>
                                 <option value="custom">Custom Draw</option>
                             </select>
                             <button class="action-btn" style="width:100%; margin-top:10px; padding: 5px; font-size: 1rem;" onclick="openDrawingApp()">
@@ -581,7 +581,7 @@
         // Audio Track Switching
         function changeTrack(filename) {
             const audio = document.getElementById('bg-music');
-            audio.src = 'game/singleplayer/assets/sounds/music/main-menu/' + filename;
+            audio.src = 'assets/sounds/music/main-menu/' + filename;
             audio.play().catch(() => {});
         }
 
@@ -612,12 +612,12 @@
         /* --- Background Management --- */
         let bgInterval;
         const rotatingImages = [
-            'game/singleplayer/assets/main-menu/background.png',
-            'game/singleplayer/assets/main-menu/background1.png',
-            'game/singleplayer/assets/main-menu/background2.png',
-            'game/singleplayer/assets/main-menu/background3.png',
-            'game/singleplayer/assets/main-menu/background4.png',
-            'game/singleplayer/assets/main-menu/background5.png'
+            'assets/main-menu/background.png',
+            'assets/main-menu/background1.png',
+            'assets/main-menu/background2.png',
+            'assets/main-menu/background3.png',
+            'assets/main-menu/background4.png',
+            'assets/main-menu/background5.png'
         ];
         let customBgDataUrl = null;
 
