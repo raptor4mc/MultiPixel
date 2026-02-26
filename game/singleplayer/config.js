@@ -106,6 +106,10 @@
     COPPER_GRATE: getAssetPath('textures/copper/copper_grate.png'),
     CHISELED_COPPER: getAssetPath('textures/copper/chiseled_copper.png'),
     CUT_COPPER: getAssetPath('textures/copper/cut_copper.png'),
+
+    /*Glass*/
+    BLACK_STAINED_GLASS: getAssetPath('textures/glass/black_stained_glass.png'),
+    GREEN_STAINED_GLASS: getAssetPath('textures/glass/green_stained_glass.png'),
     
     /*Pickaxes*/
     WOODEN_PICKAXE: getAssetPath('textures/item/tool/pickaxe/wooden_pickaxe.png'),
@@ -164,8 +168,12 @@
     8: { name: 'Oak Planks', id: 8, textured: true, textureKey: 'OAK_PLANK' },
     17: { name: 'Cobblestone', id: 17, textured: true, textureKey: 'COBBLESTONE' },
     22: { name: 'torch', id: 22, textured: true, textureKey: 'TORCH', transparent: true, opacity: 0 },
+    
+    /*Glass*/
     26: { name: 'Glass', id: 26, textured: true, textureKey: 'GLASS_BLOCK', transparent: true, opacity: 0.8 },
-
+    79: { name: 'Black Glass', id: 79, textured: true, textureKey: 'BLACK_STAINED_GLASS', transparent: true, opacity: 0.8 },
+    80: { name: 'Green Glass', id: 80, textured: true, textureKey: 'GREEN_STAINED_GLASS', transparent: true, opacity: 0.8 },
+    
     /*Important later*/
     39: { name: 'Obsidian Block', id: 39, textured: true, textureKey: 'OBSIDIAN_BLOCK' },
 
@@ -309,7 +317,7 @@
     INV_COLS, INV_ROWS, HOTBAR_SLOTS, TOTAL_INV_SIZE,
     REPO_BASE_PREFIX,
     ASSET_FILEPATHS, blockMaterials,
-    SOLID_BLOCKS: [1, 2, 3, 5, 6, 7, 8, 9, 13, 14, 15, 17, 18, 20, 21, 23, 24, 26, 27, 28, 29, 30, 32, 34, 35, 36, 37, 39, 40, 41, 43, 45, 54, 55, 59, 68, 71, 76, 77, 78],
+    SOLID_BLOCKS: [1, 2, 3, 5, 6, 7, 8, 9, 13, 14, 15, 17, 18, 20, 21, 23, 24, 26, 27, 28, 29, 30, 32, 34, 35, 36, 37, 39, 40, 41, 43, 45, 54, 55, 59, 68, 71, 76, 77, 78, 79, 80],
     LIQUID_BLOCKS: [4, 33, 47, 48, 49, 50, 51, 52, 53, 60, 61, 62, 63, 64, 65, 66],
     DEFAULT_PLAYER: {
       moveSpeed: 0.12,
