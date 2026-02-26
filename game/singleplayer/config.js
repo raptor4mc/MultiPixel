@@ -2,7 +2,7 @@
   const CHUNK_SIZE = 16;
   const CHUNK_HEIGHT = 96;
   const WORLD_RADIUS = 13;
-  const BLOCK_SIZE = 5;
+  const BLOCK_SIZE = 1;
   const SEA_LEVEL = 18;
   const BASE_LAND_Y = 20;
   const ISLAND_RADIUS = 30;
