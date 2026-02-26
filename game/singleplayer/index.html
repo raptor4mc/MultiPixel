@@ -11,6 +11,7 @@
             --ui-scale: 1;
             --symbol-size: 1rem;
             --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            --font-color: #ffffff;
             --container-width: 850px;
             --container-height: 550px;
             --tab-alignment: flex-start;
@@ -37,7 +38,7 @@
 
         body {
             font-family: var(--font-family);
-            color: #ffffff;
+            color: var(--font-color);
             overflow: hidden;
             background-color: #000;
             display: flex;
@@ -162,7 +163,7 @@
 
         .tab-btn {
             background-color: rgba(180, 180, 180, 0.4);
-            color: #fff;
+            color: var(--font-color);
             border: 1px solid #777;
             border-bottom: none;
             padding: 10px 20px;
@@ -266,7 +267,7 @@
         .setting-group label {
             display: block;
             margin-bottom: 5px;
-            color: #ddd;
+            color: var(--font-color);
             font-size: var(--symbol-size);
         }
         .setting-group select, .setting-group input[type="range"] {
@@ -391,7 +392,6 @@
                             <p>The stranglers</p>
                             <p>MineTest</p>
                             <p>Our beloved discord server</p>
-                            <p>The artists: Termite, BoomKitty, Waterflame, autodidactic</p>
                             
                             <div class="credits-footer">
                                 <button id="btn-github" class="action-btn" style="font-size: 1rem; padding: 10px 15px;" onclick="window.open('https://github.com/Relimintor/MultiPixel/', '_blank')">
@@ -416,6 +416,14 @@
                             </select>
                         </div>
                         <div class="setting-group">
+                            <label>Menu Width</label>
+                            <input type="range" min="400" max="1400" step="10" value="850" oninput="updateCSS('--container-width', this.value + 'px')">
+                        </div>
+                        <div class="setting-group">
+                            <label>Menu Height</label>
+                            <input type="range" min="300" max="1000" step="10" value="550" oninput="updateCSS('--container-height', this.value + 'px')">
+                        </div>
+                        <div class="setting-group">
                             <label>UI Scale</label>
                             <input type="range" min="0.6" max="1.5" step="0.1" value="1" oninput="updateCSS('--ui-scale', this.value)">
                         </div>
@@ -423,8 +431,45 @@
                             <label>Symbol / Font Size</label>
                             <input type="range" min="0.8" max="2" step="0.1" value="1" oninput="updateCSS('--symbol-size', this.value + 'rem')">
                         </div>
+
+                        <!-- Font & Appearance -->
+                        <div class="setting-group">
+                            <label>Font Family</label>
+                            <select onchange="updateCSS('--font-family', this.value)">
+                                <option value="'Segoe UI', Tahoma, Geneva, Verdana, sans-serif">Default (Segoe UI)</option>
+                                <option value="Arial, sans-serif">Arial</option>
+                                <option value="'Courier New', Courier, monospace">Courier New (Monospace)</option>
+                                <option value="'Times New Roman', Times, serif">Times New Roman (Serif)</option>
+                                <option value="Impact, fantasy">Impact</option>
+                            </select>
+                        </div>
+                        <div class="setting-group">
+                            <label>Font Color</label>
+                            <input type="color" id="font-color-picker" value="#ffffff" onchange="updateCSS('--font-color', this.value)">
+                        </div>
+
+                        <!-- Menu Styling -->
+                        <div class="setting-group">
+                            <label>Menu Background Color</label>
+                            <input type="color" id="menu-bg-color-picker" value="#2d3237" onchange="updateMenuBg()">
+                        </div>
+                        <div class="setting-group">
+                            <label>Menu Opacity</label>
+                            <input type="range" id="menu-bg-opacity-slider" min="0" max="1" step="0.05" value="0.85" oninput="updateMenuBg()">
+                        </div>
+
+                        <!-- Light / Dark Mode -->
+                        <div class="setting-group" style="grid-column: span 2; display: flex; gap: 10px; align-items: center;">
+                            <label style="margin: 0;">Theme Presets:</label>
+                            <button class="action-btn" style="padding: 5px 15px; font-size: 1rem;" onclick="toggleTheme('dark')">Dark Mode</button>
+                            <button class="action-btn" style="padding: 5px 15px; font-size: 1rem; background-color: #ddd; color: #000; text-shadow: none; box-shadow: inset 2px 2px 0px rgba(255,255,255,0.8), inset -2px -2px 0px rgba(0,0,0,0.2);" onclick="toggleTheme('light')">Light Mode</button>
+                        </div>
                         
                         <!-- Audio & Animation -->
+                        <div class="setting-group">
+                            <label>Music Volume</label>
+                            <input type="range" min="0" max="1" step="0.05" value="0.5" oninput="document.getElementById('bg-music').volume = this.value">
+                        </div>
                         <div class="setting-group">
                             <label>Soundtrack</label>
                             <select onchange="changeTrack(this.value)">
@@ -486,7 +531,12 @@
                             <label>Background</label>
                             <select onchange="changeBackgroundMode(this.value)">
                                 <option value="rotating">Rotating (6 Default Images)</option>
-                                <!-- Clear where to add more static backgrounds -->
+                                <option value="assets/main-menu/background.png">Default 1</option>
+                                <option value="assets/main-menu/background1.png">Default 2</option>
+                                <option value="assets/main-menu/background2.png">Default 3</option>
+                                <option value="assets/main-menu/background3.png">Default 4</option>
+                                <option value="assets/main-menu/background4.png">Default 5</option>
+                                <option value="assets/main-menu/background5.png">Default 6</option>
                                 <option value="assets/main-menu/background/dirt.png">Dirt</option>
                                 <option value="assets/main-menu/background/stone.png">Stone</option>
                                 <option value="assets/main-menu/background/grass.png">Grass</option>
@@ -578,6 +628,41 @@
         /* --- Settings System --- */
         function updateCSS(variable, value) {
             root.style.setProperty(variable, value);
+        }
+
+        // Color & Theme Adjustments
+        function updateMenuBg() {
+            const hex = document.getElementById('menu-bg-color-picker').value;
+            const alpha = document.getElementById('menu-bg-opacity-slider').value;
+            
+            // Extract Red, Green, and Blue from Hex
+            let r = parseInt(hex.slice(1, 3), 16);
+            let g = parseInt(hex.slice(3, 5), 16);
+            let b = parseInt(hex.slice(5, 7), 16);
+            
+            updateCSS('--menu-bg-color', `rgba(${r}, ${g}, ${b}, ${alpha})`);
+        }
+
+        function toggleTheme(mode) {
+            const fontColorPicker = document.getElementById('font-color-picker');
+            const menuBgColorPicker = document.getElementById('menu-bg-color-picker');
+            const opacitySlider = document.getElementById('menu-bg-opacity-slider');
+
+            if (mode === 'light') {
+                updateCSS('--font-color', '#111111');
+                fontColorPicker.value = '#111111';
+                
+                menuBgColorPicker.value = '#e0e5eb';
+                opacitySlider.value = 0.9;
+                updateMenuBg();
+            } else {
+                updateCSS('--font-color', '#ffffff');
+                fontColorPicker.value = '#ffffff';
+                
+                menuBgColorPicker.value = '#2d3237';
+                opacitySlider.value = 0.85;
+                updateMenuBg();
+            }
         }
 
         // Animations
