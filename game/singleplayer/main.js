@@ -2383,72 +2383,85 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
                          data[x + y*CHUNK_SIZE + z*CHUNK_SIZE*CHUNK_HEIGHT] = t;
                      }
                   
-                     // --- Tree Generation (deterministic + chunk-safe placement) ---
-                     if (!isRiver) {
+                    // --- Tree Generation (classic oak algorithm with validity + obstruction checks) ---
+                     if (!isRiver && (biome === 'Forest' || biome === 'Plains')) {
                          let topY = -1;
+                         let topType = 0;
                          for (let yy = CHUNK_HEIGHT - 2; yy >= 1; yy--) {
                              const tidx = x + yy * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
                              const ttype = data[tidx];
                              if (ttype !== 0 && ttype !== 4) {
                                  topY = yy;
+                                 topType = ttype;
                                  break;
                              }
                          }
 
-                         if (topY >= SEA_LEVEL) {
-                             const topIdx = x + topY * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
-                             const topType = data[topIdx];
-                             const validGround = (topType === 1 || topType === 2);
-                             if (validGround && x > 0 && x < CHUNK_SIZE - 1 && z > 0 && z < CHUNK_SIZE - 1) {
-                                 const treeNoise = octaveNoise2D(wx, wz, 2, 0.56, 2.0, 0.028, 700, -350) * 0.5 + 0.5;
-                                 const scatter = hashRand2D(wx, wz, 99);
-                                 const density = treeNoise * 0.6 + scatter * 0.4;
-                                 const chance = 0.4;
-                                 const denseBonus = 0.4;
-                                     const shouldTrySpawn = true;
+                         if (topY > SEA_LEVEL && (topType === 1 || topType === 2)) {
+                             const densityNoise = octaveNoise2D(wx, wz, 3, 0.55, 2.0, 0.04, 700, -350) * 0.5 + 0.5;
+                             const scatter = hashRand2D(wx, wz, 99);
+                             const localScore = densityNoise * 0.65 + scatter * 0.35;
 
-                                 if (shouldTrySpawn) {
-                                     const heightLimit = 4 + Math.floor(hashRand2D(wx, wz, 157) * 3); // 4-6
-                                     let obstructed = false;
-                                     for (let ty = topY + 1; ty <= Math.min(CHUNK_HEIGHT - 2, topY + heightLimit + 2) && !obstructed; ty++) {
-                                         const canopyRadius = ty >= topY + heightLimit - 2 ? 2 : 0;
-                                         for (let ox = -canopyRadius; ox <= canopyRadius && !obstructed; ox++) {
-                                             for (let oz = -canopyRadius; oz <= canopyRadius && !obstructed; oz++) {
-                                                 const tx = x + ox;
-                                                 const tz = z + oz;
-                                                 if (tx < 0 || tx >= CHUNK_SIZE || tz < 0 || tz >= CHUNK_SIZE) continue;
-                                                 const idx = tx + ty * CHUNK_SIZE + tz * CHUNK_SIZE * CHUNK_HEIGHT;
-                                                 const b = data[idx];
-                                                 if (b !== 0 && b !== 6) obstructed = true;
-                                             }
+                             const cell = biome === 'Forest' ? 3 : 5;
+                             const cellKeyX = Math.floor(wx / cell);
+                             const cellKeyZ = Math.floor(wz / cell);
+                             const cellRoll = hashRand2D(cellKeyX, cellKeyZ, biome === 'Forest' ? 611 : 619);
+
+                             const threshold = biome === 'Forest' ? 0.5 : 0.82;
+                             const canSpawn = (localScore > threshold) || (biome === 'Forest' && cellRoll > 0.52 && localScore > 0.38);
+
+                             if (canSpawn) {
+                                 const heightLimit = 5 + Math.floor(hashRand2D(wx, wz, 157) * 4); // 5-8
+
+                                 // Obstruction check (only allow air/leaves in intended volume)
+                                 let obstructed = false;
+                                 for (let ty = topY + 1; ty <= Math.min(CHUNK_HEIGHT - 2, topY + heightLimit + 2) && !obstructed; ty++) {
+                                     const canopyRadius = ty >= topY + heightLimit - 2 ? 2 : 0;
+                                     for (let ox = -canopyRadius; ox <= canopyRadius && !obstructed; ox++) {
+                                         for (let oz = -canopyRadius; oz <= canopyRadius && !obstructed; oz++) {
+                                             const tx = x + ox;
+                                             const tz = z + oz;
+                                             if (tx < 0 || tx >= CHUNK_SIZE || tz < 0 || tz >= CHUNK_SIZE) continue;
+                                             const idx = tx + ty * CHUNK_SIZE + tz * CHUNK_SIZE * CHUNK_HEIGHT;
+                                             const b = data[idx];
+                                             if (b !== 0 && b !== 6) obstructed = true;
                                          }
                                      }
+                                 }
 
-                                     if (!obstructed) {
-                                         if (data[topIdx] === 2) data[topIdx] = 1;
-                                         for (let i = 1; i <= heightLimit; i++) {
-                                             const ty = topY + i;
-                                             if (ty >= CHUNK_HEIGHT) break;
-                                             const idx = x + ty * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
-                                             if (data[idx] === 0 || data[idx] === 6) data[idx] = 5;
-                                         }
+                                 if (!obstructed) {
+                                     const baseIdx = x + topY * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
+                                     if (data[baseIdx] === 2) data[baseIdx] = 1;
 
-                                         for (let ly = -3; ly <= 1; ly++) {
-                                             const yAbs = topY + heightLimit + ly;
-                                             if (yAbs < 1 || yAbs >= CHUNK_HEIGHT) continue;
-                                             const radius = ly >= 0 ? 1 : (ly === -1 ? 2 : (ly === -2 ? 2 : 1));
-                                             for (let lx = -radius; lx <= radius; lx++) {
-                                                 for (let lz = -radius; lz <= radius; lz++) {
-                                                     if (lx * lx + lz * lz > radius * radius) continue;
-                                                     const tx = x + lx;
-                                                     const tz = z + lz;
-                                                     if (tx < 0 || tx >= CHUNK_SIZE || tz < 0 || tz >= CHUNK_SIZE) continue;
-                                                     const lidx = tx + yAbs * CHUNK_SIZE + tz * CHUNK_SIZE * CHUNK_HEIGHT;
-                                                     if (data[lidx] === 0) data[lidx] = 6;
-                                                 }
-                                             }
-                                         }
+                                     // Straight trunk placer
+                                     for (let i = 1; i <= heightLimit; i++) {
+                                         const ty = topY + i;
+                                         if (ty >= CHUNK_HEIGHT) break;
+                                         const idx = x + ty * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
+                                         if (data[idx] === 0 || data[idx] === 6) data[idx] = 5;
                                      }
+
+    for (let ly = -3; ly <= 1; ly++) {
+    const yAbs = topY + heightLimit + ly;
+    if (yAbs < 1 || yAbs >= CHUNK_HEIGHT) continue;
+
+    const radius = ly >= 0 ? 1 : (ly === -1 ? 2 : (ly === -2 ? 2 : 1));
+
+    for (let lx = -radius; lx <= radius; lx++) {
+        for (let lz = -radius; lz <= radius; lz++) {
+            // True circle distance check
+            if (lx*lx + lz*lz > radius*radius) continue;
+
+            const tx = x + lx;
+            const tz = z + lz;
+            if (tx < 0 || tx >= CHUNK_SIZE || tz < 0 || tz >= CHUNK_SIZE) continue;
+
+            const lidx = tx + yAbs * CHUNK_SIZE + tz * CHUNK_SIZE * CHUNK_HEIGHT;
+            if (data[lidx] === 0) data[lidx] = 6;
+        }
+    }
+}
+
                                  }
                              }
                          }
@@ -2461,35 +2474,11 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
         function createChunk(cx, cz) {
             const data = generateChunkData(cx, cz);
             const group = new THREE.Group();
-            group.userData = { chunkData: data, cx, cz, meshHash: null, frustumRadius: Math.sqrt((CHUNK_SIZE*CHUNK_SIZE)*0.5 + (CHUNK_HEIGHT*CHUNK_HEIGHT)*0.25) };
+            group.userData = { chunkData: data, cx, cz };
             updateChunkGeometry(group, data);
             chunks.set(`${cx},${cz}`, group);
             worldGroup.add(group);
             return group;
-        }
-
-
-        function computeChunkHash(data) {
-            let h = 2166136261 >>> 0;
-            for (let i = 0; i < data.length; i++) {
-                h ^= data[i] & 0xff;
-                h = Math.imul(h, 16777619) >>> 0;
-            }
-            return h >>> 0;
-        }
-
-        function updateChunkFrustumCulling() {
-            camera.updateMatrixWorld();
-            cameraViewProj.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
-            frustum.setFromProjectionMatrix(cameraViewProj);
-            for (const group of chunks.values()) {
-                const center = new THREE.Vector3(
-                    group.userData.cx * CHUNK_SIZE + CHUNK_SIZE * 0.5,
-                    CHUNK_HEIGHT * 0.5,
-                    group.userData.cz * CHUNK_SIZE + CHUNK_SIZE * 0.5
-                );
-                group.visible = frustum.intersectsSphere(new THREE.Sphere(center, group.userData.frustumRadius || 40));
-            }
         }
 
         function updateChunkAndNeighbors(centerGroup, lx, lz) {
