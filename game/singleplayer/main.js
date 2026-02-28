@@ -2429,8 +2429,9 @@ window.perlin = perlinInstance;
 
         function createPlayerAvatar() {
             const avatar = new THREE.Group();
+            const U = 1 / 16; // Minecraft unit scale
 
-            const head = createStevePartMesh([0.52, 0.52, 0.52], {
+            const head = createStevePartMesh([8 * U, 8 * U, 8 * U], {
                 0: [0, 8, 8, 8],
                 1: [16, 8, 8, 8],
                 2: [8, 0, 8, 8],
@@ -2438,9 +2439,9 @@ window.perlin = perlinInstance;
                 4: [8, 8, 8, 8],
                 5: [24, 8, 8, 8],
             });
-            head.position.y = 1.72;
+            head.position.y = 28 * U;
 
-            const body = createStevePartMesh([0.75, 1.0, 0.35], {
+            const body = createStevePartMesh([8 * U, 12 * U, 4 * U], {
                 0: [16, 20, 4, 12],
                 1: [28, 20, 4, 12],
                 2: [20, 16, 8, 4],
@@ -2448,9 +2449,11 @@ window.perlin = perlinInstance;
                 4: [20, 20, 8, 12],
                 5: [32, 20, 8, 12],
             });
-            body.position.y = 0.95;
+            body.position.y = 18 * U;
 
-            const rightArm = createStevePartMesh([0.22, 0.8, 0.22], {
+            const rightArmPivot = new THREE.Group();
+            rightArmPivot.position.set(6 * U, 24 * U, 0);
+            const rightArm = createStevePartMesh([4 * U, 12 * U, 4 * U], {
                 0: [40, 20, 4, 12],
                 1: [48, 20, 4, 12],
                 2: [44, 16, 4, 4],
@@ -2458,12 +2461,18 @@ window.perlin = perlinInstance;
                 4: [44, 20, 4, 12],
                 5: [52, 20, 4, 12],
             });
-            rightArm.position.set(0.5, 1.0, 0);
+            rightArm.position.set(0, -6 * U, 0);
+            rightArmPivot.add(rightArm);
 
-            const leftArm = createStevePartMesh([0.22, 0.8, 0.22], limbRects('leftArm'));
-            leftArm.position.set(-0.5, 1.0, 0);
+            const leftArmPivot = new THREE.Group();
+            leftArmPivot.position.set(-6 * U, 24 * U, 0);
+            const leftArm = createStevePartMesh([4 * U, 12 * U, 4 * U], limbRects('leftArm'));
+            leftArm.position.set(0, -6 * U, 0);
+            leftArmPivot.add(leftArm);
 
-            const rightLeg = createStevePartMesh([0.24, 0.85, 0.24], {
+            const rightLegPivot = new THREE.Group();
+            rightLegPivot.position.set(2 * U, 12 * U, 0);
+            const rightLeg = createStevePartMesh([4 * U, 12 * U, 4 * U], {
                 0: [0, 20, 4, 12],
                 1: [8, 20, 4, 12],
                 2: [4, 16, 4, 4],
@@ -2471,13 +2480,28 @@ window.perlin = perlinInstance;
                 4: [4, 20, 4, 12],
                 5: [12, 20, 4, 12],
             });
-            rightLeg.position.set(0.2, 0.1, 0);
+            rightLeg.position.set(0, -6 * U, 0);
+            rightLegPivot.add(rightLeg);
 
-            const leftLeg = createStevePartMesh([0.24, 0.85, 0.24], limbRects('leftLeg'));
-            leftLeg.position.set(-0.2, 0.1, 0);
+            const leftLegPivot = new THREE.Group();
+            leftLegPivot.position.set(-2 * U, 12 * U, 0);
+            const leftLeg = createStevePartMesh([4 * U, 12 * U, 4 * U], limbRects('leftLeg'));
+            leftLeg.position.set(0, -6 * U, 0);
+            leftLegPivot.add(leftLeg);
 
-            avatar.add(body, head, leftArm, rightArm, leftLeg, rightLeg);
-            playerAvatarParts = { body, head, leftArm, rightArm, leftLeg, rightLeg };
+            avatar.add(body, head, leftArmPivot, rightArmPivot, leftLegPivot, rightLegPivot);
+            playerAvatarParts = {
+                body,
+                head,
+                leftArm,
+                rightArm,
+                leftLeg,
+                rightLeg,
+                leftArmPivot,
+                rightArmPivot,
+                leftLegPivot,
+                rightLegPivot,
+            };
             return avatar;
         }
 
@@ -2515,10 +2539,10 @@ window.perlin = perlinInstance;
         function updatePlayerAvatarVisuals(time) {
             if (!playerAvatarParts) return;
             const swing = player.isMoving ? Math.sin(time * 0.015) * 0.7 : 0;
-            playerAvatarParts.leftLeg.rotation.x = swing;
-            playerAvatarParts.rightLeg.rotation.x = -swing;
-            playerAvatarParts.leftArm.rotation.x = -swing;
-            playerAvatarParts.rightArm.rotation.x = swing;
+            playerAvatarParts.leftLegPivot.rotation.x = swing;
+            playerAvatarParts.rightLegPivot.rotation.x = -swing;
+            playerAvatarParts.leftArmPivot.rotation.x = -swing;
+            playerAvatarParts.rightArmPivot.rotation.x = swing;
 
             if (inventorySkinRigEl) {
                 const sdeg = swing * 40;
