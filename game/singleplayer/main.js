@@ -2393,34 +2393,85 @@ window.perlin = perlinInstance;
             return h >= 64;
         }
 
-        function limbRects(side) {
+        function buildPartFaceRects(x, y, w, h, d) {
+            return {
+                0: [x, y + d, w, h],
+                1: [x + w + d, y + d, w, h],
+                2: [x + w, y, w, d],
+                3: [x + w + d, y, w, d],
+                4: [x + w, y + d, w, h],
+                5: [x + (w * 2) + d, y + d, w, h],
+            };
+        }
+
+        function getSkinPartRects(partName, overlay = false) {
             const modern = isModernSkinLayout();
-            if (side === 'leftArm') {
-                return modern
-                    ? { 0: [32, 52, 4, 12], 1: [40, 52, 4, 12], 2: [36, 48, 4, 4], 3: [40, 48, 4, 4], 4: [36, 52, 4, 12], 5: [44, 52, 4, 12] }
-                    : { 0: [40, 20, 4, 12], 1: [48, 20, 4, 12], 2: [44, 16, 4, 4], 3: [48, 16, 4, 4], 4: [44, 20, 4, 12], 5: [52, 20, 4, 12] };
+            if (partName === 'head') return buildPartFaceRects(overlay ? 32 : 0, 0, 8, 8, 8);
+
+            if (partName === 'body') {
+                if (overlay && !modern) return null;
+                return buildPartFaceRects(16, overlay ? 32 : 16, 8, 12, 4);
             }
-            if (side === 'leftLeg') {
-                return modern
-                    ? { 0: [16, 52, 4, 12], 1: [24, 52, 4, 12], 2: [20, 48, 4, 4], 3: [24, 48, 4, 4], 4: [20, 52, 4, 12], 5: [28, 52, 4, 12] }
-                    : { 0: [0, 20, 4, 12], 1: [8, 20, 4, 12], 2: [4, 16, 4, 4], 3: [8, 16, 4, 4], 4: [4, 20, 4, 12], 5: [12, 20, 4, 12] };
+
+            if (partName === 'rightArm') {
+                if (overlay && !modern) return null;
+                return buildPartFaceRects(40, overlay ? 32 : 16, 4, 12, 4);
             }
+
+            if (partName === 'leftArm') {
+                if (modern) return buildPartFaceRects(overlay ? 48 : 32, 48, 4, 12, 4);
+                if (overlay) return null;
+                return buildPartFaceRects(40, 16, 4, 12, 4);
+            }
+
+            if (partName === 'rightLeg') {
+                if (overlay && !modern) return null;
+                return buildPartFaceRects(0, overlay ? 32 : 16, 4, 12, 4);
+            }
+
+            if (partName === 'leftLeg') {
+                if (modern) return buildPartFaceRects(overlay ? 0 : 16, 48, 4, 12, 4);
+                if (overlay) return null;
+                return buildPartFaceRects(0, 16, 4, 12, 4);
+            }
+
             return null;
         }
 
-        function createStevePartMesh(dim, faceRects) {
-            const mats = [];
-            for (let i = 0; i < 6; i++) {
-                const faceTex = createSkinFaceTexture(faceRects[i]);
-                mats.push(new THREE.MeshStandardMaterial({
-                    map: faceTex || null,
-                    color: faceTex ? 0xffffff : 0x7aa2ff,
-                    transparent: false,
-                    roughness: 1,
-                    metalness: 0
-                }));
+        function createStevePartMesh(dim, faceRects, overlayFaceRects = null) {
+            const createMaterials = (rects, isOverlay) => {
+                const mats = [];
+                for (let i = 0; i < 6; i++) {
+                    const faceTex = rects ? createSkinFaceTexture(rects[i]) : null;
+                    mats.push(new THREE.MeshStandardMaterial({
+                        map: faceTex || null,
+                        color: faceTex ? 0xffffff : 0x000000,
+                        transparent: !!isOverlay,
+                        alphaTest: isOverlay ? 0.1 : 0,
+                        opacity: faceTex ? 1 : 0,
+                        roughness: 1,
+                        metalness: 0,
+                        depthWrite: !isOverlay,
+                    }));
+                }
+                return mats;
+            };
+
+            if (!overlayFaceRects) {
+                return new THREE.Mesh(new THREE.BoxGeometry(dim[0], dim[1], dim[2]), createMaterials(faceRects, false));
             }
-            return new THREE.Mesh(new THREE.BoxGeometry(dim[0], dim[1], dim[2]), mats);
+
+            const group = new THREE.Group();
+            const baseMesh = new THREE.Mesh(new THREE.BoxGeometry(dim[0], dim[1], dim[2]), createMaterials(faceRects, false));
+            group.add(baseMesh);
+
+            const inflate = (0.5 / 16);
+            const overlayMesh = new THREE.Mesh(
+                new THREE.BoxGeometry(dim[0] + inflate, dim[1] + inflate, dim[2] + inflate),
+                createMaterials(overlayFaceRects, true)
+            );
+            group.add(overlayMesh);
+            return group;
         }
 
         function setupFirstPersonHandOverlay() {
@@ -2528,61 +2579,57 @@ window.perlin = perlinInstance;
             const avatar = new THREE.Group();
             const U = 1 / 16; // Minecraft unit scale
 
-            const head = createStevePartMesh([8 * U, 8 * U, 8 * U], {
-                0: [0, 8, 8, 8],
-                1: [16, 8, 8, 8],
-                2: [8, 0, 8, 8],
-                3: [16, 0, 8, 8],
-                4: [8, 8, 8, 8],
-                5: [24, 8, 8, 8],
-            });
+            const head = createStevePartMesh(
+                [8 * U, 8 * U, 8 * U],
+                getSkinPartRects('head', false),
+                getSkinPartRects('head', true)
+            );
             head.position.y = 28 * U;
 
-            const body = createStevePartMesh([8 * U, 12 * U, 4 * U], {
-                0: [16, 20, 4, 12],
-                1: [28, 20, 4, 12],
-                2: [20, 16, 8, 4],
-                3: [28, 16, 8, 4],
-                4: [20, 20, 8, 12],
-                5: [32, 20, 8, 12],
-            });
+            const body = createStevePartMesh(
+                [8 * U, 12 * U, 4 * U],
+                getSkinPartRects('body', false),
+                getSkinPartRects('body', true)
+            );
             body.position.y = 18 * U;
 
             const rightArmPivot = new THREE.Group();
             rightArmPivot.position.set(6 * U, 24 * U, 0);
-            const rightArm = createStevePartMesh([4 * U, 12 * U, 4 * U], {
-                0: [40, 20, 4, 12],
-                1: [48, 20, 4, 12],
-                2: [44, 16, 4, 4],
-                3: [48, 16, 4, 4],
-                4: [44, 20, 4, 12],
-                5: [52, 20, 4, 12],
-            });
+            const rightArm = createStevePartMesh(
+                [4 * U, 12 * U, 4 * U],
+                getSkinPartRects('rightArm', false),
+                getSkinPartRects('rightArm', true)
+            );
             rightArm.position.set(0, -6 * U, 0);
             rightArmPivot.add(rightArm);
 
             const leftArmPivot = new THREE.Group();
             leftArmPivot.position.set(-6 * U, 24 * U, 0);
-            const leftArm = createStevePartMesh([4 * U, 12 * U, 4 * U], limbRects('leftArm'));
+            const leftArm = createStevePartMesh(
+                [4 * U, 12 * U, 4 * U],
+                getSkinPartRects('leftArm', false),
+                getSkinPartRects('leftArm', true)
+            );
             leftArm.position.set(0, -6 * U, 0);
             leftArmPivot.add(leftArm);
 
             const rightLegPivot = new THREE.Group();
             rightLegPivot.position.set(2 * U, 12 * U, 0);
-            const rightLeg = createStevePartMesh([4 * U, 12 * U, 4 * U], {
-                0: [0, 20, 4, 12],
-                1: [8, 20, 4, 12],
-                2: [4, 16, 4, 4],
-                3: [8, 16, 4, 4],
-                4: [4, 20, 4, 12],
-                5: [12, 20, 4, 12],
-            });
+            const rightLeg = createStevePartMesh(
+                [4 * U, 12 * U, 4 * U],
+                getSkinPartRects('rightLeg', false),
+                getSkinPartRects('rightLeg', true)
+            );
             rightLeg.position.set(0, -6 * U, 0);
             rightLegPivot.add(rightLeg);
 
             const leftLegPivot = new THREE.Group();
             leftLegPivot.position.set(-2 * U, 12 * U, 0);
-            const leftLeg = createStevePartMesh([4 * U, 12 * U, 4 * U], limbRects('leftLeg'));
+            const leftLeg = createStevePartMesh(
+                [4 * U, 12 * U, 4 * U],
+                getSkinPartRects('leftLeg', false),
+                getSkinPartRects('leftLeg', true)
+            );
             leftLeg.position.set(0, -6 * U, 0);
             leftLegPivot.add(leftLeg);
 
