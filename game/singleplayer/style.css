@@ -430,3 +430,54 @@ body {
 #furnace-input-slot { position: absolute; left: 160px; top: 40px; }
 #furnace-fuel-slot { position: absolute; left: 160px; top: 127px; }
 #furnace-output-slot { position: absolute; left: 310px; top: 87px; }
+
+#mobile-chat-btn {
+    position: fixed;
+    width: 56px;
+    height: 56px;
+    left: calc(50vw + 36px);
+    top: 16px;
+}
+
+#chat-panel {
+    position: fixed;
+    left: 16px;
+    bottom: 96px;
+    width: min(420px, calc(100vw - 32px));
+    background: rgba(0, 0, 0, 0.78);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    display: none;
+    z-index: 260;
+    pointer-events: auto;
+}
+
+#chat-panel.open {
+    display: block;
+}
+
+#chat-log {
+    max-height: 160px;
+    overflow-y: auto;
+    color: #fff;
+    padding: 8px;
+    font-size: 12px;
+    font-family: monospace;
+}
+
+#chat-input {
+    width: calc(100% - 12px);
+    margin: 0 6px 6px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 6px;
+    padding: 6px;
+    background: rgba(8, 8, 8, 0.95);
+    color: #fff;
+    outline: none;
+}
+
+.chat-row { margin-bottom: 4px; }
+.chat-system-ok { color: #7dff7d; }
+.chat-system-error { color: #ff7676; }
+.chat-player { color: #f1f1f1; }
+.chat-info { color: #9cc3ff; }
