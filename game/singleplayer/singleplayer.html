@@ -121,6 +121,23 @@
             </div>
         </div>
     </div>
+
+    <div id="chest-screen" class="hidden absolute inset-0 flex items-center justify-center z-[210]">
+        <div id="chest-workbench-panel" class="menu-panel chest-mode text-black font-sans pointer-events-auto">
+            <button id="chest-close-btn" class="inventory-close-btn" type="button" aria-label="Close chest">
+                <img id="chest-close-icon" alt="close chest" draggable="false" />
+            </button>
+
+            <div id="chest-top-layout" class="menu-top-layout">
+                <div id="chest-grid" class="slot-grid grid-9x3"></div>
+            </div>
+
+            <div id="chest-menu-lower" class="menu-lower">
+                <div id="chest-main-inventory-grid" class="slot-grid grid-9x3"></div>
+                <div id="chest-hotbar-grid" class="slot-grid grid-9x1"></div>
+            </div>
+        </div>
+    </div>
     <div id="mobile-controls" class="hidden">
         <div id="mobile-joystick" class="mobile-btn-area">
             <img id="mobile-joystick-bg" alt="joystick" draggable="false" />

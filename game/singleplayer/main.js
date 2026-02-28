@@ -124,7 +124,9 @@ window.perlin = perlinInstance;
         let isCraftingTableOpen = false;
         let isFurnaceOpen = false;
         let activeFurnaceKey = null;
+        let activeChestKey = null;
         const furnaceStates = new Map();
+        const chestStates = new Map();
         let craftingInput = new Array(4).fill(null); // 2x2 Grid
         let craftingTableInput = new Array(9).fill(null); // 3x3 Grid
         let craftingOutput = null; 
@@ -349,12 +351,15 @@ window.perlin = perlinInstance;
             const editSkinIcon = document.getElementById('edit-skin-icon');
             const furnaceCloseBtn = document.getElementById('furnace-close-btn');
             const furnaceCloseIcon = document.getElementById('furnace-close-icon');
+            const chestCloseBtn = document.getElementById('chest-close-btn');
+            const chestCloseIcon = document.getElementById('chest-close-icon');
             const assetBasePath = `${window.SingleplayerConfig?.REPO_BASE_PREFIX || ''}/game/singleplayer/assets`;
             const closeIconPath = `${assetBasePath}/mobile/cdb_clear.png`;
             const editSkinIconPath = `${assetBasePath}/ui/inventory/edit_skin_button.png`;
             if (closeIcon) closeIcon.src = closeIconPath;
             if (editSkinIcon) editSkinIcon.src = editSkinIconPath;
             if (furnaceCloseIcon) furnaceCloseIcon.src = closeIconPath;
+            if (chestCloseIcon) chestCloseIcon.src = closeIconPath;
             if (closeBtn) closeBtn.addEventListener('click', () => {
                 if (isInventoryOpen) toggleInventory();
             });
@@ -362,6 +367,9 @@ window.perlin = perlinInstance;
                 toggleInventorySkinPreview();
             });
             if (furnaceCloseBtn) furnaceCloseBtn.addEventListener('click', () => {
+                if (isInventoryOpen) toggleInventory();
+            });
+            if (chestCloseBtn) chestCloseBtn.addEventListener('click', () => {
                 if (isInventoryOpen) toggleInventory();
             });
             if (window.HungerSystem) {
@@ -724,6 +732,14 @@ window.perlin = perlinInstance;
             return null;
         }
 
+        function getOrCreateChestState(key) {
+            if (!key) return null;
+            if (!chestStates.has(key)) {
+                chestStates.set(key, new Array(27).fill(null));
+            }
+            return chestStates.get(key);
+        }
+
         function resolveInventorySlotTarget(slotIndex, slotType = 'inv') {
             let slotArray;
             let finalIndex = slotIndex;
@@ -741,6 +757,8 @@ window.perlin = perlinInstance;
                 const ref = getFurnaceSlotRef(slotType);
                 if (ref) slotArray = [ref.state[ref.key]];
                 finalIndex = 0;
+            } else if (slotType === 'chest') {
+                slotArray = getOrCreateChestState(activeChestKey);
             }
 
             return { slotArray, finalIndex };
@@ -954,8 +972,13 @@ window.perlin = perlinInstance;
         
         function renderInventoryScreen() {
             const usingFurnaceScreen = isFurnaceOpen;
-            const mainGrid = document.getElementById(usingFurnaceScreen ? 'furnace-main-inventory-grid' : 'main-inventory-grid');
-            const hotbarGrid = document.getElementById(usingFurnaceScreen ? 'furnace-hotbar-grid' : 'inventory-hotbar-grid');
+            const usingChestScreen = isInventoryOpen && !isFurnaceOpen && !!activeChestKey;
+            const mainGrid = document.getElementById(
+                usingFurnaceScreen ? 'furnace-main-inventory-grid' : (usingChestScreen ? 'chest-main-inventory-grid' : 'main-inventory-grid')
+            );
+            const hotbarGrid = document.getElementById(
+                usingFurnaceScreen ? 'furnace-hotbar-grid' : (usingChestScreen ? 'chest-hotbar-grid' : 'inventory-hotbar-grid')
+            );
 
             const craftInputGrid2x2 = document.getElementById('crafting-input-grid');
             const craftOutputSlot2x2 = document.getElementById('crafting-output-slot-container');
@@ -964,6 +987,7 @@ window.perlin = perlinInstance;
             const furnaceInputSlot = document.getElementById('furnace-input-slot');
             const furnaceFuelSlot = document.getElementById('furnace-fuel-slot');
             const furnaceOutputSlot = document.getElementById('furnace-output-slot');
+            const chestGrid = document.getElementById('chest-grid');
 
             if (!mainGrid || !hotbarGrid) return;
 
@@ -976,6 +1000,7 @@ window.perlin = perlinInstance;
             if (furnaceInputSlot) furnaceInputSlot.innerHTML = '';
             if (furnaceFuelSlot) furnaceFuelSlot.innerHTML = '';
             if (furnaceOutputSlot) furnaceOutputSlot.innerHTML = '';
+            if (chestGrid) chestGrid.innerHTML = '';
 
             const mainStart = HOTBAR_SLOTS;
 
@@ -1033,6 +1058,13 @@ window.perlin = perlinInstance;
                     outSlot.style.backgroundColor = '#6495ed';
                     furnaceOutputSlot.appendChild(outSlot);
                 }
+                renderHeldItem();
+                return;
+            }
+
+            if (usingChestScreen && activeChestKey && chestGrid) {
+                const chestState = getOrCreateChestState(activeChestKey);
+                for (let i = 0; i < chestState.length; i++) chestGrid.appendChild(createSlot(chestState[i], i, 'chest'));
                 renderHeldItem();
                 return;
             }
@@ -1104,6 +1136,7 @@ window.perlin = perlinInstance;
         function toggleInventory(openTableMode = false) {
             const invScreen = document.getElementById('inventory-screen');
             const furnaceScreen = document.getElementById('furnace-screen');
+            const chestScreen = document.getElementById('chest-screen');
             const hud = document.getElementById('hud');
             const container2x2 = document.getElementById('crafting-2x2-container');
             const container3x3 = document.getElementById('crafting-3x3-container');
@@ -1114,8 +1147,10 @@ window.perlin = perlinInstance;
                 isCraftingTableOpen = false;
                 isFurnaceOpen = false;
                 activeFurnaceKey = null;
+                activeChestKey = null;
                 if (invScreen) invScreen.classList.add('hidden');
                 if (furnaceScreen) furnaceScreen.classList.add('hidden');
+                if (chestScreen) chestScreen.classList.add('hidden');
                 if (inventoryPanel) inventoryPanel.classList.add('inventory-mode');
                 hud.classList.remove('opacity-0');
                 if (!mobileControls.enabled) document.body.requestPointerLock();
@@ -1137,6 +1172,7 @@ window.perlin = perlinInstance;
             isCraftingTableOpen = openTableMode;
             isFurnaceOpen = false;
             activeFurnaceKey = null;
+            activeChestKey = null;
 
             if (isCraftingTableOpen) {
                 container2x2.classList.add('hidden');
@@ -1159,6 +1195,7 @@ window.perlin = perlinInstance;
             renderInventoryScreen();
             if (invScreen) invScreen.classList.remove('hidden');
             if (furnaceScreen) furnaceScreen.classList.add('hidden');
+            if (chestScreen) chestScreen.classList.add('hidden');
             hud.classList.add('opacity-0');
             if (!mobileControls.enabled) document.exitPointerLock();
             player.keys = {};
@@ -1167,6 +1204,7 @@ window.perlin = perlinInstance;
         function openFurnaceScreen(furnaceKey) {
             const invScreen = document.getElementById('inventory-screen');
             const furnaceScreen = document.getElementById('furnace-screen');
+            const chestScreen = document.getElementById('chest-screen');
             const hud = document.getElementById('hud');
 
             isInventoryOpen = true;
@@ -1175,6 +1213,7 @@ window.perlin = perlinInstance;
             const inventoryPanel = document.getElementById('inventory-panel');
             if (inventoryPanel) inventoryPanel.classList.add('inventory-mode');
             activeFurnaceKey = furnaceKey;
+            activeChestKey = null;
 
             heldItem = null;
             heldItemSourceIndex = -1;
@@ -1183,6 +1222,35 @@ window.perlin = perlinInstance;
             renderInventoryScreen();
             if (invScreen) invScreen.classList.add('hidden');
             if (furnaceScreen) furnaceScreen.classList.remove('hidden');
+            if (chestScreen) chestScreen.classList.add('hidden');
+            hud.classList.add('opacity-0');
+            if (!mobileControls.enabled) document.exitPointerLock();
+            player.keys = {};
+        }
+
+        function openChestScreen(chestKey) {
+            const invScreen = document.getElementById('inventory-screen');
+            const furnaceScreen = document.getElementById('furnace-screen');
+            const chestScreen = document.getElementById('chest-screen');
+            const hud = document.getElementById('hud');
+
+            isInventoryOpen = true;
+            isCraftingTableOpen = false;
+            isFurnaceOpen = false;
+            const inventoryPanel = document.getElementById('inventory-panel');
+            if (inventoryPanel) inventoryPanel.classList.add('inventory-mode');
+            activeFurnaceKey = null;
+            activeChestKey = chestKey;
+            getOrCreateChestState(chestKey);
+
+            heldItem = null;
+            heldItemSourceIndex = -1;
+            heldItemSourceType = null;
+
+            renderInventoryScreen();
+            if (invScreen) invScreen.classList.add('hidden');
+            if (furnaceScreen) furnaceScreen.classList.add('hidden');
+            if (chestScreen) chestScreen.classList.remove('hidden');
             hud.classList.add('opacity-0');
             if (!mobileControls.enabled) document.exitPointerLock();
             player.keys = {};
@@ -1381,6 +1449,10 @@ window.perlin = perlinInstance;
             }
             if (targetBlockId === 23) {
                 openFurnaceScreen(`${wx},${wy},${wz}`);
+                return;
+            }
+            if (targetBlockId === 82) {
+                openChestScreen(`${wx},${wy},${wz}`);
                 return;
             }
 
@@ -2254,26 +2326,31 @@ window.perlin = perlinInstance;
             if (steveSkinFailed) return Promise.resolve(false);
             if (steveSkinLoadPromise) return steveSkinLoadPromise;
 
-            const skinPath = `${window.SingleplayerConfig?.REPO_BASE_PREFIX || ''}/game/singleplayer/assets/player/character.png`;
+            const skinPaths = getPlayerAssetCandidates('character.png');
             steveSkinLoadPromise = new Promise((resolve) => {
                 const loader = new THREE.TextureLoader();
-                loader.load(
-                    skinPath,
-                    (tex) => {
-                        tex.magFilter = THREE.NearestFilter;
-                        tex.minFilter = THREE.NearestFilter;
-                        tex.flipY = false;
-                        steveSkinTexture = tex;
-                        steveSkinReady = true;
-                        resolve(true);
-                    },
-                    undefined,
-                    () => {
+                const tryLoad = (index) => {
+                    if (index >= skinPaths.length) {
                         steveSkinFailed = true;
                         steveSkinTexture = null;
                         resolve(false);
+                        return;
                     }
-                );
+                    loader.load(
+                        skinPaths[index],
+                        (tex) => {
+                            tex.magFilter = THREE.NearestFilter;
+                            tex.minFilter = THREE.NearestFilter;
+                            tex.flipY = false;
+                            steveSkinTexture = tex;
+                            steveSkinReady = true;
+                            resolve(true);
+                        },
+                        undefined,
+                        () => tryLoad(index + 1)
+                    );
+                };
+                tryLoad(0);
             });
             return steveSkinLoadPromise;
         }
@@ -2281,6 +2358,16 @@ window.perlin = perlinInstance;
         function getSteveSkinTexture() {
             if (!steveSkinTexture || !steveSkinReady) return null;
             return steveSkinTexture;
+        }
+
+        function getPlayerAssetCandidates(fileName) {
+            const repoPrefix = window.SingleplayerConfig?.REPO_BASE_PREFIX || '';
+            const fromRepo = `${repoPrefix}/game/singleplayer/assets/player/${fileName}`;
+            return [fromRepo, `./assets/player/${fileName}`].filter((v, i, arr) => v && arr.indexOf(v) === i);
+        }
+
+        function getPreferredPlayerAssetPath(fileName) {
+            return getPlayerAssetCandidates(fileName)[0];
         }
 
         function createSkinFaceTexture(rect, atlas = 64) {
@@ -2344,9 +2431,8 @@ window.perlin = perlinInstance;
             const held = document.createElement('div');
             held.id = 'firstperson-held-item';
 
-            const base = `${window.SingleplayerConfig?.REPO_BASE_PREFIX || ''}/game/singleplayer/assets/player`;
-            const wieldPath = `${base}/wieldhand.png`;
-            const skinPath = `${base}/character.png`;
+            const wieldPath = getPreferredPlayerAssetPath('wieldhand.png');
+            const skinPath = getPreferredPlayerAssetPath('character.png');
 
             const probe = new Image();
             probe.onload = () => {
@@ -2372,7 +2458,7 @@ window.perlin = perlinInstance;
         function setupInventorySkinRig() {
             const preview = document.getElementById('inventory-skin-preview');
             if (!preview || inventorySkinRigEl) return;
-            const skinPath = `${window.SingleplayerConfig?.REPO_BASE_PREFIX || ''}/game/singleplayer/assets/player/character.png`;
+            const skinPath = getPreferredPlayerAssetPath('character.png');
 
             const rig = document.createElement('div');
             rig.id = 'inventory-skin-rig';
