@@ -181,6 +181,8 @@ window.perlin = perlinInstance;
         let playerAvatarParts = null;
         let steveSkinTexture = null;
         let steveSkinFailed = false;
+        let steveSkinReady = false;
+        let steveSkinLoadPromise = null;
         let firstPersonHandEl = null;
         let firstPersonHeldItemEl = null;
         let inventorySkinRigEl = null;
@@ -314,6 +316,7 @@ window.perlin = perlinInstance;
             yawObject.add(pitchObject);
             scene.add(yawObject);
 
+            await ensureSteveSkinTextureLoaded();
             playerAvatar = createPlayerAvatar();
             playerAvatar.visible = false;
             yawObject.add(playerAvatar);
@@ -2246,29 +2249,37 @@ window.perlin = perlinInstance;
             };
         }
 
-        function getSteveSkinTexture() {
-            if (!steveSkinTexture && !steveSkinFailed) {
-                const skinPath = `${window.SingleplayerConfig?.REPO_BASE_PREFIX || ''}/game/singleplayer/assets/player/character.png`;
+        function ensureSteveSkinTextureLoaded() {
+            if (steveSkinReady && steveSkinTexture) return Promise.resolve(true);
+            if (steveSkinFailed) return Promise.resolve(false);
+            if (steveSkinLoadPromise) return steveSkinLoadPromise;
+
+            const skinPath = `${window.SingleplayerConfig?.REPO_BASE_PREFIX || ''}/game/singleplayer/assets/player/character.png`;
+            steveSkinLoadPromise = new Promise((resolve) => {
                 const loader = new THREE.TextureLoader();
-                steveSkinTexture = loader.load(
+                loader.load(
                     skinPath,
                     (tex) => {
                         tex.magFilter = THREE.NearestFilter;
                         tex.minFilter = THREE.NearestFilter;
                         tex.flipY = true;
+                        steveSkinTexture = tex;
+                        steveSkinReady = true;
+                        resolve(true);
                     },
                     undefined,
                     () => {
                         steveSkinFailed = true;
                         steveSkinTexture = null;
+                        resolve(false);
                     }
                 );
-                if (steveSkinTexture) {
-                    steveSkinTexture.magFilter = THREE.NearestFilter;
-                    steveSkinTexture.minFilter = THREE.NearestFilter;
-                    steveSkinTexture.flipY = true;
-                }
-            }
+            });
+            return steveSkinLoadPromise;
+        }
+
+        function getSteveSkinTexture() {
+            if (!steveSkinTexture || !steveSkinReady) return null;
             return steveSkinTexture;
         }
 
@@ -2276,8 +2287,8 @@ window.perlin = perlinInstance;
             const [x, y, w, h] = rect;
             const src = getSteveSkinTexture();
             if (!src) return null;
+            if (!src.image) return null;
             const tex = src.clone();
-            tex.needsUpdate = true;
             tex.magFilter = THREE.NearestFilter;
             tex.minFilter = THREE.NearestFilter;
             tex.wrapS = THREE.ClampToEdgeWrapping;
