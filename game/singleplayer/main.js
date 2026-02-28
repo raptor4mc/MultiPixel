@@ -32,7 +32,7 @@
         const BlockBreakableSystem = window.BlockBreakableSystem || {};
         const SpawnLighting = window.SpawnLighting || {};
 
-        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-28-03';
+        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-28-04';
         console.info('[Singleplayer build]', window.__SINGLEPLAYER_BUILD__);
 
         const TerrainModules = {};
@@ -1319,6 +1319,7 @@ window.perlin = perlinInstance;
 
             const held = inventory[selectedHotbarIndex];
             const equippedPickaxe = PickaxeSystem.getEquippedPickaxe ? PickaxeSystem.getEquippedPickaxe(held) : null;
+            const equippedTool = PickaxeSystem.getEquippedTool ? PickaxeSystem.getEquippedTool(held) : equippedPickaxe;
             const breakable = BlockBreakableSystem.canBreakBlock
                 ? BlockBreakableSystem.canBreakBlock(blockId, equippedPickaxe)
                 : { canBreak: true, dropsItems: true, reason: null };
@@ -1337,11 +1338,13 @@ window.perlin = perlinInstance;
                 ? BlockHardnessSystem.toLegacyHardness(hardnessGrade)
                 : Math.max(0.2, hardnessGrade / 5);
 
-            const effectivePickaxe = breakable.dropsItems ? equippedPickaxe : null;
+            const effectiveTool = equippedTool && equippedTool.toolType === 'shovel'
+                ? equippedTool
+                : (breakable.dropsItems ? equippedPickaxe : null);
 
             if (PickaxeSystem.getMiningTimeMs) {
                 return {
-                    durationMs: PickaxeSystem.getMiningTimeMs(blockId, legacyHardness, effectivePickaxe),
+                    durationMs: PickaxeSystem.getMiningTimeMs(blockId, legacyHardness, effectiveTool),
                     allowed: true,
                     reason: breakable.reason || null,
                     requiredTier: breakable.requiredTier || null,
