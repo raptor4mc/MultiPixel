@@ -66,6 +66,9 @@
     FURNACE_SIDE: getAssetPath('textures/furnace/furnace_side.png'),
     FURNACE_FRONT: getAssetPath('textures/furnace/furnace_front.png'),
     FURNACE_FRONT_LIT: getAssetPath('textures/furnace/furnace_front_on.png'),
+    CHEST_NORMAL: getAssetPath('textures/chest/normal.png'),
+    CHEST_NORMAL_LEFT: getAssetPath('textures/chest/normal_left.png'),
+    CHEST_NORMAL_RIGHT: getAssetPath('textures/chest/normal_right.png'),
     
     CRACKED_STONE_BRICK: getAssetPath('textures/cracked_stone_bricks.png'),
     CHARCOAL: getAssetPath('textures/item/charcoal.png'),
@@ -216,6 +219,33 @@
         negZ: 'FURNACE_SIDE'
       } 
     },
+    82: {
+      name: 'Chest',
+      id: 82,
+      textured: true,
+      textureKey: 'CHEST_NORMAL',
+      textureByFace: {
+        top: 'CHEST_NORMAL',
+        bottom: 'CHEST_NORMAL',
+        posX: 'CHEST_NORMAL',
+        negX: 'CHEST_NORMAL',
+        posZ: 'CHEST_NORMAL',
+        negZ: 'CHEST_NORMAL'
+      },
+      uvAtlasSize: 64,
+      textureUvByFace: {
+        top: [16, 0, 16, 16],
+        bottom: [32, 0, 16, 16],
+        posX: [0, 16, 16, 16],
+        negX: [32, 16, 16, 16],
+        posZ: [16, 16, 16, 16],
+        negZ: [48, 16, 16, 16]
+      },
+      doubleChest: {
+        leftTextureKey: 'CHEST_NORMAL_LEFT',
+        rightTextureKey: 'CHEST_NORMAL_RIGHT'
+      }
+    },
 
     71: {
   name: 'Lit Furnace',
@@ -322,7 +352,7 @@
     INV_COLS, INV_ROWS, HOTBAR_SLOTS, TOTAL_INV_SIZE,
     REPO_BASE_PREFIX,
     ASSET_FILEPATHS, blockMaterials,
-    SOLID_BLOCKS: [1, 2, 3, 5, 6, 7, 8, 9, 13, 14, 15, 17, 18, 20, 21, 23, 24, 26, 27, 28, 29, 30, 32, 34, 35, 36, 37, 39, 40, 41, 43, 45, 54, 55, 59, 68, 71, 76, 77, 78, 79, 80, 81 ],
+    SOLID_BLOCKS: [1, 2, 3, 5, 6, 7, 8, 9, 13, 14, 15, 17, 18, 20, 21, 23, 24, 26, 27, 28, 29, 30, 32, 34, 35, 36, 37, 39, 40, 41, 43, 45, 54, 55, 59, 68, 71, 76, 77, 78, 79, 80, 81, 82 ],
     LIQUID_BLOCKS: [4, 33, 47, 48, 49, 50, 51, 52, 53, 60, 61, 62, 63, 64, 65, 66],
     DEFAULT_PLAYER: {
       moveSpeed: 0.12,
