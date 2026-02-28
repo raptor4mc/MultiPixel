@@ -133,7 +133,7 @@ window.perlin = perlinInstance;
 
         // Mining / breaking state
         const BREAKING_TEXTURE_BASE = `${window.SingleplayerConfig?.REPO_BASE_PREFIX || '/MultiPixel'}/game/singleplayer/assets/breaking`;
-        let miningState = { active: false, key: null, blockPos: null, targetType: 0, elapsedMs: 0, neededMs: 0, missMs: 0 };
+        let miningState = { active: false, key: null, blockPos: null, targetType: 0, elapsedMs: 0, neededMs: 0, missMs: 0, dropOnBreak: true };
         let isLeftMouseDown = false;
         const breakingStageTextures = new Array(10).fill(null);
         let breakingCrackMesh = null;
@@ -1191,14 +1191,15 @@ window.perlin = perlinInstance;
             const equippedPickaxe = PickaxeSystem.getEquippedPickaxe ? PickaxeSystem.getEquippedPickaxe(held) : null;
             const breakable = BlockBreakableSystem.canBreakBlock
                 ? BlockBreakableSystem.canBreakBlock(blockId, equippedPickaxe)
-                : { canBreak: true, reason: null };
+                : { canBreak: true, dropsItems: true, reason: null };
 
             if (!breakable.canBreak) {
                 return {
                     durationMs: Infinity,
                     allowed: false,
-                    reason: breakable.reason || 'tool_too_weak',
+                    reason: breakable.reason || 'unbreakable',
                     requiredTier: breakable.requiredTier || null,
+                    dropOnBreak: false,
                 };
             }
 
@@ -1206,15 +1207,25 @@ window.perlin = perlinInstance;
                 ? BlockHardnessSystem.toLegacyHardness(hardnessGrade)
                 : Math.max(0.2, hardnessGrade / 5);
 
+            const effectivePickaxe = breakable.dropsItems ? equippedPickaxe : null;
+
             if (PickaxeSystem.getMiningTimeMs) {
                 return {
-                    durationMs: PickaxeSystem.getMiningTimeMs(blockId, legacyHardness, equippedPickaxe),
+                    durationMs: PickaxeSystem.getMiningTimeMs(blockId, legacyHardness, effectivePickaxe),
                     allowed: true,
-                    reason: null,
+                    reason: breakable.reason || null,
+                    requiredTier: breakable.requiredTier || null,
+                    dropOnBreak: breakable.dropsItems !== false,
                 };
             }
 
-            return { durationMs: hardnessGrade * 150, allowed: true, reason: null };
+            return {
+                durationMs: hardnessGrade * 150,
+                allowed: true,
+                reason: breakable.reason || null,
+                requiredTier: breakable.requiredTier || null,
+                dropOnBreak: breakable.dropsItems !== false,
+            };
         }
 
         function preloadBreakingTextures() {
@@ -1278,14 +1289,13 @@ window.perlin = perlinInstance;
             const miningInfo = getMiningDurationMs(target.blockId);
             const neededMs = miningInfo.durationMs;
             if (!isFinite(neededMs)) {
-                if (miningInfo.reason === 'tool_too_weak') {
-                    const tier = miningInfo.requiredTier || 0;
-                    const tierName = tier <= 1 ? 'wooden pickaxe' : tier === 2 ? 'stone pickaxe' : tier <= 4 ? 'copper pickaxe' : tier === 5 ? 'iron pickaxe' : 'better pickaxe';
-                    showGameMessage(`You need at least a ${tierName}.`);
-                } else {
-                    showGameMessage('This block is unbreakable.');
-                }
+                showGameMessage('This block is unbreakable.');
                 return false;
+            }
+            if (miningInfo.reason === 'tool_too_weak') {
+                const tier = miningInfo.requiredTier || 0;
+                const tierName = tier <= 1 ? 'wooden pickaxe' : tier === 2 ? 'stone pickaxe' : tier <= 4 ? 'copper pickaxe' : tier === 5 ? 'iron pickaxe' : 'better pickaxe';
+                showGameMessage(`Breaks, but no drops without ${tierName}.`);
             }
             miningState = {
                 active: true,
@@ -1295,6 +1305,7 @@ window.perlin = perlinInstance;
                 elapsedMs: 0,
                 neededMs,
                 missMs: 0,
+                dropOnBreak: miningInfo.dropOnBreak !== false,
             };
             return true;
         }
@@ -1508,7 +1519,7 @@ window.perlin = perlinInstance;
                 dirtyChunkKeys.clear();
             }
 
-        function modifyWorld(posVector, newType) {
+        function modifyWorld(posVector, newType, options = {}) {
             const wx = Math.floor(posVector.x);
             const wy = Math.floor(posVector.y);
             const wz = Math.floor(posVector.z);
@@ -1534,8 +1545,11 @@ window.perlin = perlinInstance;
                 if (oldType === 0 || oldType === 4) return false;
                 if (blockMaterials[oldType]?.unbreakable) return false;
 
-                const drop = PickaxeSystem.getDrop ? PickaxeSystem.getDrop(oldType) : { id: oldType, count: 1 };
-                if (drop && drop.id > 0 && drop.count > 0) addToInventory(drop.id, drop.count);
+                const shouldDrop = options.dropItems !== false;
+                if (shouldDrop) {
+                    const drop = PickaxeSystem.getDrop ? PickaxeSystem.getDrop(oldType) : { id: oldType, count: 1 };
+                    if (drop && drop.id > 0 && drop.count > 0) addToInventory(drop.id, drop.count);
+                }
                 chunkData[index] = 0;
             } else {
                
@@ -3026,7 +3040,7 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
                 const wy = Math.floor(blockPos.y);
                 const wz = Math.floor(blockPos.z);
                 const current = getBlockType(wx, wy, wz);
-                if (current === targetType) modifyWorld(blockPos, 0);
+                if (current === targetType) modifyWorld(blockPos, 0, { dropItems: miningState.dropOnBreak !== false });
                 miningState.active = false;
             }
         }

@@ -1,11 +1,11 @@
 (function () {
-  // Tier rule: null = hand OK, number = min pickaxe tier.
+  // Tier rule: null = hand drops OK, number = min pickaxe tier for drops.
   const REQUIRED_PICKAXE_TIER = {
     3: null, // Stone mineable by hand
     18: null, // Coal ore mineable by hand
-    30: 2, // Iron ore needs stone pickaxe+
-    35: 5, // Copper ore needs iron pickaxe+
-    43: 5, // Diamond ore needs iron pickaxe+
+    30: 2, // Iron ore needs stone pickaxe+ for drops
+    35: 5, // Copper ore needs iron pickaxe+ for drops
+    43: 5, // Diamond ore needs iron pickaxe+ for drops
   };
 
   function canBreakBlock(blockId, equippedPickaxe) {
@@ -14,7 +14,7 @@
       : 1;
 
     if (hardness < 0) {
-      return { canBreak: false, reason: 'unbreakable', requiredTier: null };
+      return { canBreak: false, dropsItems: false, reason: 'unbreakable', requiredTier: null };
     }
 
     const requiredTier = Object.prototype.hasOwnProperty.call(REQUIRED_PICKAXE_TIER, blockId)
@@ -22,15 +22,15 @@
       : null;
 
     if (requiredTier === null) {
-      return { canBreak: true, reason: null, requiredTier };
+      return { canBreak: true, dropsItems: true, reason: null, requiredTier };
     }
 
     const tier = equippedPickaxe?.tier || 0;
     if (tier >= requiredTier) {
-      return { canBreak: true, reason: null, requiredTier };
+      return { canBreak: true, dropsItems: true, reason: null, requiredTier };
     }
 
-    return { canBreak: false, reason: 'tool_too_weak', requiredTier };
+    return { canBreak: true, dropsItems: false, reason: 'tool_too_weak', requiredTier };
   }
 
   function getRequiredTier(blockId) {
