@@ -27,6 +27,8 @@
 
         const { checkCraftingRecipe, consumeCraftingInputForOne } = window.CraftingSystem;
         const PickaxeSystem = window.PickaxeSystem || {};
+        const BlockHardnessSystem = window.BlockHardnessSystem || {};
+        const BlockBreakableSystem = window.BlockBreakableSystem || {};
         const SpawnLighting = window.SpawnLighting || {};
 
         window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-21-11';
@@ -131,7 +133,6 @@ window.perlin = perlinInstance;
 
         // Mining / breaking state
         const BREAKING_TEXTURE_BASE = `${window.SingleplayerConfig?.REPO_BASE_PREFIX || '/MultiPixel'}/game/singleplayer/assets/breaking`;
-        const BLOCK_HARDNESS = { 1: 1.2, 2: 1.0, 3: 2.6, 5: 1.8, 6: 0.25, 7: 1.0, 8: 1.2, 9: 2.0, 13: 2.2, 14: Infinity, 15: 0.35, 17: 2.1, 18: 2.2, 20: 3.1 };
         let miningState = { active: false, key: null, blockPos: null, targetType: 0, elapsedMs: 0, neededMs: 0, missMs: 0 };
         let isLeftMouseDown = false;
         const breakingStageTextures = new Array(10).fill(null);
@@ -1175,13 +1176,45 @@ window.perlin = perlinInstance;
         }
 
         function getMiningDurationMs(blockId) {
-            const hardness = BLOCK_HARDNESS[blockId] ?? 1.5;
+            const hardnessGrade = BlockHardnessSystem.getHardness
+                ? BlockHardnessSystem.getHardness(blockId)
+                : 6;
+
+            if (hardnessGrade < 0) {
+                return { durationMs: Infinity, allowed: false, reason: 'unbreakable' };
+            }
+            if (hardnessGrade === 0) {
+                return { durationMs: 0, allowed: true, reason: null };
+            }
+
             const held = inventory[selectedHotbarIndex];
             const equippedPickaxe = PickaxeSystem.getEquippedPickaxe ? PickaxeSystem.getEquippedPickaxe(held) : null;
-            if (PickaxeSystem.getMiningTimeMs) {
-                return PickaxeSystem.getMiningTimeMs(blockId, hardness, equippedPickaxe);
+            const breakable = BlockBreakableSystem.canBreakBlock
+                ? BlockBreakableSystem.canBreakBlock(blockId, equippedPickaxe)
+                : { canBreak: true, reason: null };
+
+            if (!breakable.canBreak) {
+                return {
+                    durationMs: Infinity,
+                    allowed: false,
+                    reason: breakable.reason || 'tool_too_weak',
+                    requiredTier: breakable.requiredTier || null,
+                };
             }
-            return isFinite(hardness) ? hardness * 1000 : Infinity;
+
+            const legacyHardness = BlockHardnessSystem.toLegacyHardness
+                ? BlockHardnessSystem.toLegacyHardness(hardnessGrade)
+                : Math.max(0.2, hardnessGrade / 5);
+
+            if (PickaxeSystem.getMiningTimeMs) {
+                return {
+                    durationMs: PickaxeSystem.getMiningTimeMs(blockId, legacyHardness, equippedPickaxe),
+                    allowed: true,
+                    reason: null,
+                };
+            }
+
+            return { durationMs: hardnessGrade * 150, allowed: true, reason: null };
         }
 
         function preloadBreakingTextures() {
@@ -1242,9 +1275,16 @@ window.perlin = perlinInstance;
         }
 
         function beginMiningTarget(target) {
-            const neededMs = getMiningDurationMs(target.blockId);
+            const miningInfo = getMiningDurationMs(target.blockId);
+            const neededMs = miningInfo.durationMs;
             if (!isFinite(neededMs)) {
-                showGameMessage('Bedrock is unbreakable.');
+                if (miningInfo.reason === 'tool_too_weak') {
+                    const tier = miningInfo.requiredTier || 0;
+                    const tierName = tier <= 1 ? 'wooden pickaxe' : tier === 2 ? 'stone pickaxe' : tier <= 4 ? 'copper pickaxe' : tier === 5 ? 'iron pickaxe' : 'better pickaxe';
+                    showGameMessage(`You need at least a ${tierName}.`);
+                } else {
+                    showGameMessage('This block is unbreakable.');
+                }
                 return false;
             }
             miningState = {

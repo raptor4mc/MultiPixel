@@ -441,33 +441,33 @@ body {
 
 #chat-panel {
     position: fixed;
-    left: 16px;
-    bottom: 90px;
-    width: min(460px, calc(100vw - 32px));
+    left: 14px;
+    top: 14px;
+    width: min(520px, calc(100vw - 28px));
+    max-height: 50vh;
     z-index: 260;
     pointer-events: none;
 }
 
 #chat-feed {
-    min-height: 24px;
-    max-height: 48px;
+    max-height: calc(50vh - 16px);
     overflow: hidden;
     display: flex;
     flex-direction: column;
     gap: 2px;
-    background: rgba(0, 0, 0, 0.55);
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    border-radius: 8px;
-    padding: 6px 8px;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 2px 0;
 }
 
 #chat-compose-wrap {
-    margin-top: 6px;
+    margin-top: 4px;
     display: none;
-    background: rgba(0, 0, 0, 0.85);
-    border: 1px solid rgba(255, 255, 255, 0.24);
-    border-radius: 10px;
-    padding: 6px;
+    background: rgba(0, 0, 0, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 2px;
+    padding: 4px;
     pointer-events: auto;
 }
 
@@ -476,46 +476,46 @@ body {
 }
 
 #chat-close-btn {
-    width: 28px;
-    height: 28px;
+    width: 22px;
+    height: 22px;
     border: 0;
     background: transparent;
     cursor: pointer;
     float: right;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
 }
 
 #chat-close-icon {
-    width: 28px;
-    height: 28px;
+    width: 22px;
+    height: 22px;
     image-rendering: pixelated;
 }
 
 #chat-log {
     clear: both;
-    max-height: 160px;
+    max-height: 24vh;
     overflow-y: auto;
     color: #fff;
-    padding: 6px;
-    font-size: 12px;
+    padding: 4px;
+    font-size: 13px;
     font-family: monospace;
-    background: rgba(0, 0, 0, 0.35);
-    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.25);
 }
 
 #chat-input {
-    width: calc(100% - 12px);
-    margin: 8px 6px 4px;
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    border-radius: 6px;
+    width: calc(100% - 8px);
+    margin: 6px 4px 2px;
+    border: 1px solid rgba(255, 255, 255, 0.26);
+    border-radius: 0;
     padding: 6px;
-    background: rgba(8, 8, 8, 0.95);
+    background: rgba(0, 0, 0, 0.75);
     color: #fff;
     outline: none;
     pointer-events: auto;
+    font-family: monospace;
 }
 
-.chat-row { margin-bottom: 4px; }
+.chat-row { margin-bottom: 2px; text-shadow: 1px 1px 0 #000; font-family: monospace; }
 .chat-system-ok { color: #7dff7d; }
 .chat-system-error { color: #ff7676; }
 .chat-player { color: #f1f1f1; }
