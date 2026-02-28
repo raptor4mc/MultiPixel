@@ -2245,46 +2245,39 @@ window.perlin = perlinInstance;
             };
         }
 
-        function setBoxFaceUV(geometry, faceRects, atlasW = 64, atlasH = 64) {
-            const uv = geometry.attributes.uv;
-            if (!uv) return;
-            const tile = [
-                [0, 0], [1, 0], [0, 1], [1, 1],
-            ];
-            for (let face = 0; face < 6; face++) {
-                const rect = faceRects[face];
-                if (!rect) continue;
-                const [x, y, w, h] = rect;
-                const u0 = x / atlasW;
-                const v0 = 1 - ((y + h) / atlasH);
-                const u1 = (x + w) / atlasW;
-                const v1 = 1 - (y / atlasH);
-                const values = [
-                    [u1, v1], [u0, v1], [u1, v0], [u0, v0],
-                ];
-                const start = face * 4;
-                for (let i = 0; i < 4; i++) {
-                    uv.setXY(start + i, values[i][0], values[i][1]);
-                }
-            }
-            uv.needsUpdate = true;
-        }
-
-        function createStevePartMesh(dim, faceRects, material) {
-            const geom = new THREE.BoxGeometry(dim[0], dim[1], dim[2]);
-            setBoxFaceUV(geom, faceRects, 64, 64);
-            return new THREE.Mesh(geom, material);
-        }
-
-        function getSteveSkinMaterial() {
+        function getSteveSkinTexture() {
             if (!steveSkinTexture) {
                 const skinPath = `${window.SingleplayerConfig?.REPO_BASE_PREFIX || ''}/game/singleplayer/assets/player/character.png`;
                 const tex = new THREE.TextureLoader().load(skinPath);
                 tex.magFilter = THREE.NearestFilter;
                 tex.minFilter = THREE.NearestFilter;
+                tex.flipY = true;
                 steveSkinTexture = tex;
             }
-            return new THREE.MeshStandardMaterial({ map: steveSkinTexture, transparent: true, alphaTest: 0.1, roughness: 1, metalness: 0 });
+            return steveSkinTexture;
+        }
+
+        function createSkinFaceTexture(rect, atlas = 64) {
+            const [x, y, w, h] = rect;
+            const src = getSteveSkinTexture();
+            const tex = src.clone();
+            tex.needsUpdate = true;
+            tex.magFilter = THREE.NearestFilter;
+            tex.minFilter = THREE.NearestFilter;
+            tex.wrapS = THREE.ClampToEdgeWrapping;
+            tex.wrapT = THREE.ClampToEdgeWrapping;
+            tex.repeat.set(w / atlas, h / atlas);
+            tex.offset.set(x / atlas, 1 - ((y + h) / atlas));
+            return tex;
+        }
+
+        function createStevePartMesh(dim, faceRects) {
+            const mats = [];
+            for (let i = 0; i < 6; i++) {
+                const faceTex = createSkinFaceTexture(faceRects[i]);
+                mats.push(new THREE.MeshStandardMaterial({ map: faceTex, transparent: true, alphaTest: 0.02, roughness: 1, metalness: 0 }));
+            }
+            return new THREE.Mesh(new THREE.BoxGeometry(dim[0], dim[1], dim[2]), mats);
         }
 
         function setupFirstPersonHandOverlay() {
@@ -2334,9 +2327,9 @@ window.perlin = perlinInstance;
 
             setPart('inv-skin-head', 8, 8, 8, 8);
             setPart('inv-skin-body', 20, 20, 8, 12);
-            setPart('inv-skin-arm-left', 44, 20, 4, 12);
+            setPart('inv-skin-arm-left', 36, 52, 4, 12);
             setPart('inv-skin-arm-right', 44, 20, 4, 12);
-            setPart('inv-skin-leg-left', 4, 20, 4, 12);
+            setPart('inv-skin-leg-left', 20, 52, 4, 12);
             setPart('inv-skin-leg-right', 4, 20, 4, 12);
         }
 
@@ -2374,16 +2367,15 @@ window.perlin = perlinInstance;
 
         function createPlayerAvatar() {
             const avatar = new THREE.Group();
-            const skinMat = getSteveSkinMaterial();
 
             const head = createStevePartMesh([0.52, 0.52, 0.52], {
-                0: [0, 8, 8, 8],   // +X right
-                1: [16, 8, 8, 8],  // -X left
-                2: [8, 0, 8, 8],   // +Y top
-                3: [16, 0, 8, 8],  // -Y bottom
-                4: [8, 8, 8, 8],   // +Z front
-                5: [24, 8, 8, 8],  // -Z back
-            }, skinMat);
+                0: [0, 8, 8, 8],
+                1: [16, 8, 8, 8],
+                2: [8, 0, 8, 8],
+                3: [16, 0, 8, 8],
+                4: [8, 8, 8, 8],
+                5: [24, 8, 8, 8],
+            });
             head.position.y = 1.72;
 
             const body = createStevePartMesh([0.75, 1.0, 0.35], {
@@ -2393,7 +2385,7 @@ window.perlin = perlinInstance;
                 3: [28, 16, 8, 4],
                 4: [20, 20, 8, 12],
                 5: [32, 20, 8, 12],
-            }, skinMat);
+            });
             body.position.y = 0.95;
 
             const rightArm = createStevePartMesh([0.22, 0.8, 0.22], {
@@ -2403,17 +2395,17 @@ window.perlin = perlinInstance;
                 3: [48, 16, 4, 4],
                 4: [44, 20, 4, 12],
                 5: [52, 20, 4, 12],
-            }, skinMat);
+            });
             rightArm.position.set(0.5, 1.0, 0);
 
             const leftArm = createStevePartMesh([0.22, 0.8, 0.22], {
-                0: [40, 20, 4, 12],
-                1: [48, 20, 4, 12],
-                2: [44, 16, 4, 4],
-                3: [48, 16, 4, 4],
-                4: [44, 20, 4, 12],
-                5: [52, 20, 4, 12],
-            }, skinMat);
+                0: [32, 52, 4, 12],
+                1: [40, 52, 4, 12],
+                2: [36, 48, 4, 4],
+                3: [40, 48, 4, 4],
+                4: [36, 52, 4, 12],
+                5: [44, 52, 4, 12],
+            });
             leftArm.position.set(-0.5, 1.0, 0);
 
             const rightLeg = createStevePartMesh([0.24, 0.85, 0.24], {
@@ -2423,21 +2415,21 @@ window.perlin = perlinInstance;
                 3: [8, 16, 4, 4],
                 4: [4, 20, 4, 12],
                 5: [12, 20, 4, 12],
-            }, skinMat);
+            });
             rightLeg.position.set(0.2, 0.1, 0);
 
             const leftLeg = createStevePartMesh([0.24, 0.85, 0.24], {
-                0: [0, 20, 4, 12],
-                1: [8, 20, 4, 12],
-                2: [4, 16, 4, 4],
-                3: [8, 16, 4, 4],
-                4: [4, 20, 4, 12],
-                5: [12, 20, 4, 12],
-            }, skinMat);
+                0: [16, 52, 4, 12],
+                1: [24, 52, 4, 12],
+                2: [20, 48, 4, 4],
+                3: [24, 48, 4, 4],
+                4: [20, 52, 4, 12],
+                5: [28, 52, 4, 12],
+            });
             leftLeg.position.set(-0.2, 0.1, 0);
 
             avatar.add(body, head, leftArm, rightArm, leftLeg, rightLeg);
-            playerAvatarParts = { body, head, leftArm, rightArm, leftLeg, rightLeg, headMat: skinMat };
+            playerAvatarParts = { body, head, leftArm, rightArm, leftLeg, rightLeg };
             return avatar;
         }
 
@@ -2449,7 +2441,7 @@ window.perlin = perlinInstance;
                 if (playerAvatar) playerAvatar.visible = false;
                 showGameMessage('First-person view enabled');
             } else if (cameraViewMode === 1) {
-                camera.position.set(0, 0.2, -3.2);
+                camera.position.set(0, 1.2, -2.6);
                 camera.rotation.y = Math.PI;
                 if (playerAvatar) playerAvatar.visible = true;
                 showGameMessage('Second-person view enabled');
