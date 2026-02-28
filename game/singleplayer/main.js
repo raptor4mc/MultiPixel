@@ -2271,6 +2271,29 @@ window.perlin = perlinInstance;
             return tex;
         }
 
+
+        function isModernSkinLayout() {
+            const tex = getSteveSkinTexture();
+            const img = tex && tex.image ? tex.image : null;
+            const h = img ? (img.naturalHeight || img.height || 0) : 0;
+            return h >= 64;
+        }
+
+        function limbRects(side) {
+            const modern = isModernSkinLayout();
+            if (side === 'leftArm') {
+                return modern
+                    ? { 0: [32, 52, 4, 12], 1: [40, 52, 4, 12], 2: [36, 48, 4, 4], 3: [40, 48, 4, 4], 4: [36, 52, 4, 12], 5: [44, 52, 4, 12] }
+                    : { 0: [40, 20, 4, 12], 1: [48, 20, 4, 12], 2: [44, 16, 4, 4], 3: [48, 16, 4, 4], 4: [44, 20, 4, 12], 5: [52, 20, 4, 12] };
+            }
+            if (side === 'leftLeg') {
+                return modern
+                    ? { 0: [16, 52, 4, 12], 1: [24, 52, 4, 12], 2: [20, 48, 4, 4], 3: [24, 48, 4, 4], 4: [20, 52, 4, 12], 5: [28, 52, 4, 12] }
+                    : { 0: [0, 20, 4, 12], 1: [8, 20, 4, 12], 2: [4, 16, 4, 4], 3: [8, 16, 4, 4], 4: [4, 20, 4, 12], 5: [12, 20, 4, 12] };
+            }
+            return null;
+        }
+
         function createStevePartMesh(dim, faceRects) {
             const mats = [];
             for (let i = 0; i < 6; i++) {
@@ -2325,11 +2348,12 @@ window.perlin = perlinInstance;
                 el.style.height = `${h}px`;
             };
 
+            const modern = isModernSkinLayout();
             setPart('inv-skin-head', 8, 8, 8, 8);
             setPart('inv-skin-body', 20, 20, 8, 12);
-            setPart('inv-skin-arm-left', 36, 52, 4, 12);
+            setPart('inv-skin-arm-left', ...(modern ? [36, 52, 4, 12] : [44, 20, 4, 12]));
             setPart('inv-skin-arm-right', 44, 20, 4, 12);
-            setPart('inv-skin-leg-left', 20, 52, 4, 12);
+            setPart('inv-skin-leg-left', ...(modern ? [20, 52, 4, 12] : [4, 20, 4, 12]));
             setPart('inv-skin-leg-right', 4, 20, 4, 12);
         }
 
@@ -2398,14 +2422,7 @@ window.perlin = perlinInstance;
             });
             rightArm.position.set(0.5, 1.0, 0);
 
-            const leftArm = createStevePartMesh([0.22, 0.8, 0.22], {
-                0: [32, 52, 4, 12],
-                1: [40, 52, 4, 12],
-                2: [36, 48, 4, 4],
-                3: [40, 48, 4, 4],
-                4: [36, 52, 4, 12],
-                5: [44, 52, 4, 12],
-            });
+            const leftArm = createStevePartMesh([0.22, 0.8, 0.22], limbRects('leftArm'));
             leftArm.position.set(-0.5, 1.0, 0);
 
             const rightLeg = createStevePartMesh([0.24, 0.85, 0.24], {
@@ -2418,14 +2435,7 @@ window.perlin = perlinInstance;
             });
             rightLeg.position.set(0.2, 0.1, 0);
 
-            const leftLeg = createStevePartMesh([0.24, 0.85, 0.24], {
-                0: [16, 52, 4, 12],
-                1: [24, 52, 4, 12],
-                2: [20, 48, 4, 4],
-                3: [24, 48, 4, 4],
-                4: [20, 52, 4, 12],
-                5: [28, 52, 4, 12],
-            });
+            const leftLeg = createStevePartMesh([0.24, 0.85, 0.24], limbRects('leftLeg'));
             leftLeg.position.set(-0.2, 0.1, 0);
 
             avatar.add(body, head, leftArm, rightArm, leftLeg, rightLeg);
