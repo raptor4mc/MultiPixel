@@ -6,6 +6,7 @@
             SEA_LEVEL,
             BASE_LAND_Y,
             ISLAND_RADIUS,
+            WORLD_GEN_SETTINGS,
             CAVE_SCALE,
             CAVE_THRESHOLD,
             CAVE_MIN_Y,
@@ -31,10 +32,36 @@
         const BlockBreakableSystem = window.BlockBreakableSystem || {};
         const SpawnLighting = window.SpawnLighting || {};
 
-        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-21-11';
+        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-28-01';
         console.info('[Singleplayer build]', window.__SINGLEPLAYER_BUILD__);
 
         const TerrainModules = {};
+
+        const worldGenSettings = WORLD_GEN_SETTINGS || {};
+
+        function normalizeWorldSeed(seedValue) {
+            const parsed = Number(seedValue);
+            if (!Number.isFinite(parsed)) return null;
+            const normalized = Math.abs(Math.floor(parsed)) % 2147483647;
+            return normalized > 0 ? normalized : 1;
+        }
+
+        function resolveWorldSeed() {
+            const storageKey = worldGenSettings.seedStorageKey || 'singleplayer.worldSeed';
+            let resolved = null;
+            try {
+                resolved = normalizeWorldSeed(window.localStorage?.getItem(storageKey));
+            } catch (err) {
+                console.warn('[World seed] localStorage read failed, using random seed.', err);
+            }
+            if (!resolved) resolved = Math.floor(Math.random() * 2147483646) + 1;
+            try {
+                window.localStorage?.setItem(storageKey, String(resolved));
+            } catch (err) {
+                console.warn('[World seed] localStorage write failed.', err);
+            }
+            return resolved;
+        }
 
         TerrainModules['ocean'] = window.OceanTerrain || {
             isBiome: function (ctx) { return ctx.climateNoise <= -0.2; },
@@ -298,7 +325,7 @@ window.perlin = perlinInstance;
             scene.fog = new THREE.Fog(0x87ceeb, 20, 120); 
 
             if (typeof PerlinNoise !== 'undefined') {
-                worldSeed = Math.floor(Math.random() * 2147483647);
+                worldSeed = resolveWorldSeed();
                 perlin = new PerlinNoise(worldSeed);
                 console.info('[World seed]', worldSeed);
                 lightingSystem = SpawnLighting.create ? SpawnLighting.create({ getBlockType, isLiquid, CHUNK_HEIGHT }) : null;
@@ -2763,7 +2790,33 @@ window.perlin = perlinInstance;
             document.addEventListener('keyup', e => player.keys[e.key.toLowerCase()] = false);
         }
 
-      
+
+        function getTreeSpawnChanceForBiome(biomeName, topY) {
+            const map = worldGenSettings.treeDensityByBiome || {};
+            const baseChance = Number(map[biomeName] ?? map.Plains ?? 0.04);
+            let adjusted = baseChance;
+            if (topY > SEA_LEVEL + 26) adjusted *= 0.7;
+            if (topY < SEA_LEVEL + 2) adjusted *= 0.5;
+            return Math.max(0, Math.min(0.45, adjusted));
+        }
+
+        function hasNearbyTreeTrunk(data, x, z, radius) {
+            for (let ox = -radius; ox <= radius; ox++) {
+                for (let oz = -radius; oz <= radius; oz++) {
+                    if (ox === 0 && oz === 0) continue;
+                    const tx = x + ox;
+                    const tz = z + oz;
+                    if (tx < 0 || tx >= CHUNK_SIZE || tz < 0 || tz >= CHUNK_SIZE) continue;
+                    for (let y = CHUNK_HEIGHT - 2; y >= 1; y--) {
+                        const idx = tx + y * CHUNK_SIZE + tz * CHUNK_SIZE * CHUNK_HEIGHT;
+                        const block = data[idx];
+                        if (block === 5) return true;
+                        if (block !== 0 && block !== 6) break;
+                    }
+                }
+            }
+            return false;
+        }
         
         function generateChunkData(cx, cz) {
              const data = new Array(CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE);
@@ -3031,9 +3084,12 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
                                  const treeNoise = octaveNoise2D(wx, wz, 2, 0.56, 2.0, 0.028, 700, -350) * 0.5 + 0.5;
                                  const scatter = hashRand2D(wx, wz, 99);
                                  const density = treeNoise * 0.6 + scatter * 0.4;
-                                 const chance = 0.4;
-                                 const denseBonus = 0.4;
-                                     const shouldTrySpawn = true;
+                                 const chance = getTreeSpawnChanceForBiome(biome, topY);
+                                 const clusterBonus = Number(worldGenSettings.treeClusterBonus ?? 0.12);
+                                 const nearbyTree = hasNearbyTreeTrunk(data, x, z, 2);
+                                 const spacingGate = Number(worldGenSettings.treeMinSpacingChance ?? 0.65);
+                                 const spawnRoll = hashRand2D(wx, wz, 431);
+                                 const shouldTrySpawn = (spawnRoll < (chance + density * clusterBonus)) && (!nearbyTree || spawnRoll < spacingGate);
 
                                  if (shouldTrySpawn) {
                                      const heightLimit = 4 + Math.floor(hashRand2D(wx, wz, 157) * 3); // 4-6
