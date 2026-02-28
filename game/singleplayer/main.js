@@ -111,7 +111,8 @@ window.perlin = perlinInstance;
             health: DEFAULT_PLAYER.health,
             maxHealth: DEFAULT_PLAYER.maxHealth,
             fallStartY: 0, 
-            inAir: false
+            inAir: false,
+            isMoving: false
         };
 
       
@@ -175,8 +176,9 @@ window.perlin = perlinInstance;
         const chunks = new Map();
         const worldGroup = new THREE.Group();
         let yawObject, pitchObject; 
-        let isThirdPersonView = false;
+        let cameraViewMode = 0; // 0=first, 1=second, 2=third
         let playerAvatar = null;
+        let playerAvatarParts = null;
         let skinSystem = null;
         let iglooStructureDef = null;
         const gnomeEntities = [];
@@ -310,6 +312,7 @@ window.perlin = perlinInstance;
             playerAvatar = createPlayerAvatar();
             playerAvatar.visible = false;
             yawObject.add(playerAvatar);
+            applyCameraMode();
 
             // Lighting (Made global: ambientLight, dirLight)
             ambientLight = new THREE.AmbientLight(0x606060, 1.2); 
@@ -1593,6 +1596,7 @@ window.perlin = perlinInstance;
             if (player.direction.lengthSq() > 0) player.direction.normalize();
 
             const isMoving = player.direction.lengthSq() > 0;
+            player.isMoving = isMoving;
             const isSprinting = isMoving && (player.keys['e'] || mobileControls.sprint);
             if (window.HungerSystem) {
                 window.HungerSystem.update(performance.now(), { isMoving, isSprinting });
@@ -2237,26 +2241,76 @@ window.perlin = perlinInstance;
 
         function createPlayerAvatar() {
             const avatar = new THREE.Group();
-            const body = new THREE.Mesh(
-                new THREE.BoxGeometry(0.75, 1.0, 0.35),
-                new THREE.MeshStandardMaterial({ color: 0x4f95ff, roughness: 0.9 })
-            );
+
+            const bodyMat = new THREE.MeshStandardMaterial({ color: 0x4f95ff, roughness: 0.9 });
+            const headMat = new THREE.MeshStandardMaterial({ color: 0xe5bf9f, roughness: 0.85 });
+            const limbMat = new THREE.MeshStandardMaterial({ color: 0x3f7ee0, roughness: 0.9 });
+
+            const body = new THREE.Mesh(new THREE.BoxGeometry(0.75, 1.0, 0.35), bodyMat);
             body.position.y = 0.95;
-            const head = new THREE.Mesh(
-                new THREE.BoxGeometry(0.52, 0.52, 0.52),
-                new THREE.MeshStandardMaterial({ color: 0xe5bf9f, roughness: 0.85 })
-            );
+
+            const head = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.52, 0.52), headMat);
             head.position.y = 1.72;
+
+            const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.8, 0.22), limbMat);
+            leftArm.position.set(-0.5, 1.0, 0);
+            const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.8, 0.22), limbMat);
+            rightArm.position.set(0.5, 1.0, 0);
+
+            const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.85, 0.24), limbMat);
+            leftLeg.position.set(-0.2, 0.1, 0);
+            const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.85, 0.24), limbMat);
+            rightLeg.position.set(0.2, 0.1, 0);
+
             avatar.add(body);
             avatar.add(head);
+            avatar.add(leftArm);
+            avatar.add(rightArm);
+            avatar.add(leftLeg);
+            avatar.add(rightLeg);
+
+            playerAvatarParts = { body, head, leftArm, rightArm, leftLeg, rightLeg, headMat };
             return avatar;
         }
 
+        function applyCameraMode() {
+            // camera is parented to pitchObject; use local transforms for mode.
+            if (cameraViewMode === 0) {
+                camera.position.set(0, 0, 0);
+                camera.rotation.y = 0;
+                if (playerAvatar) playerAvatar.visible = false;
+                showGameMessage('First-person view enabled');
+            } else if (cameraViewMode === 1) {
+                camera.position.set(0, 0.2, -3.2);
+                camera.rotation.y = Math.PI;
+                if (playerAvatar) playerAvatar.visible = true;
+                showGameMessage('Second-person view enabled');
+            } else {
+                camera.position.set(0, 0.1, 3.6);
+                camera.rotation.y = 0;
+                if (playerAvatar) playerAvatar.visible = true;
+                showGameMessage('Third-person view enabled');
+            }
+        }
+
         function toggleCameraViewMode() {
-            isThirdPersonView = !isThirdPersonView;
-            camera.position.set(0, isThirdPersonView ? 0.1 : 0, isThirdPersonView ? 3.6 : 0);
-            if (playerAvatar) playerAvatar.visible = isThirdPersonView;
-            showGameMessage(isThirdPersonView ? 'Third-person view enabled' : 'First-person view enabled');
+            cameraViewMode = (cameraViewMode + 1) % 3;
+            applyCameraMode();
+        }
+
+        function updatePlayerAvatarVisuals(time) {
+            if (!playerAvatarParts) return;
+            const swing = player.isMoving ? Math.sin(time * 0.015) * 0.7 : 0;
+            playerAvatarParts.leftLeg.rotation.x = swing;
+            playerAvatarParts.rightLeg.rotation.x = -swing;
+            playerAvatarParts.leftArm.rotation.x = -swing;
+            playerAvatarParts.rightArm.rotation.x = swing;
+
+            const previewHead = document.getElementById('inventory-skin-head');
+            if (previewHead && playerAvatarParts.headMat?.color) {
+                const hex = `#${playerAvatarParts.headMat.color.getHexString()}`;
+                previewHead.style.background = `linear-gradient(180deg, ${hex} 0%, ${hex} 100%)`;
+            }
         }
 
         function toggleInventorySkinPreview() {
@@ -3060,6 +3114,7 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
                 applyBlockPhysics(time);
                 updateChunkFrustumCulling();
                 updateGnomes(time);
+                updatePlayerAvatarVisuals(time);
                 const dtSec = delta / 1000;
                 if (window.FurnaceSystem) {
                     for (const state of furnaceStates.values()) window.FurnaceSystem.updateState(state, dtSec);

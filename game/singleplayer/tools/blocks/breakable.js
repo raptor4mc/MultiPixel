@@ -5,7 +5,9 @@
     18: null, // Coal ore mineable by hand
     30: 2, // Iron ore needs stone pickaxe+ for drops
     35: 5, // Copper ore needs iron pickaxe+ for drops
+    40: 5, // Gold ore needs iron pickaxe+ for drops
     43: 5, // Diamond ore needs iron pickaxe+ for drops
+    54: 6, // Emerald ore needs diamond pickaxe for drops
   };
 
   function canBreakBlock(blockId, equippedPickaxe) {
