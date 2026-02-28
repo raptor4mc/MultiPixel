@@ -6,6 +6,7 @@
             SEA_LEVEL,
             BASE_LAND_Y,
             ISLAND_RADIUS,
+            WORLD_GEN_SETTINGS,
             CAVE_SCALE,
             CAVE_THRESHOLD,
             CAVE_MIN_Y,
@@ -31,10 +32,36 @@
         const BlockBreakableSystem = window.BlockBreakableSystem || {};
         const SpawnLighting = window.SpawnLighting || {};
 
-        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-21-11';
+        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-28-02';
         console.info('[Singleplayer build]', window.__SINGLEPLAYER_BUILD__);
 
         const TerrainModules = {};
+
+        const worldGenSettings = WORLD_GEN_SETTINGS || {};
+
+        function normalizeWorldSeed(seedValue) {
+            const parsed = Number(seedValue);
+            if (!Number.isFinite(parsed)) return null;
+            const normalized = Math.abs(Math.floor(parsed)) % 2147483647;
+            return normalized > 0 ? normalized : 1;
+        }
+
+        function resolveWorldSeed() {
+            const storageKey = worldGenSettings.seedStorageKey || 'singleplayer.worldSeed';
+            let resolved = null;
+            try {
+                resolved = normalizeWorldSeed(window.localStorage?.getItem(storageKey));
+            } catch (err) {
+                console.warn('[World seed] localStorage read failed, using random seed.', err);
+            }
+            if (!resolved) resolved = Math.floor(Math.random() * 2147483646) + 1;
+            try {
+                window.localStorage?.setItem(storageKey, String(resolved));
+            } catch (err) {
+                console.warn('[World seed] localStorage write failed.', err);
+            }
+            return resolved;
+        }
 
         TerrainModules['ocean'] = window.OceanTerrain || {
             isBiome: function (ctx) { return ctx.climateNoise <= -0.2; },
@@ -83,7 +110,7 @@
         const DAY_CYCLE_DURATION = DAY_SEGMENTS.sunrise + DAY_SEGMENTS.day + DAY_SEGMENTS.sunset + DAY_SEGMENTS.night;
         let cycleTimeMs = DAY_SEGMENTS.sunrise + DAY_SEGMENTS.day / 2; // Start near noon
         let lastTime = 0; // For delta time calculation
-        let ambientLight, dirLight; // Made global for modification in animate loop
+        let ambientLight, hemiLight, moonLight, dirLight; // global lighting rig
 
         // Three.js specific materials created after textures are loaded
         let materials = {};
@@ -173,6 +200,7 @@ window.perlin = perlinInstance;
         let scene, camera, renderer, perlin, raycaster;
         let worldSeed = 0;
         let lightingSystem = null;
+        const torchLightsByChunk = new Map();
         const frustum = new THREE.Frustum();
         const cameraViewProj = new THREE.Matrix4();
         const chunks = new Map();
@@ -298,7 +326,7 @@ window.perlin = perlinInstance;
             scene.fog = new THREE.Fog(0x87ceeb, 20, 120); 
 
             if (typeof PerlinNoise !== 'undefined') {
-                worldSeed = Math.floor(Math.random() * 2147483647);
+                worldSeed = resolveWorldSeed();
                 perlin = new PerlinNoise(worldSeed);
                 console.info('[World seed]', worldSeed);
                 lightingSystem = SpawnLighting.create ? SpawnLighting.create({ getBlockType, isLiquid, CHUNK_HEIGHT }) : null;
@@ -324,9 +352,14 @@ window.perlin = perlinInstance;
             yawObject.add(playerAvatar);
             applyCameraMode();
 
-            // Lighting (Made global: ambientLight, dirLight)
-            ambientLight = new THREE.AmbientLight(0x606060, 1.2); 
+            // Lighting (premium-feel sky rig + sun/moon + emissive local lights)
+            ambientLight = new THREE.AmbientLight(0x606060, 0.65);
+            hemiLight = new THREE.HemisphereLight(0x9ad8ff, 0x1f1a16, 0.52);
+            moonLight = new THREE.DirectionalLight(0x6f82ff, 0.12);
+            moonLight.position.set(-40, 80, -25);
             scene.add(ambientLight);
+            scene.add(hemiLight);
+            scene.add(moonLight);
             dirLight = new THREE.DirectionalLight(0xffffff, 1.5); 
             dirLight.position.set(50, 100, 50);
             scene.add(dirLight);
@@ -472,12 +505,23 @@ window.perlin = perlinInstance;
             scene.fog.color.copy(skyColor);
 
             const angle = (cycleTimeMs / DAY_CYCLE_DURATION) * (2 * Math.PI);
-            dirLight.intensity = Math.max(0.08, sunFactor + 0.2) * 1.2;
+            const daylight = Math.max(0, sunFactor + 0.1);
+            const nightness = Math.max(0, -sunFactor);
+
+            dirLight.intensity = Math.max(0.04, daylight) * 1.18;
             dirLight.position.x = Math.sin(angle) * 100;
             dirLight.position.y = Math.cos(angle) * 100;
             dirLight.position.z = Math.sin(angle) * 50;
 
-            ambientLight.intensity = Math.max(0.2, (sunFactor + 1) / 2) * 0.9;
+            moonLight.intensity = 0.06 + nightness * 0.34;
+            moonLight.position.x = -Math.sin(angle) * 85;
+            moonLight.position.y = Math.max(8, -Math.cos(angle) * 85);
+            moonLight.position.z = -Math.sin(angle) * 45;
+
+            ambientLight.intensity = 0.26 + daylight * 0.45;
+            hemiLight.intensity = 0.18 + daylight * 0.55;
+            scene.fog.near = 20 + daylight * 8;
+            scene.fog.far = 105 + daylight * 38;
             document.getElementById('time-of-day').textContent = phaseInfo.phase;
         }
 
@@ -2763,7 +2807,33 @@ window.perlin = perlinInstance;
             document.addEventListener('keyup', e => player.keys[e.key.toLowerCase()] = false);
         }
 
-      
+
+        function getTreeSpawnChanceForBiome(biomeName, topY) {
+            const map = worldGenSettings.treeDensityByBiome || {};
+            const baseChance = Number(map[biomeName] ?? map.Plains ?? 0.04);
+            let adjusted = baseChance;
+            if (topY > SEA_LEVEL + 26) adjusted *= 0.7;
+            if (topY < SEA_LEVEL + 2) adjusted *= 0.5;
+            return Math.max(0, Math.min(0.45, adjusted));
+        }
+
+        function hasNearbyTreeTrunk(data, x, z, radius) {
+            for (let ox = -radius; ox <= radius; ox++) {
+                for (let oz = -radius; oz <= radius; oz++) {
+                    if (ox === 0 && oz === 0) continue;
+                    const tx = x + ox;
+                    const tz = z + oz;
+                    if (tx < 0 || tx >= CHUNK_SIZE || tz < 0 || tz >= CHUNK_SIZE) continue;
+                    for (let y = CHUNK_HEIGHT - 2; y >= 1; y--) {
+                        const idx = tx + y * CHUNK_SIZE + tz * CHUNK_SIZE * CHUNK_HEIGHT;
+                        const block = data[idx];
+                        if (block === 5) return true;
+                        if (block !== 0 && block !== 6) break;
+                    }
+                }
+            }
+            return false;
+        }
         
         function generateChunkData(cx, cz) {
              const data = new Array(CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE);
@@ -3031,9 +3101,12 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
                                  const treeNoise = octaveNoise2D(wx, wz, 2, 0.56, 2.0, 0.028, 700, -350) * 0.5 + 0.5;
                                  const scatter = hashRand2D(wx, wz, 99);
                                  const density = treeNoise * 0.6 + scatter * 0.4;
-                                 const chance = 0.4;
-                                 const denseBonus = 0.4;
-                                     const shouldTrySpawn = true;
+                                 const chance = getTreeSpawnChanceForBiome(biome, topY);
+                                 const clusterBonus = Number(worldGenSettings.treeClusterBonus ?? 0.12);
+                                 const nearbyTree = hasNearbyTreeTrunk(data, x, z, 2);
+                                 const spacingGate = Number(worldGenSettings.treeMinSpacingChance ?? 0.65);
+                                 const spawnRoll = hashRand2D(wx, wz, 431);
+                                 const shouldTrySpawn = (spawnRoll < (chance + density * clusterBonus)) && (!nearbyTree || spawnRoll < spacingGate);
 
                                  if (shouldTrySpawn) {
                                      const heightLimit = 4 + Math.floor(hashRand2D(wx, wz, 157) * 3); // 4-6
@@ -3275,7 +3348,35 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
             return [u0, v1, u0, v0, u1, v0, u1, v1];
         }
 
+        function removeTorchLightsForChunk(chunkKey) {
+            const entries = torchLightsByChunk.get(chunkKey);
+            if (!entries) return;
+            for (const light of entries) {
+                scene.remove(light);
+            }
+            torchLightsByChunk.delete(chunkKey);
+        }
+
+        function syncTorchLightsForChunk(group, torchPositions) {
+            if (!scene) return;
+            const chunkKey = `${group.userData.cx},${group.userData.cz}`;
+            removeTorchLightsForChunk(chunkKey);
+            if (!torchPositions || torchPositions.length === 0) return;
+
+            const maxLightsPerChunk = 24;
+            const created = [];
+            for (let i = 0; i < torchPositions.length && created.length < maxLightsPerChunk; i++) {
+                const p = torchPositions[i];
+                const light = new THREE.PointLight(0xffc88a, 0.88, 12, 2);
+                light.position.set(p.x + 0.5, p.y + 0.62, p.z + 0.5);
+                scene.add(light);
+                created.push(light);
+            }
+            if (created.length) torchLightsByChunk.set(chunkKey, created);
+        }
+
         function updateChunkGeometry(group, data) {
+
             const nextHash = computeChunkHash(data);
             if (group.userData.meshHash === nextHash && group.children.length > 0) return;
             group.userData.meshHash = nextHash;
@@ -3287,14 +3388,23 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
             
             const cx = group.userData.cx;
             const cz = group.userData.cz;
+            const torchPositions = [];
 
             const faces = [
-                { name: 'posX', dir: [1,0,0], corners: [[1,1,1],[1,0,1],[1,0,0],[1,1,0]], uv: [0,1, 0,0, 1,0, 1,1] }, // Right
-                { name: 'negX', dir: [-1,0,0], corners: [[0,1,0],[0,0,0],[0,0,1],[0,1,1]], uv: [0,1, 0,0, 1,0, 1,1] }, // Left
-                { name: 'top', dir: [0,1,0], corners: [[0,1,1],[1,1,1],[1,1,0],[0,1,0]], uv: [0,1, 0,0, 1,0, 1,1] }, // Top
-                { name: 'bottom', dir: [0,-1,0], corners: [[0,0,0],[1,0,0],[1,0,1],[0,0,1]], uv: [0,1, 0,0, 1,0, 1,1] } ,// Bottom
-                { name: 'posZ', dir: [0,0,1], corners: [[0,1,1],[0,0,1],[1,0,1],[1,1,1]], uv: [0,1, 0,0, 1,0, 1,1] }, // Back
-                { name: 'negZ', dir: [0,0,-1], corners: [[1,1,0],[1,0,0],[0,0,0],[0,1,0]], uv: [0,1, 0,0, 1,0, 1,1] } // Front
+                { name: 'posX', dir: [1,0,0], corners: [[1,1,1],[1,0,1],[1,0,0],[1,1,0]], uv: [0,1, 0,0, 1,0, 1,1] },
+                { name: 'negX', dir: [-1,0,0], corners: [[0,1,0],[0,0,0],[0,0,1],[0,1,1]], uv: [0,1, 0,0, 1,0, 1,1] },
+                { name: 'top', dir: [0,1,0], corners: [[0,1,1],[1,1,1],[1,1,0],[0,1,0]], uv: [0,1, 0,0, 1,0, 1,1] },
+                { name: 'bottom', dir: [0,-1,0], corners: [[0,0,0],[1,0,0],[1,0,1],[0,0,1]], uv: [0,1, 0,0, 1,0, 1,1] },
+                { name: 'posZ', dir: [0,0,1], corners: [[0,1,1],[0,0,1],[1,0,1],[1,1,1]], uv: [0,1, 0,0, 1,0, 1,1] },
+                { name: 'negZ', dir: [0,0,-1], corners: [[1,1,0],[1,0,0],[0,0,0],[0,1,0]], uv: [0,1, 0,0, 1,0, 1,1] }
+            ];
+            const torchFaces = [
+                { name: 'posX', dir: [1,0,0], corners: [[0.5625,0.8,0.5625],[0.5625,0.05,0.5625],[0.5625,0.05,0.4375],[0.5625,0.8,0.4375]], uv: [0,1,0,0,1,0,1,1] },
+                { name: 'negX', dir: [-1,0,0], corners: [[0.4375,0.8,0.4375],[0.4375,0.05,0.4375],[0.4375,0.05,0.5625],[0.4375,0.8,0.5625]], uv: [0,1,0,0,1,0,1,1] },
+                { name: 'top', dir: [0,1,0], corners: [[0.4375,0.8,0.5625],[0.5625,0.8,0.5625],[0.5625,0.8,0.4375],[0.4375,0.8,0.4375]], uv: [0,1,0,0,1,0,1,1] },
+                { name: 'bottom', dir: [0,-1,0], corners: [[0.4375,0.05,0.4375],[0.5625,0.05,0.4375],[0.5625,0.05,0.5625],[0.4375,0.05,0.5625]], uv: [0,1,0,0,1,0,1,1] },
+                { name: 'posZ', dir: [0,0,1], corners: [[0.4375,0.8,0.5625],[0.4375,0.05,0.5625],[0.5625,0.05,0.5625],[0.5625,0.8,0.5625]], uv: [0,1,0,0,1,0,1,1] },
+                { name: 'negZ', dir: [0,0,-1], corners: [[0.5625,0.8,0.4375],[0.5625,0.05,0.4375],[0.4375,0.05,0.4375],[0.4375,0.8,0.4375]], uv: [0,1,0,0,1,0,1,1] }
             ];
 
             const get = (x,y,z) => {
@@ -3313,15 +3423,19 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
                         if(id===0) continue;
                         
                         const mat = blockMaterials[id];
-                        const isTrans = mat.transparent || (mat.textured && mat.textureKey === 'LEAVES'); 
-                        
+                        const isTorch = id === 22;
+                        if (isTorch) torchPositions.push({ x: x + cx*16, y, z: z + cz*16 });
+                        const isTrans = mat.transparent || (mat.textured && mat.textureKey === 'LEAVES');
+                        const activeFaces = isTorch ? torchFaces : faces;
+
                         for(let i=0; i<6; i++){
-                            const f = faces[i];
+                            const f = activeFaces[i];
                             const nid = get(x+f.dir[0], y+f.dir[1], z+f.dir[2]);
                             const neighborMat = blockMaterials[nid];
                             
                             let draw = false;
-                            if (nid === 0) draw = true;
+                            if (isTorch) draw = true;
+                            else if (nid === 0) draw = true;
                             else if (!isTrans && neighborMat?.transparent) draw = true;
                             else if (isTrans && nid !== id) draw = true;
 
@@ -3388,6 +3502,8 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
                 mesh.frustumCulled = true;
                 group.add(mesh);
             }
+
+            syncTorchLightsForChunk(group, torchPositions);
         }
 
         const SPAWN_MIN_LIGHT_LEVEL = 13;
