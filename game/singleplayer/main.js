@@ -2305,14 +2305,30 @@ window.perlin = perlinInstance;
 
         function setupFirstPersonHandOverlay() {
             if (firstPersonHandEl) return;
-            const hand = document.createElement('img');
+            const hand = document.createElement('div');
             hand.id = 'firstperson-hand';
-            hand.alt = 'wield hand';
-            hand.draggable = false;
-            hand.src = `${window.SingleplayerConfig?.REPO_BASE_PREFIX || ''}/game/singleplayer/assets/player/wieldhand.png`;
 
             const held = document.createElement('div');
             held.id = 'firstperson-held-item';
+
+            const base = `${window.SingleplayerConfig?.REPO_BASE_PREFIX || ''}/game/singleplayer/assets/player`;
+            const wieldPath = `${base}/wieldhand.png`;
+            const skinPath = `${base}/character.png`;
+
+            const probe = new Image();
+            probe.onload = () => {
+                hand.style.backgroundImage = `url('${wieldPath}')`;
+                hand.style.backgroundSize = '100% 100%';
+                hand.style.backgroundPosition = 'center';
+            };
+            probe.onerror = () => {
+                // Minetest-like fallback: use right-arm section from skin atlas as wield hand.
+                hand.style.backgroundImage = `url('${skinPath}')`;
+                hand.style.backgroundSize = '64px 64px';
+                hand.style.backgroundPosition = '-44px -20px';
+                hand.classList.add('fallback');
+            };
+            probe.src = wieldPath;
 
             document.body.appendChild(held);
             document.body.appendChild(hand);
