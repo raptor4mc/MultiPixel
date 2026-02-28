@@ -5,6 +5,29 @@
         return Math.max(1, Math.min(64, parsed));
     }
 
+    function resolveItemId(rawToken, ctx) {
+        if (!rawToken) return null;
+        const numeric = Number.parseInt(rawToken, 10);
+        if (Number.isFinite(numeric)) return numeric;
+
+        const token = String(rawToken).toLowerCase().replace(/[^a-z0-9]/g, '');
+        const aliases = {
+            chest: 82,
+        };
+        if (Object.prototype.hasOwnProperty.call(aliases, token)) return aliases[token];
+
+        if (ctx.getBlockById) {
+            for (let i = 1; i <= 256; i++) {
+                const def = ctx.getBlockById(i);
+                if (!def || !def.name) continue;
+                const normalizedName = String(def.name).toLowerCase().replace(/[^a-z0-9]/g, '');
+                if (normalizedName === token) return i;
+            }
+        }
+
+        return null;
+    }
+
     function execute(rawInput, ctx) {
         if (!rawInput || rawInput[0] !== '/') return { handled: false };
 
@@ -12,11 +35,11 @@
         const command = (parts[0] || '').toLowerCase();
 
         if (command === '/give') {
-            const id = Number.parseInt(parts[1], 10);
+            const id = resolveItemId(parts[1], ctx);
             const amount = normalizeAmount(parts[2]);
 
             if (!Number.isFinite(id)) {
-                return { handled: true, ok: false, message: 'Usage: /give <itemId> <amount>' };
+                return { handled: true, ok: false, message: 'Usage: /give <itemId|itemName> <amount>' };
             }
 
             const itemDef = ctx.getBlockById ? ctx.getBlockById(id) : null;

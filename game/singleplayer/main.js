@@ -2262,7 +2262,7 @@ window.perlin = perlinInstance;
                     (tex) => {
                         tex.magFilter = THREE.NearestFilter;
                         tex.minFilter = THREE.NearestFilter;
-                        tex.flipY = true;
+                        tex.flipY = false;
                         steveSkinTexture = tex;
                         steveSkinReady = true;
                         resolve(true);
@@ -3118,6 +3118,30 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
             return 'COLORED_OPAQUE';
         }
 
+        function getFaceName(faceDir) {
+            if (faceDir[1] === 1) return 'top';
+            if (faceDir[1] === -1) return 'bottom';
+            if (faceDir[0] === 1) return 'posX';
+            if (faceDir[0] === -1) return 'negX';
+            if (faceDir[2] === 1) return 'posZ';
+            if (faceDir[2] === -1) return 'negZ';
+            return null;
+        }
+
+        function getFaceUVs(blockId, faceName, fallbackUv) {
+            const mat = blockMaterials[blockId];
+            const rect = mat?.textureUvByFace?.[faceName];
+            if (!rect) return fallbackUv;
+
+            const atlas = Math.max(1, Number(mat.uvAtlasSize) || 64);
+            const [x, y, w, h] = rect;
+            const u0 = x / atlas;
+            const v0 = 1 - ((y + h) / atlas);
+            const u1 = (x + w) / atlas;
+            const v1 = 1 - (y / atlas);
+            return [u0, v1, u0, v0, u1, v0, u1, v1];
+        }
+
         function updateChunkGeometry(group, data) {
             const nextHash = computeChunkHash(data);
             if (group.userData.meshHash === nextHash && group.children.length > 0) return;
@@ -3132,12 +3156,12 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
             const cz = group.userData.cz;
 
             const faces = [
-                { dir: [1,0,0], corners: [[1,1,1],[1,0,1],[1,0,0],[1,1,0]], uv: [0,1, 0,0, 1,0, 1,1] }, // Right
-                { dir: [-1,0,0], corners: [[0,1,0],[0,0,0],[0,0,1],[0,1,1]], uv: [0,1, 0,0, 1,0, 1,1] }, // Left
-                { dir: [0,1,0], corners: [[0,1,1],[1,1,1],[1,1,0],[0,1,0]], uv: [0,1, 0,0, 1,0, 1,1] }, // Top
-                { dir: [0,-1,0], corners: [[0,0,0],[1,0,0],[1,0,1],[0,0,1]], uv: [0,1, 0,0, 1,0, 1,1] } ,// Bottom
-                { dir: [0,0,1], corners: [[0,1,1],[0,0,1],[1,0,1],[1,1,1]], uv: [0,1, 0,0, 1,0, 1,1] }, // Back
-                { dir: [0,0,-1], corners: [[1,1,0],[1,0,0],[0,0,0],[0,1,0]], uv: [0,1, 0,0, 1,0, 1,1] } // Front
+                { name: 'posX', dir: [1,0,0], corners: [[1,1,1],[1,0,1],[1,0,0],[1,1,0]], uv: [0,1, 0,0, 1,0, 1,1] }, // Right
+                { name: 'negX', dir: [-1,0,0], corners: [[0,1,0],[0,0,0],[0,0,1],[0,1,1]], uv: [0,1, 0,0, 1,0, 1,1] }, // Left
+                { name: 'top', dir: [0,1,0], corners: [[0,1,1],[1,1,1],[1,1,0],[0,1,0]], uv: [0,1, 0,0, 1,0, 1,1] }, // Top
+                { name: 'bottom', dir: [0,-1,0], corners: [[0,0,0],[1,0,0],[1,0,1],[0,0,1]], uv: [0,1, 0,0, 1,0, 1,1] } ,// Bottom
+                { name: 'posZ', dir: [0,0,1], corners: [[0,1,1],[0,0,1],[1,0,1],[1,1,1]], uv: [0,1, 0,0, 1,0, 1,1] }, // Back
+                { name: 'negZ', dir: [0,0,-1], corners: [[1,1,0],[1,0,0],[0,0,0],[0,1,0]], uv: [0,1, 0,0, 1,0, 1,1] } // Front
             ];
 
             const get = (x,y,z) => {
@@ -3178,6 +3202,8 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
                                 
                                 const wx = x + cx*16;
                                 const wz = z + cz*16;
+                                const faceName = f.name || getFaceName(f.dir);
+                                const uvValues = getFaceUVs(id, faceName, f.uv);
                                 
                                 const triOrder = [0, 1, 2, 0, 2, 3];
                                 for (const ti of triOrder) {
@@ -3185,7 +3211,7 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
                                     gd.pos.push(wx + c[0], y + c[1], wz + c[2]);
                                     gd.norm.push(f.dir[0], f.dir[1], f.dir[2]);
                                     if (materials[materialKey] && materials[materialKey].map) {
-                                        gd.uv.push(f.uv[ti * 2], f.uv[ti * 2 + 1]);
+                                        gd.uv.push(uvValues[ti * 2], uvValues[ti * 2 + 1]);
                                     } else {
                                         const color = blockMaterials[id].color || 0xd1c17e;
                                         const cc = new THREE.Color(color);
