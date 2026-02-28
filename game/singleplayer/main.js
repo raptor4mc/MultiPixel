@@ -180,6 +180,7 @@ window.perlin = perlinInstance;
         let playerAvatar = null;
         let playerAvatarParts = null;
         let steveSkinTexture = null;
+        let steveSkinFailed = false;
         let firstPersonHandEl = null;
         let firstPersonHeldItemEl = null;
         let inventorySkinRigEl = null;
@@ -2246,13 +2247,27 @@ window.perlin = perlinInstance;
         }
 
         function getSteveSkinTexture() {
-            if (!steveSkinTexture) {
+            if (!steveSkinTexture && !steveSkinFailed) {
                 const skinPath = `${window.SingleplayerConfig?.REPO_BASE_PREFIX || ''}/game/singleplayer/assets/player/character.png`;
-                const tex = new THREE.TextureLoader().load(skinPath);
-                tex.magFilter = THREE.NearestFilter;
-                tex.minFilter = THREE.NearestFilter;
-                tex.flipY = true;
-                steveSkinTexture = tex;
+                const loader = new THREE.TextureLoader();
+                steveSkinTexture = loader.load(
+                    skinPath,
+                    (tex) => {
+                        tex.magFilter = THREE.NearestFilter;
+                        tex.minFilter = THREE.NearestFilter;
+                        tex.flipY = true;
+                    },
+                    undefined,
+                    () => {
+                        steveSkinFailed = true;
+                        steveSkinTexture = null;
+                    }
+                );
+                if (steveSkinTexture) {
+                    steveSkinTexture.magFilter = THREE.NearestFilter;
+                    steveSkinTexture.minFilter = THREE.NearestFilter;
+                    steveSkinTexture.flipY = true;
+                }
             }
             return steveSkinTexture;
         }
@@ -2260,6 +2275,7 @@ window.perlin = perlinInstance;
         function createSkinFaceTexture(rect, atlas = 64) {
             const [x, y, w, h] = rect;
             const src = getSteveSkinTexture();
+            if (!src) return null;
             const tex = src.clone();
             tex.needsUpdate = true;
             tex.magFilter = THREE.NearestFilter;
@@ -2298,7 +2314,13 @@ window.perlin = perlinInstance;
             const mats = [];
             for (let i = 0; i < 6; i++) {
                 const faceTex = createSkinFaceTexture(faceRects[i]);
-                mats.push(new THREE.MeshStandardMaterial({ map: faceTex, transparent: true, alphaTest: 0.02, roughness: 1, metalness: 0 }));
+                mats.push(new THREE.MeshStandardMaterial({
+                    map: faceTex || null,
+                    color: faceTex ? 0xffffff : 0x7aa2ff,
+                    transparent: false,
+                    roughness: 1,
+                    metalness: 0
+                }));
             }
             return new THREE.Mesh(new THREE.BoxGeometry(dim[0], dim[1], dim[2]), mats);
         }
@@ -2465,16 +2487,22 @@ window.perlin = perlinInstance;
                 camera.position.set(0, 0, 0);
                 camera.rotation.y = 0;
                 if (playerAvatar) playerAvatar.visible = false;
+                if (firstPersonHandEl) firstPersonHandEl.style.display = 'block';
+                if (firstPersonHeldItemEl) firstPersonHeldItemEl.style.display = 'block';
                 showGameMessage('First-person view enabled');
             } else if (cameraViewMode === 1) {
                 camera.position.set(0, 1.2, -2.6);
                 camera.rotation.y = Math.PI;
                 if (playerAvatar) playerAvatar.visible = true;
+                if (firstPersonHandEl) firstPersonHandEl.style.display = 'none';
+                if (firstPersonHeldItemEl) firstPersonHeldItemEl.style.display = 'none';
                 showGameMessage('Second-person view enabled');
             } else {
                 camera.position.set(0, 0.1, 3.6);
                 camera.rotation.y = 0;
                 if (playerAvatar) playerAvatar.visible = true;
+                if (firstPersonHandEl) firstPersonHandEl.style.display = 'none';
+                if (firstPersonHeldItemEl) firstPersonHeldItemEl.style.display = 'none';
                 showGameMessage('Third-person view enabled');
             }
         }

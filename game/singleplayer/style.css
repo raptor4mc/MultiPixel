@@ -522,6 +522,7 @@ body {
 .chat-info { color: #9cc3ff; }
 
 #firstperson-hand {
+    display: none;
     position: fixed;
     right: 3vw;
     bottom: 2vh;
@@ -540,6 +541,7 @@ body {
 }
 
 #firstperson-held-item {
+    display: none;
     position: fixed;
     right: calc(3vw + 120px);
     bottom: 13vh;
