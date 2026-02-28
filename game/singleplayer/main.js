@@ -32,7 +32,7 @@
         const BlockBreakableSystem = window.BlockBreakableSystem || {};
         const SpawnLighting = window.SpawnLighting || {};
 
-        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-28-02';
+        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-28-03';
         console.info('[Singleplayer build]', window.__SINGLEPLAYER_BUILD__);
 
         const TerrainModules = {};
@@ -163,10 +163,15 @@ window.perlin = perlinInstance;
 
         // Mining / breaking state
         const BREAKING_TEXTURE_BASE = `${window.SingleplayerConfig?.REPO_BASE_PREFIX || '/MultiPixel'}/game/singleplayer/assets/breaking`;
-        let miningState = { active: false, key: null, blockPos: null, targetType: 0, elapsedMs: 0, neededMs: 0, missMs: 0, dropOnBreak: true };
+        const BREAKING_PARTICLE_BASE = `${BREAKING_TEXTURE_BASE}/particles`;
+        let miningState = { active: false, key: null, blockPos: null, targetType: 0, elapsedMs: 0, neededMs: 0, missMs: 0, dropOnBreak: true, particleMs: 0 };
         let isLeftMouseDown = false;
         const breakingStageTextures = new Array(10).fill(null);
         let breakingCrackMesh = null;
+        let breakParticleTexture = null;
+        let lavaParticleTexture = null;
+        const activeWorldParticles = [];
+        let lavaParticleScanMs = 0;
         let lastPhysicsTickMs = 0;
         const dirtyChunkKeys = new Set();
         let physicsCursorY = 1;
@@ -1362,6 +1367,112 @@ window.perlin = perlinInstance;
                     breakingStageTextures[i] = tex;
                 });
             }
+            loader.load(`${BREAKING_PARTICLE_BASE}/break_particle.png`, (tex) => {
+                tex.magFilter = THREE.NearestFilter;
+                tex.minFilter = THREE.NearestFilter;
+                breakParticleTexture = tex;
+            }, undefined, () => {
+                breakParticleTexture = null;
+            });
+            loader.load(`${BREAKING_PARTICLE_BASE}/lava.png`, (tex) => {
+                tex.magFilter = THREE.NearestFilter;
+                tex.minFilter = THREE.NearestFilter;
+                lavaParticleTexture = tex;
+            }, undefined, () => {
+                lavaParticleTexture = null;
+            });
+        }
+
+        function spawnWorldParticle(kind, position, velocity, lifeMs, scale = 0.22) {
+            if (!scene) return;
+            const tex = kind === 'lava' ? lavaParticleTexture : breakParticleTexture;
+            const mat = new THREE.SpriteMaterial({
+                map: tex || null,
+                color: kind === 'lava' ? 0xffa347 : 0xffffff,
+                transparent: true,
+                opacity: kind === 'lava' ? 0.92 : 0.95,
+                depthWrite: false,
+            });
+            const sprite = new THREE.Sprite(mat);
+            sprite.scale.set(scale, scale, scale);
+            sprite.position.copy(position);
+            scene.add(sprite);
+            activeWorldParticles.push({
+                sprite,
+                vel: velocity.clone(),
+                ageMs: 0,
+                lifeMs,
+                gravity: kind === 'lava' ? -3.2 : -7.2,
+                drag: kind === 'lava' ? 0.9 : 0.82,
+            });
+        }
+
+        function emitBreakParticles(wx, wy, wz, count = 8, burst = false) {
+            for (let i = 0; i < count; i++) {
+                const px = wx + 0.2 + Math.random() * 0.6;
+                const py = wy + 0.2 + Math.random() * 0.6;
+                const pz = wz + 0.2 + Math.random() * 0.6;
+                const speed = burst ? (1.4 + Math.random() * 1.7) : (0.6 + Math.random() * 0.9);
+                const vel = new THREE.Vector3((Math.random() - 0.5) * speed, (Math.random() * 0.9 + 0.25) * speed, (Math.random() - 0.5) * speed);
+                const life = burst ? (420 + Math.random() * 300) : (230 + Math.random() * 180);
+                spawnWorldParticle('break', new THREE.Vector3(px, py, pz), vel, life, burst ? 0.16 : 0.13);
+            }
+        }
+
+        function maybeSpawnLavaParticles(deltaMs) {
+            lavaParticleScanMs += deltaMs;
+            if (lavaParticleScanMs < 120) return;
+            lavaParticleScanMs = 0;
+
+            const baseX = Math.floor(yawObject.position.x);
+            const baseY = Math.floor(yawObject.position.y);
+            const baseZ = Math.floor(yawObject.position.z);
+
+            const samples = 16;
+            for (let i = 0; i < samples; i++) {
+                const wx = baseX + Math.floor((Math.random() - 0.5) * 20);
+                const wy = Math.max(2, Math.min(CHUNK_HEIGHT - 3, baseY + Math.floor((Math.random() - 0.5) * 10)));
+                const wz = baseZ + Math.floor((Math.random() - 0.5) * 20);
+                const t = getBlockType(wx, wy, wz);
+                const isLava = t === 33 || (t >= 60 && t <= 66);
+                if (!isLava) continue;
+
+                const above = getBlockType(wx, wy + 1, wz);
+                const below = getBlockType(wx, wy - 1, wz);
+                const airAbove = above === 0;
+                const airBelow = below === 0;
+
+                if (airAbove && Math.random() < 0.2) {
+                    const pos = new THREE.Vector3(wx + 0.5 + (Math.random() - 0.5) * 0.26, wy + 1.02, wz + 0.5 + (Math.random() - 0.5) * 0.26);
+                    const vel = new THREE.Vector3((Math.random() - 0.5) * 0.35, 1.1 + Math.random() * 1.0, (Math.random() - 0.5) * 0.35);
+                    spawnWorldParticle('lava', pos, vel, 620 + Math.random() * 420, 0.18 + Math.random() * 0.1);
+                }
+
+                if (airBelow && Math.random() < 0.5) {
+                    const pos = new THREE.Vector3(wx + 0.5 + (Math.random() - 0.5) * 0.18, wy - 0.05, wz + 0.5 + (Math.random() - 0.5) * 0.18);
+                    const vel = new THREE.Vector3((Math.random() - 0.5) * 0.08, -(1.0 + Math.random() * 1.1), (Math.random() - 0.5) * 0.08);
+                    spawnWorldParticle('lava', pos, vel, 520 + Math.random() * 320, 0.14 + Math.random() * 0.08);
+                }
+            }
+        }
+
+        function updateWorldParticles(deltaMs) {
+            if (!activeWorldParticles.length) return;
+            const dt = Math.min(0.05, Math.max(0, deltaMs / 1000));
+            for (let i = activeWorldParticles.length - 1; i >= 0; i--) {
+                const p = activeWorldParticles[i];
+                p.ageMs += deltaMs;
+                p.vel.y += p.gravity * dt;
+                p.vel.multiplyScalar(Math.max(0.01, 1 - (1 - p.drag) * dt * 18));
+                p.sprite.position.addScaledVector(p.vel, dt);
+                const fade = 1 - (p.ageMs / p.lifeMs);
+                p.sprite.material.opacity = Math.max(0, fade);
+                if (p.ageMs >= p.lifeMs) {
+                    scene.remove(p.sprite);
+                    p.sprite.material.dispose();
+                    activeWorldParticles.splice(i, 1);
+                }
+            }
         }
 
         function ensureBreakingCrackMesh() {
@@ -1431,6 +1542,7 @@ window.perlin = perlinInstance;
                 neededMs,
                 missMs: 0,
                 dropOnBreak: miningInfo.dropOnBreak !== false,
+                particleMs: 0,
             };
             return true;
         }
@@ -1680,6 +1792,7 @@ window.perlin = perlinInstance;
                     if (drop && drop.id > 0 && drop.count > 0) addToInventory(drop.id, drop.count);
                 }
                 chunkData[index] = 0;
+                emitBreakParticles(wx, wy, wz, 14, true);
             } else {
                
                 if (oldType !== 0 && oldType !== 4) return false; 
@@ -3616,6 +3729,14 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
             }
 
             miningState.elapsedMs += deltaMs;
+            miningState.particleMs = (miningState.particleMs || 0) + deltaMs;
+            if (miningState.particleMs >= 95 && miningState.blockPos) {
+                const wx = Math.floor(miningState.blockPos.x);
+                const wy = Math.floor(miningState.blockPos.y);
+                const wz = Math.floor(miningState.blockPos.z);
+                emitBreakParticles(wx, wy, wz, 3, false);
+                miningState.particleMs = 0;
+            }
             updateBreakingOverlay();
 
             if (miningState.elapsedMs >= miningState.neededMs) {
@@ -3641,6 +3762,8 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
             if(!isInventoryOpen) {
                 updatePlayerMovement();
                 updateMining(delta);
+                maybeSpawnLavaParticles(delta);
+                updateWorldParticles(delta);
                 applyBlockPhysics(time);
                 updateChunkFrustumCulling();
                 updateGnomes(time);
@@ -3653,6 +3776,8 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
                 }
             } else {
                 updateFirstPersonHand(time);
+                maybeSpawnLavaParticles(delta);
+                updateWorldParticles(delta);
                 miningState.active = false;
                 updateBreakingOverlay();
             }
