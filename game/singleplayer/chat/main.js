@@ -1,19 +1,55 @@
 (function () {
     const CENSOR_WORDS_PATH = './chat/cencor/words.txt';
+    const FEED_COLLAPSE_MS = 4200;
+
     let root = null;
+    let feedEl = null;
     let logEl = null;
     let inputEl = null;
+    let closeBtn = null;
     let isOpen = false;
     let context = null;
     let censorWords = [];
+    let feedMessages = [];
+    let collapseTimer = null;
 
-    function appendMessage(text, type) {
+    function appendToLog(text, type) {
         if (!logEl) return;
         const row = document.createElement('div');
         row.className = `chat-row ${type || 'chat-info'}`;
         row.textContent = text;
         logEl.appendChild(row);
         logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function renderFeed(compact = false) {
+        if (!feedEl) return;
+        const visibleCount = compact ? 1 : 2;
+        const visible = feedMessages.slice(-visibleCount);
+        feedEl.innerHTML = '';
+        visible.forEach((entry) => {
+            const line = document.createElement('div');
+            line.className = `chat-row ${entry.type || 'chat-info'}`;
+            line.textContent = entry.text;
+            feedEl.appendChild(line);
+        });
+    }
+
+    function scheduleFeedCollapse() {
+        if (collapseTimer) clearTimeout(collapseTimer);
+        renderFeed(false);
+        collapseTimer = setTimeout(() => {
+            if (isOpen) return;
+            renderFeed(true);
+        }, FEED_COLLAPSE_MS);
+    }
+
+    function pushMessage(text, type) {
+        const entry = { text, type: type || 'chat-info', at: Date.now() };
+        feedMessages.push(entry);
+        if (feedMessages.length > 40) feedMessages = feedMessages.slice(-40);
+        appendToLog(text, type);
+        scheduleFeedCollapse();
     }
 
     async function loadCensorWords() {
@@ -39,6 +75,8 @@
         if (!root || isOpen) return;
         isOpen = true;
         root.classList.add('open');
+        if (collapseTimer) clearTimeout(collapseTimer);
+        renderFeed(false);
         if (context && context.onOpen) context.onOpen();
         setTimeout(() => {
             if (inputEl) inputEl.focus();
@@ -50,6 +88,7 @@
         isOpen = false;
         root.classList.remove('open');
         if (context && context.onClose) context.onClose();
+        scheduleFeedCollapse();
     }
 
     function toggle() {
@@ -68,7 +107,8 @@
         if (rawInput[0] === '/' && window.SingleplayerChatCommands?.execute) {
             const result = window.SingleplayerChatCommands.execute(rawInput, context || {});
             if (result && result.handled) {
-                appendMessage(result.message || rawInput, result.ok ? 'chat-system-ok' : 'chat-system-error');
+                const msg = result.message || rawInput;
+                pushMessage(msg, result.ok ? 'chat-system-ok' : 'chat-system-error');
                 if (context?.showGameMessage && result.message) context.showGameMessage(result.message);
                 inputEl.value = '';
                 return;
@@ -78,13 +118,13 @@
         const censored = hasCensoredWord(rawInput);
         if (censored) {
             const warning = `Warning: "${censored}" is blocked in chat.`;
-            appendMessage(warning, 'chat-system-error');
+            pushMessage(warning, 'chat-system-error');
             if (context?.showGameMessage) context.showGameMessage(warning);
             inputEl.value = '';
             return;
         }
 
-        appendMessage(`You: ${rawInput}`, 'chat-player');
+        pushMessage(`You: ${rawInput}`, 'chat-player');
         inputEl.value = '';
     }
 
@@ -94,13 +134,31 @@
         root = document.createElement('div');
         root.id = 'chat-panel';
         root.innerHTML = `
-            <div id="chat-log"></div>
-            <input id="chat-input" type="text" maxlength="180" placeholder="Type message or /give <id> <amount>" autocomplete="off" />
+            <div id="chat-feed"></div>
+            <div id="chat-compose-wrap">
+                <button id="chat-close-btn" type="button" aria-label="Close chat">
+                    <img id="chat-close-icon" alt="close chat" draggable="false" />
+                </button>
+                <div id="chat-log"></div>
+                <input id="chat-input" type="text" maxlength="180" placeholder="Type message or /give <id> <amount>" autocomplete="off" />
+            </div>
         `;
         document.body.appendChild(root);
 
+        feedEl = document.getElementById('chat-feed');
         logEl = document.getElementById('chat-log');
         inputEl = document.getElementById('chat-input');
+        closeBtn = document.getElementById('chat-close-btn');
+        const closeIcon = document.getElementById('chat-close-icon');
+        const mobileAssetBase = context?.mobileAssetBase || './assets/mobile';
+        if (closeIcon) closeIcon.src = `${mobileAssetBase}/cdb_clear.png`;
+
+        if (closeBtn) {
+            closeBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                close();
+            });
+        }
 
         inputEl.addEventListener('keydown', (e) => {
             e.stopPropagation();
@@ -120,7 +178,7 @@
         context = initContext || {};
         buildUI();
         loadCensorWords();
-        appendMessage('Chat ready. Use /give <id> <amount>.', 'chat-info');
+        pushMessage('Chat ready. Use /give <id> <amount>.', 'chat-info');
     }
 
     window.SingleplayerChat = {
