@@ -321,6 +321,7 @@ window.perlin = perlinInstance;
             setupKeyboardControls();
             setupBlockInteraction();
             setupInputModeChooser();
+            initChatSystem();
             setInitialPlayerPosition();
             
           
@@ -506,6 +507,29 @@ window.perlin = perlinInstance;
             el.textContent = msg;
             el.style.opacity = 1;
             setTimeout(() => { el.style.opacity = 0; }, 2000);
+        }
+
+        function initChatSystem() {
+            if (!window.SingleplayerChat || !window.SingleplayerChat.init) return;
+
+            window.SingleplayerChat.init({
+                showGameMessage,
+                addToInventory,
+                getBlockById: (id) => blockMaterials[id] || null,
+                onOpen: () => {
+                    player.canMove = false;
+                    player.keys = {};
+                    if (document.pointerLockElement) document.exitPointerLock();
+                },
+                onClose: () => {
+                    if (isInventoryOpen) return;
+                    player.canMove = true;
+                    if (!mobileControls.enabled) {
+                        const el = document.body;
+                        if (document.pointerLockElement !== el) el.requestPointerLock();
+                    }
+                }
+            });
         }
 
      
@@ -1884,6 +1908,7 @@ window.perlin = perlinInstance;
             const invBtn = document.getElementById('mobile-inventory-btn');
             const fastBtn = document.getElementById('mobile-fast-btn');
             const camBtn = document.getElementById('mobile-camera-btn');
+            const chatBtn = document.getElementById('mobile-chat-btn');
 
             if (!controlsEl || !joyWrap || !joyBg || !joyCenter || !jumpBtn || !invBtn || !fastBtn) return;
 
@@ -1894,6 +1919,13 @@ window.perlin = perlinInstance;
             invBtn.src = `${MOBILE_ASSET_BASE}/inventory_btn.png`;
             fastBtn.src = `${MOBILE_ASSET_BASE}/fast_btn.png`;
             if (camBtn) camBtn.src = `${MOBILE_ASSET_BASE}/camera_btn.png`;
+            if (chatBtn) {
+                chatBtn.src = `${MOBILE_ASSET_BASE}/chat_btn.png`;
+                chatBtn.onerror = () => {
+                    chatBtn.onerror = null;
+                    chatBtn.src = `${MOBILE_ASSET_BASE}/inventory_btn.png`;
+                };
+            }
             document.getElementById('instructions').style.opacity = 0;
             player.canMove = true;
 
@@ -1958,8 +1990,12 @@ window.perlin = perlinInstance;
                 e.preventDefault();
                 toggleCameraViewMode();
             });
+            if (chatBtn) chatBtn.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                window.SingleplayerChat?.toggle?.();
+            });
 
-            const mobileControlTargets = new Set([joyBg, jumpBtn, invBtn, fastBtn, camBtn]);
+            const mobileControlTargets = new Set([joyBg, jumpBtn, invBtn, fastBtn, camBtn, chatBtn]);
             window.addEventListener('pointerdown', (e) => {
                 if (!mobileControls.enabled || !player.canMove || isInventoryOpen) return;
                 if (mobileControlTargets.has(e.target)) return;
@@ -2124,6 +2160,14 @@ window.perlin = perlinInstance;
                 }
                 if (k === 'c') {
                     toggleCameraViewMode();
+                    return;
+                }
+                if (k === 't') {
+                    e.preventDefault();
+                    window.SingleplayerChat?.toggle?.();
+                    return;
+                }
+                if (window.SingleplayerChat?.isOpen?.()) {
                     return;
                 }
                 if (!isInventoryOpen) {
