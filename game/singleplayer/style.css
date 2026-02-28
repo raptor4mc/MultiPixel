@@ -520,3 +520,62 @@ body {
 .chat-system-error { color: #ff7676; }
 .chat-player { color: #f1f1f1; }
 .chat-info { color: #9cc3ff; }
+
+#firstperson-hand {
+    position: fixed;
+    right: 3vw;
+    bottom: 2vh;
+    width: min(28vw, 280px);
+    image-rendering: pixelated;
+    z-index: 240;
+    pointer-events: none;
+    transform-origin: 85% 80%;
+}
+
+#firstperson-held-item {
+    position: fixed;
+    right: calc(3vw + 120px);
+    bottom: 13vh;
+    width: 56px;
+    height: 56px;
+    z-index: 241;
+    pointer-events: none;
+}
+
+.fp-held-icon {
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+}
+
+.fp-held-color {
+    width: 100%;
+    height: 100%;
+    border: 2px solid rgba(0,0,0,0.4);
+}
+
+#inventory-skin-preview {
+    overflow: visible;
+}
+
+#inventory-skin-rig {
+    position: relative;
+    width: 74px;
+    height: 90px;
+    margin-top: 2px;
+}
+
+.inv-skin-part {
+    position: absolute;
+    image-rendering: pixelated;
+    background-repeat: no-repeat;
+    background-size: 64px 64px;
+    transform-origin: top center;
+}
+
+#inv-skin-head { width: 16px; height: 16px; left: 29px; top: 0; }
+#inv-skin-body { width: 16px; height: 24px; left: 29px; top: 16px; }
+#inv-skin-arm-left { width: 8px; height: 24px; left: 21px; top: 16px; }
+#inv-skin-arm-right { width: 8px; height: 24px; left: 45px; top: 16px; }
+#inv-skin-leg-left { width: 8px; height: 24px; left: 29px; top: 40px; }
+#inv-skin-leg-right { width: 8px; height: 24px; left: 37px; top: 40px; }

@@ -179,6 +179,10 @@ window.perlin = perlinInstance;
         let cameraViewMode = 0; // 0=first, 1=second, 2=third
         let playerAvatar = null;
         let playerAvatarParts = null;
+        let steveSkinTexture = null;
+        let firstPersonHandEl = null;
+        let firstPersonHeldItemEl = null;
+        let inventorySkinRigEl = null;
         let skinSystem = null;
         let iglooStructureDef = null;
         const gnomeEntities = [];
@@ -365,6 +369,8 @@ window.perlin = perlinInstance;
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(window.devicePixelRatio);
             document.body.appendChild(renderer.domElement);
+            setupFirstPersonHandOverlay();
+            setupInventorySkinRig();
             
             window.addEventListener('resize', onWindowResize);
             document.addEventListener('contextmenu', e => e.preventDefault()); 
@@ -2239,37 +2245,199 @@ window.perlin = perlinInstance;
             };
         }
 
+        function setBoxFaceUV(geometry, faceRects, atlasW = 64, atlasH = 64) {
+            const uv = geometry.attributes.uv;
+            if (!uv) return;
+            const tile = [
+                [0, 0], [1, 0], [0, 1], [1, 1],
+            ];
+            for (let face = 0; face < 6; face++) {
+                const rect = faceRects[face];
+                if (!rect) continue;
+                const [x, y, w, h] = rect;
+                const u0 = x / atlasW;
+                const v0 = 1 - ((y + h) / atlasH);
+                const u1 = (x + w) / atlasW;
+                const v1 = 1 - (y / atlasH);
+                const values = [
+                    [u1, v1], [u0, v1], [u1, v0], [u0, v0],
+                ];
+                const start = face * 4;
+                for (let i = 0; i < 4; i++) {
+                    uv.setXY(start + i, values[i][0], values[i][1]);
+                }
+            }
+            uv.needsUpdate = true;
+        }
+
+        function createStevePartMesh(dim, faceRects, material) {
+            const geom = new THREE.BoxGeometry(dim[0], dim[1], dim[2]);
+            setBoxFaceUV(geom, faceRects, 64, 64);
+            return new THREE.Mesh(geom, material);
+        }
+
+        function getSteveSkinMaterial() {
+            if (!steveSkinTexture) {
+                const skinPath = `${window.SingleplayerConfig?.REPO_BASE_PREFIX || ''}/game/singleplayer/assets/player/character.png`;
+                const tex = new THREE.TextureLoader().load(skinPath);
+                tex.magFilter = THREE.NearestFilter;
+                tex.minFilter = THREE.NearestFilter;
+                steveSkinTexture = tex;
+            }
+            return new THREE.MeshStandardMaterial({ map: steveSkinTexture, transparent: true, alphaTest: 0.1, roughness: 1, metalness: 0 });
+        }
+
+        function setupFirstPersonHandOverlay() {
+            if (firstPersonHandEl) return;
+            const hand = document.createElement('img');
+            hand.id = 'firstperson-hand';
+            hand.alt = 'wield hand';
+            hand.draggable = false;
+            hand.src = `${window.SingleplayerConfig?.REPO_BASE_PREFIX || ''}/game/singleplayer/assets/player/wieldhand.png`;
+
+            const held = document.createElement('div');
+            held.id = 'firstperson-held-item';
+
+            document.body.appendChild(held);
+            document.body.appendChild(hand);
+            firstPersonHandEl = hand;
+            firstPersonHeldItemEl = held;
+        }
+
+        function setupInventorySkinRig() {
+            const preview = document.getElementById('inventory-skin-preview');
+            if (!preview || inventorySkinRigEl) return;
+            const skinPath = `${window.SingleplayerConfig?.REPO_BASE_PREFIX || ''}/game/singleplayer/assets/player/character.png`;
+
+            const rig = document.createElement('div');
+            rig.id = 'inventory-skin-rig';
+            rig.innerHTML = `
+                <div id="inv-skin-head" class="inv-skin-part"></div>
+                <div id="inv-skin-body" class="inv-skin-part"></div>
+                <div id="inv-skin-arm-left" class="inv-skin-part"></div>
+                <div id="inv-skin-arm-right" class="inv-skin-part"></div>
+                <div id="inv-skin-leg-left" class="inv-skin-part"></div>
+                <div id="inv-skin-leg-right" class="inv-skin-part"></div>
+            `;
+            preview.innerHTML = '';
+            preview.appendChild(rig);
+            inventorySkinRigEl = rig;
+
+            const setPart = (id, x, y, w, h) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.style.backgroundImage = `url('${skinPath}')`;
+                el.style.backgroundPosition = `-${x}px -${y}px`;
+                el.style.width = `${w}px`;
+                el.style.height = `${h}px`;
+            };
+
+            setPart('inv-skin-head', 8, 8, 8, 8);
+            setPart('inv-skin-body', 20, 20, 8, 12);
+            setPart('inv-skin-arm-left', 44, 20, 4, 12);
+            setPart('inv-skin-arm-right', 44, 20, 4, 12);
+            setPart('inv-skin-leg-left', 4, 20, 4, 12);
+            setPart('inv-skin-leg-right', 4, 20, 4, 12);
+        }
+
+        function updateFirstPersonHand(time) {
+            if (!firstPersonHandEl || !firstPersonHeldItemEl) return;
+            const firstPerson = cameraViewMode === 0 && !isInventoryOpen;
+            firstPersonHandEl.style.display = firstPerson ? 'block' : 'none';
+            firstPersonHeldItemEl.style.display = firstPerson ? 'block' : 'none';
+            if (!firstPerson) return;
+
+            const moveSwing = player.isMoving ? Math.sin(time * 0.013) * 10 : 0;
+            const mineSwing = miningState.active ? Math.sin(time * 0.04) * 14 : 0;
+            const totalSwing = moveSwing + mineSwing;
+            firstPersonHandEl.style.transform = `translateY(${Math.max(-6, totalSwing)}px) rotate(${totalSwing * 0.3}deg)`;
+            firstPersonHeldItemEl.style.transform = `translateY(${Math.max(-6, totalSwing)}px)`;
+
+            const held = inventory[selectedHotbarIndex];
+            if (!held) {
+                firstPersonHeldItemEl.innerHTML = '';
+                return;
+            }
+            const mat = blockMaterials[held.id];
+            if (!mat) {
+                firstPersonHeldItemEl.innerHTML = '';
+                return;
+            }
+            if (mat.textured && mat.textureKey && ASSET_FILEPATHS[mat.textureKey]) {
+                const src = ASSET_FILEPATHS[mat.textureKey];
+                firstPersonHeldItemEl.innerHTML = `<img src="${src}" class="fp-held-icon" alt="held item" />`;
+            } else {
+                const colorHex = (mat.color ? mat.color.toString(16).padStart(6, '0') : '7f8c8d');
+                firstPersonHeldItemEl.innerHTML = `<div class="fp-held-color" style="background:#${colorHex}"></div>`;
+            }
+        }
+
         function createPlayerAvatar() {
             const avatar = new THREE.Group();
+            const skinMat = getSteveSkinMaterial();
 
-            const bodyMat = new THREE.MeshStandardMaterial({ color: 0x4f95ff, roughness: 0.9 });
-            const headMat = new THREE.MeshStandardMaterial({ color: 0xe5bf9f, roughness: 0.85 });
-            const limbMat = new THREE.MeshStandardMaterial({ color: 0x3f7ee0, roughness: 0.9 });
-
-            const body = new THREE.Mesh(new THREE.BoxGeometry(0.75, 1.0, 0.35), bodyMat);
-            body.position.y = 0.95;
-
-            const head = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.52, 0.52), headMat);
+            const head = createStevePartMesh([0.52, 0.52, 0.52], {
+                0: [0, 8, 8, 8],   // +X right
+                1: [16, 8, 8, 8],  // -X left
+                2: [8, 0, 8, 8],   // +Y top
+                3: [16, 0, 8, 8],  // -Y bottom
+                4: [8, 8, 8, 8],   // +Z front
+                5: [24, 8, 8, 8],  // -Z back
+            }, skinMat);
             head.position.y = 1.72;
 
-            const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.8, 0.22), limbMat);
-            leftArm.position.set(-0.5, 1.0, 0);
-            const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.8, 0.22), limbMat);
+            const body = createStevePartMesh([0.75, 1.0, 0.35], {
+                0: [16, 20, 4, 12],
+                1: [28, 20, 4, 12],
+                2: [20, 16, 8, 4],
+                3: [28, 16, 8, 4],
+                4: [20, 20, 8, 12],
+                5: [32, 20, 8, 12],
+            }, skinMat);
+            body.position.y = 0.95;
+
+            const rightArm = createStevePartMesh([0.22, 0.8, 0.22], {
+                0: [40, 20, 4, 12],
+                1: [48, 20, 4, 12],
+                2: [44, 16, 4, 4],
+                3: [48, 16, 4, 4],
+                4: [44, 20, 4, 12],
+                5: [52, 20, 4, 12],
+            }, skinMat);
             rightArm.position.set(0.5, 1.0, 0);
 
-            const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.85, 0.24), limbMat);
-            leftLeg.position.set(-0.2, 0.1, 0);
-            const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.85, 0.24), limbMat);
+            const leftArm = createStevePartMesh([0.22, 0.8, 0.22], {
+                0: [40, 20, 4, 12],
+                1: [48, 20, 4, 12],
+                2: [44, 16, 4, 4],
+                3: [48, 16, 4, 4],
+                4: [44, 20, 4, 12],
+                5: [52, 20, 4, 12],
+            }, skinMat);
+            leftArm.position.set(-0.5, 1.0, 0);
+
+            const rightLeg = createStevePartMesh([0.24, 0.85, 0.24], {
+                0: [0, 20, 4, 12],
+                1: [8, 20, 4, 12],
+                2: [4, 16, 4, 4],
+                3: [8, 16, 4, 4],
+                4: [4, 20, 4, 12],
+                5: [12, 20, 4, 12],
+            }, skinMat);
             rightLeg.position.set(0.2, 0.1, 0);
 
-            avatar.add(body);
-            avatar.add(head);
-            avatar.add(leftArm);
-            avatar.add(rightArm);
-            avatar.add(leftLeg);
-            avatar.add(rightLeg);
+            const leftLeg = createStevePartMesh([0.24, 0.85, 0.24], {
+                0: [0, 20, 4, 12],
+                1: [8, 20, 4, 12],
+                2: [4, 16, 4, 4],
+                3: [8, 16, 4, 4],
+                4: [4, 20, 4, 12],
+                5: [12, 20, 4, 12],
+            }, skinMat);
+            leftLeg.position.set(-0.2, 0.1, 0);
 
-            playerAvatarParts = { body, head, leftArm, rightArm, leftLeg, rightLeg, headMat };
+            avatar.add(body, head, leftArm, rightArm, leftLeg, rightLeg);
+            playerAvatarParts = { body, head, leftArm, rightArm, leftLeg, rightLeg, headMat: skinMat };
             return avatar;
         }
 
@@ -2306,10 +2474,16 @@ window.perlin = perlinInstance;
             playerAvatarParts.leftArm.rotation.x = -swing;
             playerAvatarParts.rightArm.rotation.x = swing;
 
-            const previewHead = document.getElementById('inventory-skin-head');
-            if (previewHead && playerAvatarParts.headMat?.color) {
-                const hex = `#${playerAvatarParts.headMat.color.getHexString()}`;
-                previewHead.style.background = `linear-gradient(180deg, ${hex} 0%, ${hex} 100%)`;
+            if (inventorySkinRigEl) {
+                const sdeg = swing * 40;
+                const lLeg = document.getElementById('inv-skin-leg-left');
+                const rLeg = document.getElementById('inv-skin-leg-right');
+                const lArm = document.getElementById('inv-skin-arm-left');
+                const rArm = document.getElementById('inv-skin-arm-right');
+                if (lLeg) lLeg.style.transform = `rotate(${sdeg}deg)`;
+                if (rLeg) rLeg.style.transform = `rotate(${-sdeg}deg)`;
+                if (lArm) lArm.style.transform = `rotate(${-sdeg}deg)`;
+                if (rArm) rArm.style.transform = `rotate(${sdeg}deg)`;
             }
         }
 
@@ -3115,12 +3289,14 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
                 updateChunkFrustumCulling();
                 updateGnomes(time);
                 updatePlayerAvatarVisuals(time);
+                updateFirstPersonHand(time);
                 const dtSec = delta / 1000;
                 if (window.FurnaceSystem) {
                     for (const state of furnaceStates.values()) window.FurnaceSystem.updateState(state, dtSec);
                     if (isInventoryOpen && isFurnaceOpen) renderInventoryScreen();
                 }
             } else {
+                updateFirstPersonHand(time);
                 miningState.active = false;
                 updateBreakingOverlay();
             }
