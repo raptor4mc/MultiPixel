@@ -139,12 +139,12 @@
     COPPER_PICKAXE: getAssetPath('textures/item/tool/pickaxe/copper_pickaxe.png'),
     IRON_PICKAXE: getAssetPath('textures/item/tool/pickaxe/iron_pickaxe.png'),
     DIAMOND_PICKAXE: getAssetPath('textures/item/tool/pickaxe/diamond_pickaxe.png'),
-    WOODEN_SHOVEL: getAssetPath('textures/item/tools/shovel/wooden_shovel.png'),
-    STONE_SHOVEL: getAssetPath('textures/item/tools/shovel/stone_shovel.png'),
-    GOLDEN_SHOVEL: getAssetPath('textures/item/tools/shovel/golden_shovel.png'),
-    COPPER_SHOVEL: getAssetPath('textures/item/tools/shovel/copper_shovel.png'),
-    IRON_SHOVEL: getAssetPath('textures/item/tools/shovel/iron_shovel.png'),
-    DIAMOND_SHOVEL: getAssetPath('textures/item/tools/shovel/diamond_shovel.png'),
+    WOODEN_SHOVEL: getAssetPath('textures/item/tool/shovel/wooden_shovel.png'),
+    STONE_SHOVEL: getAssetPath('textures/item/tool/shovel/stone_shovel.png'),
+    GOLDEN_SHOVEL: getAssetPath('textures/item/tool/shovel/golden_shovel.png'),
+    COPPER_SHOVEL: getAssetPath('textures/item/tool/shovel/copper_shovel.png'),
+    IRON_SHOVEL: getAssetPath('textures/item/tool/shovel/iron_shovel.png'),
+    DIAMOND_SHOVEL: getAssetPath('textures/item/tool/shovel/diamond_shovel.png'),
   };
 
   const blockMaterials = {
