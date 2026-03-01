@@ -980,16 +980,31 @@ window.perlin = perlinInstance;
      
         function renderHearts() {
             const container = document.getElementById('health-container');
+            if (!container) return;
             container.innerHTML = '';
-            const hearts = Math.ceil(player.health / 2);
-            // --- USING DIRECT PATH FOR UI HEART ---
-            const heartPath = ASSET_FILEPATHS.HEART; 
-            
-            for(let i=0; i<hearts; i++) {
+
+            const fullHeartPath = ASSET_FILEPATHS.HEART_FULL || ASSET_FILEPATHS.HEART;
+            const halfHeartPath = ASSET_FILEPATHS.HEART_HALF || fullHeartPath;
+            const emptyHeartPath = ASSET_FILEPATHS.HEART_EMPTY || fullHeartPath;
+            const maxHearts = 10;
+            const clampedHealth = Math.max(0, Math.min(player.health, maxHearts * 2));
+
+            for (let i = 0; i < maxHearts; i++) {
+                const heartValue = clampedHealth - i * 2;
                 const heartImg = document.createElement('img');
-                heartImg.src = heartPath;
+
+                if (heartValue >= 2) {
+                    heartImg.src = fullHeartPath;
+                    heartImg.alt = 'Full Heart';
+                } else if (heartValue >= 1) {
+                    heartImg.src = halfHeartPath;
+                    heartImg.alt = 'Half Heart';
+                } else {
+                    heartImg.src = emptyHeartPath;
+                    heartImg.alt = 'Empty Heart';
+                }
+
                 heartImg.className = 'heart-icon';
-                heartImg.alt = 'Full Heart';
                 container.appendChild(heartImg);
             }
         }
