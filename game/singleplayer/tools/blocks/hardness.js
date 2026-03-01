@@ -46,7 +46,7 @@
     80: 3,
     81: 4,
     82: 8,  // Chest
-    90: 2.5,
+    91: 2.5,
   };
 
   function getHardness(blockId) {
