@@ -50,8 +50,14 @@
     STONE: getAssetPath('textures/stone.png'),
     LEAVES: getAssetPath('textures/azalea_leaves.png'),
     SAND: getAssetPath('textures/sand.png'),
-    HEART: getAssetPath('ui/heart_full.png'),
+    HEART: getAssetPath('ui/full.png'),
+    HEART_FULL: getAssetPath('ui/full.png'),
+    HEART_HALF: getAssetPath('ui/half.png'),
+    HEART_EMPTY: getAssetPath('ui/container.png'),
     FOOD: getAssetPath('ui/food_full.png'),
+    FOOD_FULL: getAssetPath('ui/food_full.png'),
+    FOOD_HALF: getAssetPath('ui/food_half.png'),
+    FOOD_EMPTY: getAssetPath('ui/food_empty.png'),
     OAK_PLANK: getAssetPath('textures/oak_planks.png'),
     
     /*Crafting table*/

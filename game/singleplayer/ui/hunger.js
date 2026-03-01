@@ -19,14 +19,31 @@
     if (!container) return;
     container.innerHTML = '';
 
-    const iconPath = window.SingleplayerConfig?.ASSET_FILEPATHS?.FOOD || '';
-    const foods = Math.ceil(state.value / 2);
+    const fullFoodPath = window.SingleplayerConfig?.ASSET_FILEPATHS?.FOOD_FULL
+      || window.SingleplayerConfig?.ASSET_FILEPATHS?.FOOD
+      || '';
+    const halfFoodPath = window.SingleplayerConfig?.ASSET_FILEPATHS?.FOOD_HALF || fullFoodPath;
+    const emptyFoodPath = window.SingleplayerConfig?.ASSET_FILEPATHS?.FOOD_EMPTY || fullFoodPath;
 
-    for (let i = 0; i < foods; i++) {
+    const maxFoods = Math.ceil(state.max / 2);
+    const clampedValue = clamp(state.value, 0, state.max);
+
+    for (let i = 0; i < maxFoods; i++) {
+      const foodValue = clampedValue - i * 2;
       const foodImg = document.createElement('img');
-      foodImg.src = iconPath;
+
+      if (foodValue >= 2) {
+        foodImg.src = fullFoodPath;
+        foodImg.alt = 'Full Food';
+      } else if (foodValue >= 1) {
+        foodImg.src = halfFoodPath;
+        foodImg.alt = 'Half Food';
+      } else {
+        foodImg.src = emptyFoodPath;
+        foodImg.alt = 'Empty Food';
+      }
+
       foodImg.className = 'food-icon';
-      foodImg.alt = 'Food';
       container.appendChild(foodImg);
     }
 
