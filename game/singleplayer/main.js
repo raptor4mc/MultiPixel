@@ -47,20 +47,11 @@
         }
 
         function resolveWorldSeed() {
-            const storageKey = worldGenSettings.seedStorageKey || 'singleplayer.worldSeed';
-            let resolved = null;
-            try {
-                resolved = normalizeWorldSeed(window.localStorage?.getItem(storageKey));
-            } catch (err) {
-                console.warn('[World seed] localStorage read failed, using random seed.', err);
-            }
-            if (!resolved) resolved = Math.floor(Math.random() * 2147483646) + 1;
-            try {
-                window.localStorage?.setItem(storageKey, String(resolved));
-            } catch (err) {
-                console.warn('[World seed] localStorage write failed.', err);
-            }
-            return resolved;
+            // Always use a fresh random seed per game load so terrain changes each time.
+            // Optional override: if WORLD_GEN_SETTINGS.seed is provided, honor that value.
+            const configuredSeed = normalizeWorldSeed(worldGenSettings.seed);
+            if (configuredSeed) return configuredSeed;
+            return Math.floor(Math.random() * 2147483646) + 1;
         }
 
         TerrainModules['ocean'] = window.OceanTerrain || {
@@ -695,6 +686,7 @@ window.perlin = perlinInstance;
                 new THREE.TextureLoader().load(path, (t) => {
                     t.magFilter = THREE.NearestFilter;
                     t.minFilter = THREE.NearestFilter;
+                    t.flipY = false;
                     t.wrapS = THREE.ClampToEdgeWrapping;
                     t.wrapT = THREE.ClampToEdgeWrapping;
                     resolve(t);
@@ -708,6 +700,7 @@ window.perlin = perlinInstance;
             const tex = baseTex.clone();
             tex.magFilter = THREE.NearestFilter;
             tex.minFilter = THREE.NearestFilter;
+            tex.flipY = false;
             tex.wrapS = THREE.ClampToEdgeWrapping;
             tex.wrapT = THREE.ClampToEdgeWrapping;
             tex.repeat.set(w / atlasW, h / atlasH);
@@ -2853,18 +2846,22 @@ window.perlin = perlinInstance;
             return getPlayerAssetCandidates(fileName)[0];
         }
 
-        function createSkinFaceTexture(rect, atlas = 64) {
+        function createSkinFaceTexture(rect) {
             const [x, y, w, h] = rect;
             const src = getSteveSkinTexture();
             if (!src) return null;
             if (!src.image) return null;
+            const atlasW = src.image.naturalWidth || src.image.width || 64;
+            const atlasH = src.image.naturalHeight || src.image.height || 64;
             const tex = src.clone();
             tex.magFilter = THREE.NearestFilter;
             tex.minFilter = THREE.NearestFilter;
+            tex.flipY = false;
             tex.wrapS = THREE.ClampToEdgeWrapping;
             tex.wrapT = THREE.ClampToEdgeWrapping;
-            tex.repeat.set(w / atlas, h / atlas);
-            tex.offset.set(x / atlas, 1 - ((y + h) / atlas));
+            tex.repeat.set(w / atlasW, h / atlasH);
+            tex.offset.set(x / atlasW, 1 - ((y + h) / atlasH));
+            tex.needsUpdate = true;
             return tex;
         }
 
