@@ -805,7 +805,10 @@ window.perlin = perlinInstance;
             if (y < SEA_LEVEL || y > SEA_LEVEL + 24) return false;
             const under = getBlockType(Math.floor(wx), y - 1, Math.floor(wz));
             if (under !== 1 && under !== 2) return false;
+            return spawnPigAtExact(wx, y, wz);
+        }
 
+        function spawnPigAtExact(wx, y, wz) {
             const pigRoot = createPigMesh();
             pigRoot.position.set(Math.floor(wx) + 0.5, y, Math.floor(wz) + 0.5);
             scene.add(pigRoot);
@@ -3791,8 +3794,10 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
                      }
                  }
              }
+             const spawnedPigs = [];
              placeIglooInChunk(data, cx, cz, spawnedGnomes);
-             return { data, spawnedGnomes };
+             placeDesertWellInChunk(data, cx, cz, spawnedPigs);
+             return { data, spawnedGnomes, spawnedPigs };
         }
 
         function placeIglooInChunk(data, cx, cz, spawnedGnomes) {
@@ -3874,6 +3879,83 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
             spawnedGnomes.push({ wx: worldX, wy: gnomeY, wz: worldZ });
         }
 
+        function placeDesertWellInChunk(data, cx, cz, spawnedPigs) {
+            const centerX = Math.floor(CHUNK_SIZE / 2);
+            const centerZ = Math.floor(CHUNK_SIZE / 2);
+            const worldX = cx * CHUNK_SIZE + centerX;
+            const worldZ = cz * CHUNK_SIZE + centerZ;
+
+            if (getBiome(worldX, worldZ) !== 'Desert') return;
+            if (hashRand2D(cx, cz, 9127) > 0.08) return;
+
+            const idx = (lx, ly, lz) => lx + ly * CHUNK_SIZE + lz * CHUNK_SIZE * CHUNK_HEIGHT;
+            const getColumnTop = (lx, lz) => {
+                for (let y = CHUNK_HEIGHT - 2; y >= 1; y--) {
+                    const t = data[idx(lx, y, lz)];
+                    if (t !== 0 && t !== 4) return y;
+                }
+                return -1;
+            };
+
+            const radius = 2;
+            if (centerX - radius < 2 || centerX + radius >= CHUNK_SIZE - 2 || centerZ - radius < 2 || centerZ + radius >= CHUNK_SIZE - 2) return;
+
+            const topY = getColumnTop(centerX, centerZ);
+            if (topY < SEA_LEVEL - 1) return;
+            if (data[idx(centerX, topY, centerZ)] !== 7) return;
+
+            for (let dx = -radius; dx <= radius; dx++) {
+                for (let dz = -radius; dz <= radius; dz++) {
+                    const lx = centerX + dx;
+                    const lz = centerZ + dz;
+                    const y = getColumnTop(lx, lz);
+                    if (y < 1 || Math.abs(y - topY) > 1) return;
+                    const ground = data[idx(lx, y, lz)];
+                    if (ground !== 7 && ground !== 13) return;
+                }
+            }
+
+            const sandstone = 13;
+            const water = 4;
+            const copperBlock = 34;
+            const wellY = topY + 1;
+
+            // 5x5 sandstone base
+            for (let dx = -2; dx <= 2; dx++) {
+                for (let dz = -2; dz <= 2; dz++) {
+                    data[idx(centerX + dx, wellY, centerZ + dz)] = sandstone;
+                }
+            }
+
+            // water basin cross
+            data[idx(centerX, wellY, centerZ)] = water;
+            data[idx(centerX + 1, wellY, centerZ)] = water;
+            data[idx(centerX - 1, wellY, centerZ)] = water;
+            data[idx(centerX, wellY, centerZ + 1)] = water;
+            data[idx(centerX, wellY, centerZ - 1)] = water;
+
+            // copper block under center
+            if (wellY - 1 >= 1) data[idx(centerX, wellY - 1, centerZ)] = copperBlock;
+
+            // pillars
+            for (let py = wellY + 1; py <= wellY + 3; py++) {
+                data[idx(centerX - 1, py, centerZ - 1)] = sandstone;
+                data[idx(centerX - 1, py, centerZ + 1)] = sandstone;
+                data[idx(centerX + 1, py, centerZ - 1)] = sandstone;
+                data[idx(centerX + 1, py, centerZ + 1)] = sandstone;
+            }
+
+            // roof
+            const roofY = wellY + 4;
+            for (let dx = -1; dx <= 1; dx++) {
+                for (let dz = -1; dz <= 1; dz++) {
+                    data[idx(centerX + dx, roofY, centerZ + dz)] = sandstone;
+                }
+            }
+
+            spawnedPigs.push({ wx: worldX + 0.5, wy: wellY + 1, wz: worldZ + 0.5 });
+        }
+
         function createChunk(cx, cz) {
             const generated = generateChunkData(cx, cz);
             const data = generated.data;
@@ -3884,6 +3966,9 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
             worldGroup.add(group);
             if (generated.spawnedGnomes && generated.spawnedGnomes.length) {
                 for (const g of generated.spawnedGnomes) spawnGnomeAt(g.wx, g.wy, g.wz);
+            }
+            if (generated.spawnedPigs && generated.spawnedPigs.length) {
+                for (const pig of generated.spawnedPigs) spawnPigAtExact(pig.wx, pig.wy, pig.wz);
             }
             return group;
         }
