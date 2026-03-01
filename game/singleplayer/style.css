@@ -105,7 +105,7 @@ body {
     image-rendering: pixelated;
 }
 
-.heart-icon, .food-icon {
+.heart-icon, .food-icon, .air-icon {
     width: 22px;
     height: 22px;
     image-rendering: pixelated;
