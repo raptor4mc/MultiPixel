@@ -33,6 +33,7 @@
     { name: 'Copper Grate', output: { id: 76, count: 1}, shape: [[0, 34, 0], [34, 0, 34], [0, 34, 0]] },
     { name: 'Cut Copper', output: { id: 78, count: 4}, shape: [[34, 34], [34, 34]] },
     { name: 'Packed Ice', output: { id: 81, count: 1}, shape: [[59, 59, 59], [59, 59, 59], [59, 59, 59]] },
+    { name: 'Blue Ice', output: { id: 90, count: 1}, shape: [[81, 81, 81], [81, 81, 81], [81, 81, 81]] },
     
     /*Glass*/
     { name: 'Black Stained Glass', output: { id: 79, count: 1}, shape: [[57, 26]] },
