@@ -3262,17 +3262,16 @@ window.perlin = perlinInstance;
             const h = img ? (img.naturalHeight || img.height || 0) : 0;
             return h >= 64;
         }
-
         function buildPartFaceRects(x, y, w, h, d) {
-            return {
-                0: [x, y + d, w, h],
-                1: [x + w + d, y + d, w, h],
-                2: [x + w, y, w, d],
-                3: [x + w + d, y, w, d],
-                4: [x + w, y + d, w, h],
-                5: [x + (w * 2) + d, y + d, w, h],
-            };
-        }
+    return {
+        0: [x + w + d, y + d, w, h],        // right
+        1: [x, y + d, w, h],                // left
+        2: [x + w, y, w, d],                // top
+        3: [x + w + d, y, w, d],            // bottom
+        4: [x + w, y + d, w, h],            // front
+        5: [x + (w * 2) + d, y + d, w, h],  // back
+    };
+}
 
         function getSkinPartRects(partName, overlay = false) {
             const modern = isModernSkinLayout();
