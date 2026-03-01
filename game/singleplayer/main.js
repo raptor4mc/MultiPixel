@@ -32,7 +32,7 @@
         const BlockBreakableSystem = window.BlockBreakableSystem || {};
         const SpawnLighting = window.SpawnLighting || {};
 
-        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-03-01-01';
+        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-03-01-02';
         console.info('[Singleplayer build]', window.__SINGLEPLAYER_BUILD__);
 
         const TerrainModules = {};
@@ -171,6 +171,8 @@ window.perlin = perlinInstance;
         let breakParticleTexture = null;
         let lavaParticleTexture = null;
         const activeWorldParticles = [];
+        const particleSpritePool = [];
+        const particleMaterials = { break: null, lava: null };
         let lavaParticleScanMs = 0;
         let lastPhysicsTickMs = 0;
         const dirtyChunkKeys = new Set();
@@ -208,6 +210,8 @@ window.perlin = perlinInstance;
         const torchLightsByChunk = new Map();
         const frustum = new THREE.Frustum();
         const cameraViewProj = new THREE.Matrix4();
+        const frustumTempCenter = new THREE.Vector3();
+        const frustumTempSphere = new THREE.Sphere();
         const chunks = new Map();
         const worldGroup = new THREE.Group();
         let yawObject, pitchObject; 
@@ -764,9 +768,20 @@ window.perlin = perlinInstance;
             return pig;
         }
 
-        function getSurfaceYForEntity(wx, wz) {
+        function getSurfaceYForEntity(wx, wz, startY = null) {
             const x = Math.floor(wx);
             const z = Math.floor(wz);
+
+            if (Number.isFinite(startY)) {
+                const from = Math.min(CHUNK_HEIGHT - 2, Math.floor(startY) + 3);
+                const to = Math.max(2, Math.floor(startY) - 6);
+                for (let y = from; y >= to; y--) {
+                    const under = getBlockType(x, y - 1, z);
+                    const feet = getBlockType(x, y, z);
+                    if (isSolid(under) && !isLiquid(under) && feet === 0) return y;
+                }
+            }
+
             for (let y = CHUNK_HEIGHT - 2; y >= 2; y--) {
                 const under = getBlockType(x, y - 1, z);
                 const feet = getBlockType(x, y, z);
@@ -789,6 +804,8 @@ window.perlin = perlinInstance;
                 hp: 8,
                 dir: new THREE.Vector3(Math.random() - 0.5, 0, Math.random() - 0.5).normalize(),
                 changeDirMs: 900 + Math.random() * 1800,
+                groundProbeMs: 0,
+                targetY: y,
                 bobPhase: Math.random() * Math.PI * 2,
             });
             return true;
@@ -816,11 +833,17 @@ window.perlin = perlinInstance;
                 const speed = 0.75;
                 const nx = pig.root.position.x + pig.dir.x * speed * dt;
                 const nz = pig.root.position.z + pig.dir.z * speed * dt;
-                const ny = getSurfaceYForEntity(nx, nz);
-                if (ny > 0) {
+
+                pig.groundProbeMs -= deltaMs;
+                if (pig.groundProbeMs <= 0) {
+                    pig.groundProbeMs = 220 + Math.random() * 180;
+                    pig.targetY = getSurfaceYForEntity(nx, nz, pig.targetY);
+                }
+
+                if (pig.targetY > 0) {
                     pig.root.position.x = nx;
                     pig.root.position.z = nz;
-                    pig.root.position.y = ny;
+                    pig.root.position.y += (pig.targetY - pig.root.position.y) * Math.min(1, dt * 10);
                 }
                 pig.root.rotation.y = Math.atan2(pig.dir.x, pig.dir.z);
 
@@ -1646,31 +1669,51 @@ window.perlin = perlinInstance;
                 tex.magFilter = THREE.NearestFilter;
                 tex.minFilter = THREE.NearestFilter;
                 breakParticleTexture = tex;
+                particleMaterials.break = null;
             }, undefined, () => {
                 breakParticleTexture = null;
+                particleMaterials.break = null;
             });
             loader.load(`${BREAKING_PARTICLE_BASE}/lava.png`, (tex) => {
                 tex.magFilter = THREE.NearestFilter;
                 tex.minFilter = THREE.NearestFilter;
                 lavaParticleTexture = tex;
+                particleMaterials.lava = null;
             }, undefined, () => {
                 lavaParticleTexture = null;
+                particleMaterials.lava = null;
             });
         }
 
-        function spawnWorldParticle(kind, position, velocity, lifeMs, scale = 0.22) {
-            if (!scene) return;
+        function getOrCreateParticleMaterial(kind) {
+            if (particleMaterials[kind]) return particleMaterials[kind];
             const tex = kind === 'lava' ? lavaParticleTexture : breakParticleTexture;
-            const mat = new THREE.SpriteMaterial({
+            particleMaterials[kind] = new THREE.SpriteMaterial({
                 map: tex || null,
                 color: kind === 'lava' ? 0xffa347 : 0xffffff,
                 transparent: true,
                 opacity: kind === 'lava' ? 0.92 : 0.95,
                 depthWrite: false,
             });
-            const sprite = new THREE.Sprite(mat);
+            return particleMaterials[kind];
+        }
+
+        function spawnWorldParticle(kind, position, velocity, lifeMs, scale = 0.22) {
+            if (!scene) return;
+            if (activeWorldParticles.length > 260) return;
+
+            const mat = getOrCreateParticleMaterial(kind);
+            let sprite = particleSpritePool.pop();
+            if (!sprite) {
+                sprite = new THREE.Sprite(mat);
+            } else {
+                sprite.material = mat;
+                sprite.visible = true;
+            }
+
             sprite.scale.set(scale, scale, scale);
             sprite.position.copy(position);
+            sprite.material.opacity = kind === 'lava' ? 0.92 : 0.95;
             scene.add(sprite);
             activeWorldParticles.push({
                 sprite,
@@ -1703,7 +1746,7 @@ window.perlin = perlinInstance;
             const baseY = Math.floor(yawObject.position.y);
             const baseZ = Math.floor(yawObject.position.z);
 
-            const samples = 16;
+            const samples = activeWorldParticles.length > 180 ? 8 : 14;
             for (let i = 0; i < samples; i++) {
                 const wx = baseX + Math.floor((Math.random() - 0.5) * 20);
                 const wy = Math.max(2, Math.min(CHUNK_HEIGHT - 3, baseY + Math.floor((Math.random() - 0.5) * 10)));
@@ -1744,7 +1787,8 @@ window.perlin = perlinInstance;
                 p.sprite.material.opacity = Math.max(0, fade);
                 if (p.ageMs >= p.lifeMs) {
                     scene.remove(p.sprite);
-                    p.sprite.material.dispose();
+                    p.sprite.visible = false;
+                    particleSpritePool.push(p.sprite);
                     activeWorldParticles.splice(i, 1);
                 }
             }
@@ -3678,12 +3722,14 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
             cameraViewProj.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
             frustum.setFromProjectionMatrix(cameraViewProj);
             for (const group of chunks.values()) {
-                const center = new THREE.Vector3(
+                frustumTempCenter.set(
                     group.userData.cx * CHUNK_SIZE + CHUNK_SIZE * 0.5,
                     CHUNK_HEIGHT * 0.5,
                     group.userData.cz * CHUNK_SIZE + CHUNK_SIZE * 0.5
                 );
-                group.visible = frustum.intersectsSphere(new THREE.Sphere(center, group.userData.frustumRadius || 40));
+                frustumTempSphere.center.copy(frustumTempCenter);
+                frustumTempSphere.radius = group.userData.frustumRadius || 40;
+                group.visible = frustum.intersectsSphere(frustumTempSphere);
             }
         }
 
