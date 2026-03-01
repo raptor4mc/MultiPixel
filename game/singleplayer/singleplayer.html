@@ -48,9 +48,12 @@
         </a>
     </div>
     <div id="hud" class="absolute inset-0 pointer-events-none z-20 flex flex-col justify-end items-center pb-2">
-        <div id="status-bars" class="flex items-center space-x-3 mb-2">
+        <div id="status-bars" class="flex items-end space-x-3 mb-2">
             <div id="health-container" class="flex space-x-1"></div>
-            <div id="hunger-container" class="flex space-x-1"></div>
+            <div class="flex flex-col items-start space-y-1">
+                <div id="air-container" class="flex space-x-1" style="display: none;"></div>
+                <div id="hunger-container" class="flex space-x-1"></div>
+            </div>
         </div>
         <div id="hotbar" class="flex space-x-1 p-1 bg-black/40 rounded-lg pointer-events-auto">
         </div>

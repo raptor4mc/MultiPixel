@@ -58,6 +58,9 @@
     FOOD_FULL: getAssetPath('ui/food_full.png'),
     FOOD_HALF: getAssetPath('ui/food_half.png'),
     FOOD_EMPTY: getAssetPath('ui/food_empty.png'),
+    AIR_FULL: getAssetPath('ui/air_full.png'),
+    AIR_POP: getAssetPath('ui/air_pop.png'),
+    AIR_GONE: getAssetPath('ui/air_gone.png'),
     OAK_PLANK: getAssetPath('textures/oak_planks.png'),
     
     /*Crafting table*/
