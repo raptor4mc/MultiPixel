@@ -47,20 +47,11 @@
         }
 
         function resolveWorldSeed() {
-            const storageKey = worldGenSettings.seedStorageKey || 'singleplayer.worldSeed';
-            let resolved = null;
-            try {
-                resolved = normalizeWorldSeed(window.localStorage?.getItem(storageKey));
-            } catch (err) {
-                console.warn('[World seed] localStorage read failed, using random seed.', err);
-            }
-            if (!resolved) resolved = Math.floor(Math.random() * 2147483646) + 1;
-            try {
-                window.localStorage?.setItem(storageKey, String(resolved));
-            } catch (err) {
-                console.warn('[World seed] localStorage write failed.', err);
-            }
-            return resolved;
+            // Always use a fresh random seed per game load so terrain changes each time.
+            // Optional override: if WORLD_GEN_SETTINGS.seed is provided, honor that value.
+            const configuredSeed = normalizeWorldSeed(worldGenSettings.seed);
+            if (configuredSeed) return configuredSeed;
+            return Math.floor(Math.random() * 2147483646) + 1;
         }
 
         TerrainModules['ocean'] = window.OceanTerrain || {
