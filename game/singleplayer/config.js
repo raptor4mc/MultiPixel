@@ -119,6 +119,8 @@
     /*Ice*/
     ICE: getAssetPath('textures/ice.png'),
     PACKED_ICE: getAssetPath('textures/packed_ice.png'),
+    BLUE_ICE: getAssetPath('textures/blue_ice.png'),
+    
     OAK_LOG_TOP: getAssetPath('textures/oak/oak_log_top.png'),
     STEEL_INGOT: getAssetPath('textures/item/iron_ingot.png'),
     STEEL_BLOCK: getAssetPath('textures/iron_block.png'),
@@ -287,6 +289,7 @@
 },
     /*Ice*/
     81: { name: 'Packed ice', id: 81, textured: true, textureKey: 'PACKED_ICE' },
+    90: { name: 'Blue Ice', id: 90, textured: true, textureKey: 'BLUE_ICE' },
     
     /*Stone*/
      21: { name: 'Stone Brick', id: 21, textured: true, textureKey: 'STONE_BRICK_BLOCK' },
@@ -385,7 +388,7 @@
     REPO_BASE_PREFIX,
     WORLD_GEN_SETTINGS,
     ASSET_FILEPATHS, blockMaterials,
-    SOLID_BLOCKS: [1, 2, 3, 5, 6, 7, 8, 9, 13, 14, 15, 17, 18, 20, 21, 23, 24, 26, 27, 28, 29, 30, 32, 34, 35, 36, 37, 39, 40, 41, 43, 45, 54, 55, 59, 68, 71, 76, 77, 78, 79, 80, 81, 82 ],
+    SOLID_BLOCKS: [1, 2, 3, 5, 6, 7, 8, 9, 13, 14, 15, 17, 18, 20, 21, 23, 24, 26, 27, 28, 29, 30, 32, 34, 35, 36, 37, 39, 40, 41, 43, 45, 54, 55, 59, 68, 71, 76, 77, 78, 79, 80, 81, 82, 90 ],
     LIQUID_BLOCKS: [4, 33, 47, 48, 49, 50, 51, 52, 53, 60, 61, 62, 63, 64, 65, 66],
     DEFAULT_PLAYER: {
       moveSpeed: 0.12,
