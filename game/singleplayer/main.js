@@ -237,7 +237,10 @@ window.perlin = perlinInstance;
         let iglooStructureDef = null;
         const gnomeEntities = [];
         const pigEntities = [];
+        const zombieEntities = [];
         let pigTexture = null;
+        let zombieTexture = null;
+        let zombieSpawnTimerMs = 0;
         let eatOverlayEl = null;
         let eatItemEl = null;
         let eatingAnimState = { active: false, timeMs: 0, durationMs: 0, itemId: 0, particleMs: 0 };
@@ -389,6 +392,7 @@ window.perlin = perlinInstance;
 
     
             await loadPigTexture();
+            await loadZombieTexture();
             generateWorld();
             spawnInitialPigs();
             setupPointerLockControls();
@@ -711,6 +715,21 @@ window.perlin = perlinInstance;
             });
         }
 
+        async function loadZombieTexture() {
+            const path = window.SingleplayerConfig?.ASSET_FILEPATHS?.ZOMBIE_TEXTURE;
+            if (!path) return;
+            zombieTexture = await new Promise((resolve) => {
+                new THREE.TextureLoader().load(path, (t) => {
+                    t.magFilter = THREE.NearestFilter;
+                    t.minFilter = THREE.NearestFilter;
+                    t.flipY = false;
+                    t.wrapS = THREE.ClampToEdgeWrapping;
+                    t.wrapT = THREE.ClampToEdgeWrapping;
+                    resolve(t);
+                }, undefined, () => resolve(null));
+            });
+        }
+
         function createAtlasFaceTexture(baseTex, rect, atlasW = 64, atlasH = 32) {
             if (!baseTex || !rect) return null;
             const [x, y, w, h] = rect;
@@ -776,6 +795,74 @@ window.perlin = perlinInstance;
             pig.userData.pigHead = head;
             pig.userData.pigLegs = legs;
             return pig;
+        }
+
+        function getZombiePartRects(partName) {
+            if (partName === 'head') return buildMobPartFaceRects(0, 0, 8, 8, 8);
+            if (partName === 'body') return buildMobPartFaceRects(16, 16, 8, 12, 4);
+            if (partName === 'rightArm') return buildMobPartFaceRects(40, 16, 4, 12, 4);
+            if (partName === 'leftArm') return buildMobPartFaceRects(40, 16, 4, 12, 4);
+            if (partName === 'rightLeg') return buildMobPartFaceRects(0, 16, 4, 12, 4);
+            if (partName === 'leftLeg') return buildMobPartFaceRects(0, 16, 4, 12, 4);
+            return null;
+        }
+
+        function createZombiePart(dim, rects) {
+            const mats = [];
+            for (let i = 0; i < 6; i++) {
+                const faceTex = createAtlasFaceTexture(zombieTexture, rects[i], 64, 64);
+                mats.push(new THREE.MeshStandardMaterial({ map: faceTex || null, color: faceTex ? 0xffffff : 0x72b86a, roughness: 0.88 }));
+            }
+            return new THREE.Mesh(new THREE.BoxGeometry(dim[0], dim[1], dim[2]), mats);
+        }
+
+        function createZombieMesh() {
+            const U = 1 / 16;
+            const root = new THREE.Group();
+
+            const body = createZombiePart([8 * U, 12 * U, 4 * U], getZombiePartRects('body'));
+            body.position.y = 18 * U;
+            root.add(body);
+
+            const head = createZombiePart([8 * U, 8 * U, 8 * U], getZombiePartRects('head'));
+            head.position.y = 28 * U;
+            root.add(head);
+
+            const rightArmPivot = new THREE.Group();
+            rightArmPivot.position.set(6 * U, 24 * U, 0);
+            const rightArm = createZombiePart([4 * U, 12 * U, 4 * U], getZombiePartRects('rightArm'));
+            rightArm.position.set(0, -6 * U, 0);
+            rightArmPivot.add(rightArm);
+
+            const leftArmPivot = new THREE.Group();
+            leftArmPivot.position.set(-6 * U, 24 * U, 0);
+            const leftArm = createZombiePart([4 * U, 12 * U, 4 * U], getZombiePartRects('leftArm'));
+            leftArm.position.set(0, -6 * U, 0);
+            leftArm.scale.x = -1;
+            leftArmPivot.add(leftArm);
+
+            const rightLegPivot = new THREE.Group();
+            rightLegPivot.position.set(2 * U, 12 * U, 0);
+            const rightLeg = createZombiePart([4 * U, 12 * U, 4 * U], getZombiePartRects('rightLeg'));
+            rightLeg.position.set(0, -6 * U, 0);
+            rightLegPivot.add(rightLeg);
+
+            const leftLegPivot = new THREE.Group();
+            leftLegPivot.position.set(-2 * U, 12 * U, 0);
+            const leftLeg = createZombiePart([4 * U, 12 * U, 4 * U], getZombiePartRects('leftLeg'));
+            leftLeg.position.set(0, -6 * U, 0);
+            leftLeg.scale.x = -1;
+            leftLegPivot.add(leftLeg);
+
+            root.add(leftArmPivot, rightArmPivot, leftLegPivot, rightLegPivot);
+
+            const hitbox = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.8, 0.8), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
+            hitbox.position.set(0, 0.9, 0);
+            hitbox.userData.zombieHitbox = true;
+            root.add(hitbox);
+            root.userData.zombieHitbox = hitbox;
+            root.userData.zombieParts = { head, leftArmPivot, rightArmPivot, leftLegPivot, rightLegPivot };
+            return root;
         }
 
         function getSurfaceYForEntity(wx, wz, startY = null) {
@@ -896,6 +983,133 @@ window.perlin = perlinInstance;
             showGameMessage(`+${drops} Raw Porkchop`);
         }
 
+        function getZombieHitFromCrosshair() {
+            if (!zombieEntities.length) return null;
+            raycaster.setFromCamera({ x: 0, y: 0 }, camera);
+            const hitboxes = zombieEntities.map(z => z.root.userData.zombieHitbox).filter(Boolean);
+            const hits = raycaster.intersectObjects(hitboxes, false);
+            if (!hits.length) return null;
+            const hitObj = hits[0].object;
+            return zombieEntities.find((z) => z.root.userData.zombieHitbox === hitObj) || null;
+        }
+
+        function hurtZombie(zombie, amount = 4) {
+            if (!zombie) return;
+            zombie.hp -= amount;
+            if (zombie.hp > 0) return;
+            const idx = zombieEntities.indexOf(zombie);
+            if (idx >= 0) zombieEntities.splice(idx, 1);
+            scene.remove(zombie.root);
+            const drops = 1 + Math.floor(Math.random() * 2);
+            addToInventory(92, drops);
+            showGameMessage(`+${drops} Rotten Flesh`);
+        }
+
+        function canZombieSeeSky(wx, wy, wz) {
+            for (let y = wy + 1; y < CHUNK_HEIGHT; y++) {
+                const b = getBlockType(wx, y, wz);
+                if (b !== 0 && !isLiquid(b)) return false;
+            }
+            return true;
+        }
+
+        function spawnZombieAt(wx, wz) {
+            const y = getSurfaceYForEntity(wx, wz);
+            if (y < SEA_LEVEL || y > SEA_LEVEL + 26) return false;
+            const under = getBlockType(Math.floor(wx), y - 1, Math.floor(wz));
+            if (under === 0 || isLiquid(under)) return false;
+
+            const root = createZombieMesh();
+            root.position.set(Math.floor(wx) + 0.5, y, Math.floor(wz) + 0.5);
+            scene.add(root);
+            zombieEntities.push({
+                root,
+                hp: 20,
+                attackCooldownMs: 0,
+                burnTickMs: 0,
+                targetY: y,
+                groundProbeMs: 0,
+            });
+            return true;
+        }
+
+        function trySpawnNightZombie(deltaMs) {
+            const phase = getTimePhaseInfo().phase;
+            if (phase !== 'Night') return;
+            zombieSpawnTimerMs -= deltaMs;
+            if (zombieSpawnTimerMs > 0) return;
+            zombieSpawnTimerMs = 2200 + Math.random() * 3200;
+            if (zombieEntities.length >= 8) return;
+
+            const angle = Math.random() * Math.PI * 2;
+            const dist = 14 + Math.random() * 20;
+            const wx = yawObject.position.x + Math.cos(angle) * dist;
+            const wz = yawObject.position.z + Math.sin(angle) * dist;
+            spawnZombieAt(wx, wz);
+        }
+
+        function updateZombies(time, deltaMs) {
+            if (!zombieEntities.length) return;
+            const dt = Math.max(0.001, Math.min(0.05, deltaMs / 1000));
+            const phase = getTimePhaseInfo().phase;
+            const burningTime = phase === 'Day' || phase === 'Sunrise';
+            const playerPos = yawObject.position;
+
+            for (let i = zombieEntities.length - 1; i >= 0; i--) {
+                const z = zombieEntities[i];
+                const toPlayer = new THREE.Vector3(playerPos.x - z.root.position.x, 0, playerPos.z - z.root.position.z);
+                const dist = toPlayer.length();
+                if (dist > 0.001) toPlayer.normalize();
+
+                const speed = 1.18;
+                const nx = z.root.position.x + toPlayer.x * speed * dt;
+                const nz = z.root.position.z + toPlayer.z * speed * dt;
+
+                z.groundProbeMs -= deltaMs;
+                if (z.groundProbeMs <= 0) {
+                    z.groundProbeMs = 180;
+                    z.targetY = getSurfaceYForEntity(nx, nz, z.targetY);
+                }
+
+                if (z.targetY > 0) {
+                    z.root.position.x = nx;
+                    z.root.position.z = nz;
+                    z.root.position.y += (z.targetY - z.root.position.y) * Math.min(1, dt * 12);
+                }
+
+                if (dist > 0.1) z.root.rotation.y = Math.atan2(toPlayer.x, toPlayer.z);
+
+                const parts = z.root.userData.zombieParts;
+                if (parts) {
+                    const walk = Math.sin(time * 0.01 + i) * 0.45;
+                    parts.leftLegPivot.rotation.x = walk;
+                    parts.rightLegPivot.rotation.x = -walk;
+                    parts.leftArmPivot.rotation.x = -walk;
+                    parts.rightArmPivot.rotation.x = walk;
+                }
+
+                z.attackCooldownMs = Math.max(0, z.attackCooldownMs - deltaMs);
+                if (dist < 1.35 && z.attackCooldownMs <= 0) {
+                    z.attackCooldownMs = 900;
+                    takeDamage(3);
+                }
+
+                const zx = Math.floor(z.root.position.x);
+                const zy = Math.floor(z.root.position.y + 1.6);
+                const zz = Math.floor(z.root.position.z);
+                const inLiquid = isLiquid(getBlockType(zx, zy, zz));
+                if (burningTime && !inLiquid && canZombieSeeSky(zx, zy, zz)) {
+                    z.burnTickMs += deltaMs;
+                    if (z.burnTickMs >= 900) {
+                        z.burnTickMs = 0;
+                        hurtZombie(z, 2);
+                    }
+                } else {
+                    z.burnTickMs = 0;
+                }
+            }
+        }
+
         function setupEatingOverlay() {
             if (eatOverlayEl) return;
             const root = document.createElement('div');
@@ -961,7 +1175,7 @@ window.perlin = perlinInstance;
         function tryEatSelectedItem() {
             const held = inventory[selectedHotbarIndex];
             if (!held) return false;
-            const foodCfg = held.id === 89 ? { hunger: 3 } : (held.id === 90 ? { hunger: 8 } : null);
+            const foodCfg = held.id === 89 ? { hunger: 3 } : (held.id === 90 ? { hunger: 8 } : (held.id === 92 ? { hunger: 4 } : null));
             if (!foodCfg) return false;
             if (window.HungerSystem && window.HungerSystem.canConsume && !window.HungerSystem.canConsume()) {
                 showGameMessage('You are full.');
@@ -1993,6 +2207,11 @@ window.perlin = perlinInstance;
             if (!intersects.length) return;
 
             if (event.button === 0) {
+                const zombieHit = getZombieHitFromCrosshair();
+                if (zombieHit) {
+                    hurtZombie(zombieHit, 4);
+                    return;
+                }
                 const pigHit = getPigHitFromCrosshair();
                 if (pigHit) {
                     hurtPig(pigHit, 4);
@@ -4379,6 +4598,8 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
                 updateChunkFrustumCulling();
                 updateGnomes(time);
                 updatePigs(time, delta);
+                trySpawnNightZombie(delta);
+                updateZombies(time, delta);
                 updateEatingAnimation(delta, time);
                 updatePlayerAvatarVisuals(time);
                 updateFirstPersonHand(time);
@@ -4390,6 +4611,7 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
             } else {
                 updateFirstPersonHand(time);
                 updatePigs(time, delta);
+                updateZombies(time, delta);
                 updateEatingAnimation(delta, time);
                 maybeSpawnLavaParticles(delta);
                 updateWorldParticles(delta);

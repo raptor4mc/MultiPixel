@@ -159,6 +159,8 @@
     PIG_TEXTURE: getAssetPath('textures/mobs/pig.png'),
     PORKCHOP_RAW: getAssetPath('textures/item/food/pork/porkchop.png'),
     PORKCHOP_COOKED: getAssetPath('textures/item/food/pork/cooked_porkchop.png'),
+    ZOMBIE_TEXTURE: getAssetPath('textures/mobs/hostile/zombie.png'),
+    ROTTEN_FLESH: getAssetPath('textures/item/food/rotten_flesh.png'),
   };
 
   const blockMaterials = {
@@ -387,6 +389,7 @@
     88: { name: 'Diamond Shovel', id: 88, textured: true, textureKey: 'DIAMOND_SHOVEL', toolType: 'shovel', tier: 6 },
     89: { name: 'Raw Porkchop', id: 89, textured: true, textureKey: 'PORKCHOP_RAW' },
     90: { name: 'Cooked Porkchop', id: 90, textured: true, textureKey: 'PORKCHOP_COOKED' },
+    92: { name: 'Rotten Flesh', id: 92, textured: true, textureKey: 'ROTTEN_FLESH' },
   }; 
 
   window.SingleplayerConfig = {
