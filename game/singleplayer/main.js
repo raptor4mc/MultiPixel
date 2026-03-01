@@ -3268,8 +3268,8 @@ window.perlin = perlinInstance;
         1: [x, y + d, w, h],                // left
         2: [x + w, y, w, d],                // top
         3: [x + w + d, y, w, d],            // bottom
-        4: [x + w, y + d, w, h],            // front
-        5: [x + (w * 2) + d, y + d, w, h],  // back
+        4: [x + (w * 2) + d, y + d, w, h],  // back
+        5: [x + w, y + d, w, h],            // front
     };
 }
 
