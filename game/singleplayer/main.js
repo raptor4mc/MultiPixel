@@ -3262,14 +3262,17 @@ window.perlin = perlinInstance;
             const h = img ? (img.naturalHeight || img.height || 0) : 0;
             return h >= 64;
         }
-        function buildPartFaceRects(x, y, w, h, d) {
+function buildPartFaceRects(x, y, w, h, d) {
     return {
-        0: [x + w + d, y + d, w, h],        // right
-        1: [x, y + d, w, h],                // left
-        2: [x + w, y, w, d],                // top
-        3: [x + w + d, y, w, d],            // bottom
-        4: [x + (w * 2) + d, y + d, w, h],  // back
-        5: [x + w, y + d, w, h],            // front
+        // Three.js BoxGeometry material order:
+        // 0:+X, 1:-X, 2:+Y, 3:-Y, 4:+Z, 5:-Z
+
+        0: [x + d + w, y + d, d, h],          // +X right
+        1: [x, y + d, d, h],                  // -X left
+        2: [x + d, y, w, d],                  // +Y top
+        3: [x + d + w, y, w, d],              // -Y bottom
+        4: [x + d, y + d, w, h],              // +Z front
+        5: [x + d + w + d, y + d, w, h],      // -Z back
     };
 }
 
