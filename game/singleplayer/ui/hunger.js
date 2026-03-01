@@ -47,8 +47,6 @@
       container.appendChild(foodImg);
     }
 
-    const debug = document.getElementById('hunger-value');
-    if (debug) debug.textContent = `Hunger: ${Math.floor(state.value)}/${state.max}`;
   }
 
   function init({ messageCallback, onRegenerateHealth, onStarveDamageTick } = {}) {
