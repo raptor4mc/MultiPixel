@@ -541,7 +541,6 @@ window.perlin = perlinInstance;
             hemiLight.intensity = 0.18 + daylight * 0.55;
             scene.fog.near = 20 + daylight * 8;
             scene.fog.far = 105 + daylight * 38;
-            document.getElementById('time-of-day').textContent = phaseInfo.phase;
         }
 
 
@@ -980,16 +979,32 @@ window.perlin = perlinInstance;
      
         function renderHearts() {
             const container = document.getElementById('health-container');
+            if (!container) return;
             container.innerHTML = '';
-            const hearts = Math.ceil(player.health / 2);
-            // --- USING DIRECT PATH FOR UI HEART ---
-            const heartPath = ASSET_FILEPATHS.HEART; 
-            
-            for(let i=0; i<hearts; i++) {
+
+            const fullHeartPath = ASSET_FILEPATHS.HEART_FULL || ASSET_FILEPATHS.HEART;
+            const halfHeartPath = ASSET_FILEPATHS.HEART_HALF || fullHeartPath;
+            const emptyHeartPath = ASSET_FILEPATHS.HEART_EMPTY || fullHeartPath;
+
+            const maxHearts = Math.max(1, Math.floor((player.maxHealth || 20) / 2));
+            const healthUnits = Math.max(0, Math.min(Math.round(Number(player.health) || 0), maxHearts * 2));
+
+            for (let i = 0; i < maxHearts; i++) {
+                const filledUnits = Math.max(0, Math.min(2, healthUnits - i * 2));
                 const heartImg = document.createElement('img');
-                heartImg.src = heartPath;
+
+                if (filledUnits === 2) {
+                    heartImg.src = fullHeartPath;
+                    heartImg.alt = 'Full Heart';
+                } else if (filledUnits === 1) {
+                    heartImg.src = halfHeartPath;
+                    heartImg.alt = 'Half Heart';
+                } else {
+                    heartImg.src = emptyHeartPath;
+                    heartImg.alt = 'Empty Heart';
+                }
+
                 heartImg.className = 'heart-icon';
-                heartImg.alt = 'Full Heart';
                 container.appendChild(heartImg);
             }
         }
@@ -4036,7 +4051,6 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
                     count++;
                 }
             }
-            document.getElementById('chunks-count').textContent = count;
         }
 
         function updateMining(deltaMs) {
