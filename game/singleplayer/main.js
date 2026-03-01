@@ -2266,11 +2266,23 @@ window.perlin = perlinInstance;
             const prevZ = yawObject.position.z;
 
             // Apply world movement
+            const liquidState = getPlayerLiquidState();
+            const isSwimming = liquidState.isInLiquid;
+            player.isSwimming = isSwimming;
+
             player.direction.set(0, 0, 0);
-            const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(yawObject.quaternion);
-            const right = new THREE.Vector3(1, 0, 0).applyQuaternion(yawObject.quaternion);
-            forward.y = 0; forward.normalize();
-            right.y = 0; right.normalize();
+
+            const walkForward = new THREE.Vector3(0, 0, -1).applyQuaternion(yawObject.quaternion);
+            const walkRight = new THREE.Vector3(1, 0, 0).applyQuaternion(yawObject.quaternion);
+            walkForward.y = 0; walkForward.normalize();
+            walkRight.y = 0; walkRight.normalize();
+
+            const swimForward = camera.getWorldDirection(new THREE.Vector3()).normalize();
+            const swimRight = new THREE.Vector3().crossVectors(swimForward, new THREE.Vector3(0, 1, 0));
+            if (swimRight.lengthSq() > 0.0001) swimRight.normalize();
+
+            const forward = isSwimming ? swimForward : walkForward;
+            const right = isSwimming ? swimRight : walkRight;
 
             if (player.keys['w']) player.direction.add(forward);
             if (player.keys['s']) player.direction.sub(forward);
@@ -2284,9 +2296,6 @@ window.perlin = perlinInstance;
 
             const isMoving = player.direction.lengthSq() > 0;
             player.isMoving = isMoving;
-            const liquidState = getPlayerLiquidState();
-            const isSwimming = liquidState.isInLiquid;
-            player.isSwimming = isSwimming;
 
             const isSprinting = isMoving && (player.keys['e'] || mobileControls.sprint);
             if (window.HungerSystem) {
@@ -3320,7 +3329,7 @@ window.perlin = perlinInstance;
             if (!playerAvatarParts) return;
 
             if (playerAvatar) {
-                playerAvatar.rotation.x = player.isSwimming ? Math.PI / 2 : 0;
+                playerAvatar.rotation.x = player.isSwimming ? -Math.PI / 2 : 0;
                 playerAvatar.rotation.z = 0;
             }
 
