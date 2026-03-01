@@ -178,7 +178,7 @@
         context = initContext || {};
         buildUI();
         loadCensorWords();
-        pushMessage('Chat ready. Use /give <id> <amount>.', 'chat-info');
+        pushMessage('Do /help to see all the commands', 'chat-info');
     }
 
     window.SingleplayerChat = {
