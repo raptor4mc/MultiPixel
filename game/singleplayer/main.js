@@ -1009,21 +1009,24 @@ window.perlin = perlinInstance;
 
             for (let i = 0; i < maxHearts; i++) {
                 const filledUnits = Math.max(0, Math.min(2, healthUnits - i * 2));
-                const heartImg = document.createElement('img');
+                const heartSlot = document.createElement('div');
+                heartSlot.className = 'status-slot';
 
-                if (filledUnits === 2) {
-                    heartImg.src = fullHeartPath;
-                    heartImg.alt = 'Full Heart';
-                } else if (filledUnits === 1) {
-                    heartImg.src = halfHeartPath;
-                    heartImg.alt = 'Half Heart';
-                } else {
-                    heartImg.src = emptyHeartPath;
-                    heartImg.alt = 'Empty Heart';
+                const baseHeartImg = document.createElement('img');
+                baseHeartImg.src = emptyHeartPath;
+                baseHeartImg.alt = 'Heart Container';
+                baseHeartImg.className = 'heart-icon';
+                heartSlot.appendChild(baseHeartImg);
+
+                if (filledUnits > 0) {
+                    const overlayHeartImg = document.createElement('img');
+                    overlayHeartImg.src = filledUnits === 2 ? fullHeartPath : halfHeartPath;
+                    overlayHeartImg.alt = filledUnits === 2 ? 'Full Heart' : 'Half Heart';
+                    overlayHeartImg.className = 'heart-icon status-slot-overlay';
+                    heartSlot.appendChild(overlayHeartImg);
                 }
 
-                heartImg.className = 'heart-icon';
-                container.appendChild(heartImg);
+                container.appendChild(heartSlot);
             }
         }
 

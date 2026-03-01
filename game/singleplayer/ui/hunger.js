@@ -30,21 +30,24 @@
 
     for (let i = 0; i < maxFoods; i++) {
       const foodValue = clampedValue - i * 2;
-      const foodImg = document.createElement('img');
+      const foodSlot = document.createElement('div');
+      foodSlot.className = 'status-slot';
 
-      if (foodValue >= 2) {
-        foodImg.src = fullFoodPath;
-        foodImg.alt = 'Full Food';
-      } else if (foodValue >= 1) {
-        foodImg.src = halfFoodPath;
-        foodImg.alt = 'Half Food';
-      } else {
-        foodImg.src = emptyFoodPath;
-        foodImg.alt = 'Empty Food';
+      const baseFoodImg = document.createElement('img');
+      baseFoodImg.src = emptyFoodPath;
+      baseFoodImg.alt = 'Food Container';
+      baseFoodImg.className = 'food-icon';
+      foodSlot.appendChild(baseFoodImg);
+
+      if (foodValue >= 1) {
+        const overlayFoodImg = document.createElement('img');
+        overlayFoodImg.src = foodValue >= 2 ? fullFoodPath : halfFoodPath;
+        overlayFoodImg.alt = foodValue >= 2 ? 'Full Food' : 'Half Food';
+        overlayFoodImg.className = 'food-icon status-slot-overlay';
+        foodSlot.appendChild(overlayFoodImg);
       }
 
-      foodImg.className = 'food-icon';
-      container.appendChild(foodImg);
+      container.appendChild(foodSlot);
     }
 
   }
