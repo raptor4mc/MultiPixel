@@ -32,7 +32,7 @@
         const BlockBreakableSystem = window.BlockBreakableSystem || {};
         const SpawnLighting = window.SpawnLighting || {};
 
-        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-28-04';
+        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-28-05';
         console.info('[Singleplayer build]', window.__SINGLEPLAYER_BUILD__);
 
         const TerrainModules = {};
@@ -2950,6 +2950,57 @@ window.perlin = perlinInstance;
             }
             return false;
         }
+
+        function canPlaceMinecraftLikeTree(data, x, z, topY, trunkHeight) {
+            if (x < 2 || x > CHUNK_SIZE - 3 || z < 2 || z > CHUNK_SIZE - 3) return false;
+            const maxY = Math.min(CHUNK_HEIGHT - 2, topY + trunkHeight + 3);
+            for (let y = topY + 1; y <= maxY; y++) {
+                const rel = y - (topY + trunkHeight);
+                const radius = rel >= 0 ? 1 : (rel >= -2 ? 2 : 1);
+                for (let ox = -radius; ox <= radius; ox++) {
+                    for (let oz = -radius; oz <= radius; oz++) {
+                        const tx = x + ox;
+                        const tz = z + oz;
+                        if (tx < 0 || tx >= CHUNK_SIZE || tz < 0 || tz >= CHUNK_SIZE) return false;
+                        const idx = tx + y * CHUNK_SIZE + tz * CHUNK_SIZE * CHUNK_HEIGHT;
+                        const b = data[idx];
+                        if (b !== 0 && b !== 6) return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        function placeMinecraftLikeTree(data, x, z, topY, trunkHeight, wx, wz) {
+            const trunkTopY = topY + trunkHeight;
+            for (let i = 1; i <= trunkHeight; i++) {
+                const ty = topY + i;
+                const idx = x + ty * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
+                data[idx] = 5;
+            }
+
+            for (let y = trunkTopY - 2; y <= trunkTopY + 1; y++) {
+                if (y < 1 || y >= CHUNK_HEIGHT) continue;
+                const rel = y - trunkTopY;
+                const radius = rel === 1 ? 1 : (rel === 0 ? 2 : (rel === -1 ? 2 : 1));
+                for (let ox = -radius; ox <= radius; ox++) {
+                    for (let oz = -radius; oz <= radius; oz++) {
+                        if (Math.abs(ox) === radius && Math.abs(oz) === radius && hashRand2D(wx + ox * 31, wz + oz * 17 + y * 7, 611) < 0.35) continue;
+                        const tx = x + ox;
+                        const tz = z + oz;
+                        if (tx < 0 || tx >= CHUNK_SIZE || tz < 0 || tz >= CHUNK_SIZE) continue;
+                        const idx = tx + y * CHUNK_SIZE + tz * CHUNK_SIZE * CHUNK_HEIGHT;
+                        if (data[idx] === 0) data[idx] = 6;
+                    }
+                }
+            }
+
+            const crownY = trunkTopY + 2;
+            if (crownY < CHUNK_HEIGHT) {
+                const crownIdx = x + crownY * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
+                if (data[crownIdx] === 0) data[crownIdx] = 6;
+            }
+        }
         
         function generateChunkData(cx, cz) {
              const data = new Array(CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE);
@@ -3197,74 +3248,38 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
                          data[x + y*CHUNK_SIZE + z*CHUNK_SIZE*CHUNK_HEIGHT] = t;
                      }
                   
-                     // --- Tree Generation (deterministic + chunk-safe placement) ---
-                     if (!isRiver) {
+                     // --- Tree Generation (Minecraft-like oaks on natural low/mid elevations) ---
+                     if (!isRiver && (biome === 'Forest' || biome === 'Plains')) {
                          let topY = -1;
                          for (let yy = CHUNK_HEIGHT - 2; yy >= 1; yy--) {
                              const tidx = x + yy * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
                              const ttype = data[tidx];
-                             if (ttype !== 0 && ttype !== 4) {
+                             if (ttype !== 0 && ttype !== 4 && ttype !== 6) {
                                  topY = yy;
                                  break;
                              }
                          }
 
-                         if (topY >= SEA_LEVEL) {
+                         if (topY >= SEA_LEVEL && topY <= SEA_LEVEL + 20) {
                              const topIdx = x + topY * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
                              const topType = data[topIdx];
                              const validGround = (topType === 1 || topType === 2);
-                             if (validGround && x > 0 && x < CHUNK_SIZE - 1 && z > 0 && z < CHUNK_SIZE - 1) {
+                             if (validGround) {
                                  const treeNoise = octaveNoise2D(wx, wz, 2, 0.56, 2.0, 0.028, 700, -350) * 0.5 + 0.5;
                                  const scatter = hashRand2D(wx, wz, 99);
                                  const density = treeNoise * 0.6 + scatter * 0.4;
                                  const chance = getTreeSpawnChanceForBiome(biome, topY);
                                  const clusterBonus = Number(worldGenSettings.treeClusterBonus ?? 0.12);
-                                 const nearbyTree = hasNearbyTreeTrunk(data, x, z, 2);
+                                 const nearbyTree = hasNearbyTreeTrunk(data, x, z, 3);
                                  const spacingGate = Number(worldGenSettings.treeMinSpacingChance ?? 0.65);
                                  const spawnRoll = hashRand2D(wx, wz, 431);
-                                 const shouldTrySpawn = (spawnRoll < (chance + density * clusterBonus)) && (!nearbyTree || spawnRoll < spacingGate);
+                                 const shouldTrySpawn = (spawnRoll < (chance + density * clusterBonus)) && (!nearbyTree || spawnRoll < spacingGate * 0.75);
 
                                  if (shouldTrySpawn) {
-                                     const heightLimit = 4 + Math.floor(hashRand2D(wx, wz, 157) * 3); // 4-6
-                                     let obstructed = false;
-                                     for (let ty = topY + 1; ty <= Math.min(CHUNK_HEIGHT - 2, topY + heightLimit + 2) && !obstructed; ty++) {
-                                         const canopyRadius = ty >= topY + heightLimit - 2 ? 2 : 0;
-                                         for (let ox = -canopyRadius; ox <= canopyRadius && !obstructed; ox++) {
-                                             for (let oz = -canopyRadius; oz <= canopyRadius && !obstructed; oz++) {
-                                                 const tx = x + ox;
-                                                 const tz = z + oz;
-                                                 if (tx < 0 || tx >= CHUNK_SIZE || tz < 0 || tz >= CHUNK_SIZE) continue;
-                                                 const idx = tx + ty * CHUNK_SIZE + tz * CHUNK_SIZE * CHUNK_HEIGHT;
-                                                 const b = data[idx];
-                                                 if (b !== 0 && b !== 6) obstructed = true;
-                                             }
-                                         }
-                                     }
-
-                                     if (!obstructed) {
+                                     const trunkHeight = 4 + Math.floor(hashRand2D(wx, wz, 157) * 2); // 4-5
+                                     if (canPlaceMinecraftLikeTree(data, x, z, topY, trunkHeight)) {
                                          if (data[topIdx] === 2) data[topIdx] = 1;
-                                         for (let i = 1; i <= heightLimit; i++) {
-                                             const ty = topY + i;
-                                             if (ty >= CHUNK_HEIGHT) break;
-                                             const idx = x + ty * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
-                                             if (data[idx] === 0 || data[idx] === 6) data[idx] = 5;
-                                         }
-
-                                         for (let ly = -3; ly <= 1; ly++) {
-                                             const yAbs = topY + heightLimit + ly;
-                                             if (yAbs < 1 || yAbs >= CHUNK_HEIGHT) continue;
-                                             const radius = ly >= 0 ? 1 : (ly === -1 ? 2 : (ly === -2 ? 2 : 1));
-                                             for (let lx = -radius; lx <= radius; lx++) {
-                                                 for (let lz = -radius; lz <= radius; lz++) {
-                                                     if (lx * lx + lz * lz > radius * radius) continue;
-                                                     const tx = x + lx;
-                                                     const tz = z + lz;
-                                                     if (tx < 0 || tx >= CHUNK_SIZE || tz < 0 || tz >= CHUNK_SIZE) continue;
-                                                     const lidx = tx + yAbs * CHUNK_SIZE + tz * CHUNK_SIZE * CHUNK_HEIGHT;
-                                                     if (data[lidx] === 0) data[lidx] = 6;
-                                                 }
-                                             }
-                                         }
+                                         placeMinecraftLikeTree(data, x, z, topY, trunkHeight, wx, wz);
                                      }
                                  }
                              }
