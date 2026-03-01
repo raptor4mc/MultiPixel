@@ -46,6 +46,13 @@
     { name: 'Copper Pickaxe', output: { id: 73, count: 1}, shape: [[69, 69, 69], [0, 10, 0], [0, 10, 0]] },
     { name: 'Iron Pickaxe', output: { id: 74, count: 1}, shape: [[67, 67, 67 ], [0, 10, 0], [0, 10, 0]] },
     { name: 'Diamond Pickaxe', output: { id: 75, count: 1}, shape: [[44, 44, 44], [0, 10, 0], [0, 10, 0]] },
+    { name: 'Wooden Shovel', output: { id: 83, count: 1 }, shape: [[8], [10], [10]] },
+    { name: 'Stone Shovel', output: { id: 84, count: 1 }, shape: [[17], [10], [10]] },
+    { name: 'Stone Shovel', output: { id: 84, count: 1 }, shape: [[3], [10], [10]] },
+    { name: 'Gold Shovel', output: { id: 85, count: 1 }, shape: [[70], [10], [10]] },
+    { name: 'Copper Shovel', output: { id: 86, count: 1 }, shape: [[69], [10], [10]] },
+    { name: 'Iron Shovel', output: { id: 87, count: 1 }, shape: [[67], [10], [10]] },
+    { name: 'Diamond Shovel', output: { id: 88, count: 1 }, shape: [[44], [10], [10]] },
   ];
 
   function checkCraftingRecipe(inputSlots, gridWidth) {

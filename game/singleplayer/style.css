@@ -607,3 +607,40 @@ body {
 #inv-skin-arm-right { width: 8px; height: 24px; left: 45px; top: 16px; }
 #inv-skin-leg-left { width: 8px; height: 24px; left: 29px; top: 40px; }
 #inv-skin-leg-right { width: 8px; height: 24px; left: 37px; top: 40px; }
+
+#eat-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 145;
+}
+
+#eat-overlay.hidden {
+    display: none;
+}
+
+#eat-item {
+    position: absolute;
+    left: 50%;
+    top: 58%;
+    width: 220px;
+    height: 220px;
+    image-rendering: pixelated;
+    transform: translate(-50%, -50%);
+    filter: drop-shadow(0 4px 0 rgba(0, 0, 0, 0.4));
+}
+
+.eat-particle {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    image-rendering: pixelated;
+    opacity: 0.95;
+    animation: eatParticleFall 0.62s ease-in forwards;
+    pointer-events: none;
+}
+
+@keyframes eatParticleFall {
+    0% { opacity: 0.95; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(95px) scale(0.6); }
+}

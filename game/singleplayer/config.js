@@ -7,6 +7,21 @@
   const BASE_LAND_Y = 20;
   const ISLAND_RADIUS = 30;
 
+  const WORLD_GEN_SETTINGS = {
+    version: '1.17-inspired-v1',
+    seedStorageKey: 'singleplayer.worldSeed',
+    treeDensityByBiome: {
+      Forest: 0.19,
+      Plains: 0.035,
+      Mountains: 0.02,
+      'Snowy Plains': 0.01,
+      Desert: 0,
+      Ocean: 0,
+    },
+    treeClusterBonus: 0.13,
+    treeMinSpacingChance: 0.65,
+  };
+
   const CAVE_SCALE = 0.05;
   const CAVE_THRESHOLD = 0.7;
   const CAVE_MIN_Y = 5;
@@ -124,6 +139,15 @@
     COPPER_PICKAXE: getAssetPath('textures/item/tool/pickaxe/copper_pickaxe.png'),
     IRON_PICKAXE: getAssetPath('textures/item/tool/pickaxe/iron_pickaxe.png'),
     DIAMOND_PICKAXE: getAssetPath('textures/item/tool/pickaxe/diamond_pickaxe.png'),
+    WOODEN_SHOVEL: getAssetPath('textures/item/tools/shovel/wooden_shovel.png'),
+    STONE_SHOVEL: getAssetPath('textures/item/tools/shovel/stone_shovel.png'),
+    GOLDEN_SHOVEL: getAssetPath('textures/item/tools/shovel/golden_shovel.png'),
+    COPPER_SHOVEL: getAssetPath('textures/item/tools/shovel/copper_shovel.png'),
+    IRON_SHOVEL: getAssetPath('textures/item/tools/shovel/iron_shovel.png'),
+    DIAMOND_SHOVEL: getAssetPath('textures/item/tools/shovel/diamond_shovel.png'),
+    PIG_TEXTURE: getAssetPath('textures/mobs/pig.png'),
+    PORKCHOP_RAW: getAssetPath('textures/item/food/pork/porkchop.png'),
+    PORKCHOP_COOKED: getAssetPath('textures/item/food/pork/cooked_porkchop.png'),
   };
 
   const blockMaterials = {
@@ -173,7 +197,7 @@
     /*Building ig*/
     8: { name: 'Oak Planks', id: 8, textured: true, textureKey: 'OAK_PLANK' },
     17: { name: 'Cobblestone', id: 17, textured: true, textureKey: 'COBBLESTONE' },
-    22: { name: 'torch', id: 22, textured: true, textureKey: 'TORCH', transparent: true, opacity: 0 },
+    22: { name: 'torch', id: 22, textured: true, textureKey: 'TORCH', transparent: true, opacity: 1 },
     
     /*Glass*/
     26: { name: 'Glass', id: 26, textured: true, textureKey: 'GLASS_BLOCK', transparent: true, opacity: 0.8 },
@@ -343,6 +367,14 @@
     73: { name: 'Copper Pickaxe', id: 73, textured: true, textureKey: 'COPPER_PICKAXE', toolType: 'pickaxe', tier: 4 },
     74: { name: 'Iron Pickaxe', id: 74, textured: true, textureKey: 'IRON_PICKAXE', toolType: 'pickaxe', tier: 5 },
     75: { name: 'Diamond Pickaxe', id: 75, textured: true, textureKey: 'DIAMOND_PICKAXE', toolType: 'pickaxe', tier: 6 },
+    83: { name: 'Wooden Shovel', id: 83, textured: true, textureKey: 'WOODEN_SHOVEL', toolType: 'shovel', tier: 1 },
+    84: { name: 'Stone Shovel', id: 84, textured: true, textureKey: 'STONE_SHOVEL', toolType: 'shovel', tier: 2 },
+    85: { name: 'Gold Shovel', id: 85, textured: true, textureKey: 'GOLDEN_SHOVEL', toolType: 'shovel', tier: 3 },
+    86: { name: 'Copper Shovel', id: 86, textured: true, textureKey: 'COPPER_SHOVEL', toolType: 'shovel', tier: 4 },
+    87: { name: 'Iron Shovel', id: 87, textured: true, textureKey: 'IRON_SHOVEL', toolType: 'shovel', tier: 5 },
+    88: { name: 'Diamond Shovel', id: 88, textured: true, textureKey: 'DIAMOND_SHOVEL', toolType: 'shovel', tier: 6 },
+    89: { name: 'Raw Porkchop', id: 89, textured: true, textureKey: 'PORKCHOP_RAW' },
+    90: { name: 'Cooked Porkchop', id: 90, textured: true, textureKey: 'PORKCHOP_COOKED' },
   }; 
 
   window.SingleplayerConfig = {
@@ -351,6 +383,7 @@
     PLAYER_HEIGHT, PLAYER_RADIUS, GRAVITY, JUMP_POWER,
     INV_COLS, INV_ROWS, HOTBAR_SLOTS, TOTAL_INV_SIZE,
     REPO_BASE_PREFIX,
+    WORLD_GEN_SETTINGS,
     ASSET_FILEPATHS, blockMaterials,
     SOLID_BLOCKS: [1, 2, 3, 5, 6, 7, 8, 9, 13, 14, 15, 17, 18, 20, 21, 23, 24, 26, 27, 28, 29, 30, 32, 34, 35, 36, 37, 39, 40, 41, 43, 45, 54, 55, 59, 68, 71, 76, 77, 78, 79, 80, 81, 82 ],
     LIQUID_BLOCKS: [4, 33, 47, 48, 49, 50, 51, 52, 53, 60, 61, 62, 63, 64, 65, 66],

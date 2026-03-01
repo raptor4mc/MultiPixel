@@ -6,6 +6,7 @@
             SEA_LEVEL,
             BASE_LAND_Y,
             ISLAND_RADIUS,
+            WORLD_GEN_SETTINGS,
             CAVE_SCALE,
             CAVE_THRESHOLD,
             CAVE_MIN_Y,
@@ -31,10 +32,36 @@
         const BlockBreakableSystem = window.BlockBreakableSystem || {};
         const SpawnLighting = window.SpawnLighting || {};
 
-        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-21-11';
+        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-03-01-01';
         console.info('[Singleplayer build]', window.__SINGLEPLAYER_BUILD__);
 
         const TerrainModules = {};
+
+        const worldGenSettings = WORLD_GEN_SETTINGS || {};
+
+        function normalizeWorldSeed(seedValue) {
+            const parsed = Number(seedValue);
+            if (!Number.isFinite(parsed)) return null;
+            const normalized = Math.abs(Math.floor(parsed)) % 2147483647;
+            return normalized > 0 ? normalized : 1;
+        }
+
+        function resolveWorldSeed() {
+            const storageKey = worldGenSettings.seedStorageKey || 'singleplayer.worldSeed';
+            let resolved = null;
+            try {
+                resolved = normalizeWorldSeed(window.localStorage?.getItem(storageKey));
+            } catch (err) {
+                console.warn('[World seed] localStorage read failed, using random seed.', err);
+            }
+            if (!resolved) resolved = Math.floor(Math.random() * 2147483646) + 1;
+            try {
+                window.localStorage?.setItem(storageKey, String(resolved));
+            } catch (err) {
+                console.warn('[World seed] localStorage write failed.', err);
+            }
+            return resolved;
+        }
 
         TerrainModules['ocean'] = window.OceanTerrain || {
             isBiome: function (ctx) { return ctx.climateNoise <= -0.2; },
@@ -83,7 +110,7 @@
         const DAY_CYCLE_DURATION = DAY_SEGMENTS.sunrise + DAY_SEGMENTS.day + DAY_SEGMENTS.sunset + DAY_SEGMENTS.night;
         let cycleTimeMs = DAY_SEGMENTS.sunrise + DAY_SEGMENTS.day / 2; // Start near noon
         let lastTime = 0; // For delta time calculation
-        let ambientLight, dirLight; // Made global for modification in animate loop
+        let ambientLight, hemiLight, moonLight, dirLight; // global lighting rig
 
         // Three.js specific materials created after textures are loaded
         let materials = {};
@@ -136,10 +163,15 @@ window.perlin = perlinInstance;
 
         // Mining / breaking state
         const BREAKING_TEXTURE_BASE = `${window.SingleplayerConfig?.REPO_BASE_PREFIX || '/MultiPixel'}/game/singleplayer/assets/breaking`;
-        let miningState = { active: false, key: null, blockPos: null, targetType: 0, elapsedMs: 0, neededMs: 0, missMs: 0, dropOnBreak: true };
+        const BREAKING_PARTICLE_BASE = `${BREAKING_TEXTURE_BASE}/particles`;
+        let miningState = { active: false, key: null, blockPos: null, targetType: 0, elapsedMs: 0, neededMs: 0, missMs: 0, dropOnBreak: true, particleMs: 0 };
         let isLeftMouseDown = false;
         const breakingStageTextures = new Array(10).fill(null);
         let breakingCrackMesh = null;
+        let breakParticleTexture = null;
+        let lavaParticleTexture = null;
+        const activeWorldParticles = [];
+        let lavaParticleScanMs = 0;
         let lastPhysicsTickMs = 0;
         const dirtyChunkKeys = new Set();
         let physicsCursorY = 1;
@@ -173,6 +205,7 @@ window.perlin = perlinInstance;
         let scene, camera, renderer, perlin, raycaster;
         let worldSeed = 0;
         let lightingSystem = null;
+        const torchLightsByChunk = new Map();
         const frustum = new THREE.Frustum();
         const cameraViewProj = new THREE.Matrix4();
         const chunks = new Map();
@@ -191,6 +224,11 @@ window.perlin = perlinInstance;
         let skinSystem = null;
         let iglooStructureDef = null;
         const gnomeEntities = [];
+        const pigEntities = [];
+        let pigTexture = null;
+        let eatOverlayEl = null;
+        let eatItemEl = null;
+        let eatingAnimState = { active: false, timeMs: 0, durationMs: 0, itemId: 0, particleMs: 0 };
         
         // Calculate the world boundary coordinates
         const WORLD_MAX_COORD = (WORLD_RADIUS + 0.5) * CHUNK_SIZE;
@@ -298,7 +336,7 @@ window.perlin = perlinInstance;
             scene.fog = new THREE.Fog(0x87ceeb, 20, 120); 
 
             if (typeof PerlinNoise !== 'undefined') {
-                worldSeed = Math.floor(Math.random() * 2147483647);
+                worldSeed = resolveWorldSeed();
                 perlin = new PerlinNoise(worldSeed);
                 console.info('[World seed]', worldSeed);
                 lightingSystem = SpawnLighting.create ? SpawnLighting.create({ getBlockType, isLiquid, CHUNK_HEIGHT }) : null;
@@ -324,16 +362,23 @@ window.perlin = perlinInstance;
             yawObject.add(playerAvatar);
             applyCameraMode();
 
-            // Lighting (Made global: ambientLight, dirLight)
-            ambientLight = new THREE.AmbientLight(0x606060, 1.2); 
+            // Lighting (premium-feel sky rig + sun/moon + emissive local lights)
+            ambientLight = new THREE.AmbientLight(0x606060, 0.65);
+            hemiLight = new THREE.HemisphereLight(0x9ad8ff, 0x1f1a16, 0.52);
+            moonLight = new THREE.DirectionalLight(0x6f82ff, 0.12);
+            moonLight.position.set(-40, 80, -25);
             scene.add(ambientLight);
+            scene.add(hemiLight);
+            scene.add(moonLight);
             dirLight = new THREE.DirectionalLight(0xffffff, 1.5); 
             dirLight.position.set(50, 100, 50);
             scene.add(dirLight);
             scene.add(worldGroup);
 
     
+            await loadPigTexture();
             generateWorld();
+            spawnInitialPigs();
             setupPointerLockControls();
             setupKeyboardControls();
             setupBlockInteraction();
@@ -373,7 +418,18 @@ window.perlin = perlinInstance;
                 if (isInventoryOpen) toggleInventory();
             });
             if (window.HungerSystem) {
-                window.HungerSystem.init({ messageCallback: showGameMessage });
+                window.HungerSystem.init({
+                    messageCallback: showGameMessage,
+                    onRegenerateHealth: (halfHeart) => {
+                        if (player.health < player.maxHealth) {
+                            player.health = Math.min(player.maxHealth, player.health + (halfHeart || 1));
+                            renderHearts();
+                        }
+                    },
+                    onStarveDamageTick: (amount) => {
+                        if (player.health > 1) takeDamage(amount || 1);
+                    }
+                });
             }
             
            // Renderer setup
@@ -383,6 +439,7 @@ window.perlin = perlinInstance;
             document.body.appendChild(renderer.domElement);
             setupFirstPersonHandOverlay();
             setupInventorySkinRig();
+            setupEatingOverlay();
             
             window.addEventListener('resize', onWindowResize);
             document.addEventListener('contextmenu', e => e.preventDefault()); 
@@ -472,12 +529,23 @@ window.perlin = perlinInstance;
             scene.fog.color.copy(skyColor);
 
             const angle = (cycleTimeMs / DAY_CYCLE_DURATION) * (2 * Math.PI);
-            dirLight.intensity = Math.max(0.08, sunFactor + 0.2) * 1.2;
+            const daylight = Math.max(0, sunFactor + 0.1);
+            const nightness = Math.max(0, -sunFactor);
+
+            dirLight.intensity = Math.max(0.04, daylight) * 1.18;
             dirLight.position.x = Math.sin(angle) * 100;
             dirLight.position.y = Math.cos(angle) * 100;
             dirLight.position.z = Math.sin(angle) * 50;
 
-            ambientLight.intensity = Math.max(0.2, (sunFactor + 1) / 2) * 0.9;
+            moonLight.intensity = 0.06 + nightness * 0.34;
+            moonLight.position.x = -Math.sin(angle) * 85;
+            moonLight.position.y = Math.max(8, -Math.cos(angle) * 85);
+            moonLight.position.z = -Math.sin(angle) * 45;
+
+            ambientLight.intensity = 0.26 + daylight * 0.45;
+            hemiLight.intensity = 0.18 + daylight * 0.55;
+            scene.fog.near = 20 + daylight * 8;
+            scene.fog.far = 105 + daylight * 38;
             document.getElementById('time-of-day').textContent = phaseInfo.phase;
         }
 
@@ -614,6 +682,259 @@ window.perlin = perlinInstance;
                 lookTarget.y = g.root.position.y + 1.55;
                 g.head.lookAt(lookTarget);
             }
+        }
+
+        async function loadPigTexture() {
+            const path = window.SingleplayerConfig?.ASSET_FILEPATHS?.PIG_TEXTURE;
+            if (!path) return;
+            pigTexture = await new Promise((resolve) => {
+                new THREE.TextureLoader().load(path, (t) => {
+                    t.magFilter = THREE.NearestFilter;
+                    t.minFilter = THREE.NearestFilter;
+                    t.wrapS = THREE.ClampToEdgeWrapping;
+                    t.wrapT = THREE.ClampToEdgeWrapping;
+                    resolve(t);
+                }, undefined, () => resolve(null));
+            });
+        }
+
+        function createAtlasFaceTexture(baseTex, rect, atlasW = 64, atlasH = 32) {
+            if (!baseTex || !rect) return null;
+            const [x, y, w, h] = rect;
+            const tex = baseTex.clone();
+            tex.magFilter = THREE.NearestFilter;
+            tex.minFilter = THREE.NearestFilter;
+            tex.wrapS = THREE.ClampToEdgeWrapping;
+            tex.wrapT = THREE.ClampToEdgeWrapping;
+            tex.repeat.set(w / atlasW, h / atlasH);
+            tex.offset.set(x / atlasW, 1 - ((y + h) / atlasH));
+            tex.needsUpdate = true;
+            return tex;
+        }
+
+        function buildMobPartFaceRects(x, y, w, h, d) {
+            return {
+                0: [x, y + d, w, h],
+                1: [x + w + d, y + d, w, h],
+                2: [x + w, y, w, d],
+                3: [x + w + d, y, w, d],
+                4: [x + w, y + d, w, h],
+                5: [x + (w * 2) + d, y + d, w, h],
+            };
+        }
+
+        function createPigPart(dim, rects) {
+            const mats = [];
+            for (let i = 0; i < 6; i++) {
+                const faceTex = createAtlasFaceTexture(pigTexture, rects[i], 64, 32);
+                mats.push(new THREE.MeshStandardMaterial({ map: faceTex || null, color: faceTex ? 0xffffff : 0xe8b6b8, roughness: 0.92 }));
+            }
+            return new THREE.Mesh(new THREE.BoxGeometry(dim[0], dim[1], dim[2]), mats);
+        }
+
+        function createPigMesh() {
+            const U = 1 / 16;
+            const pig = new THREE.Group();
+
+            const body = createPigPart([10 * U, 8 * U, 16 * U], buildMobPartFaceRects(28, 8, 10, 8, 16));
+            body.position.y = 10 * U;
+            pig.add(body);
+
+            const head = createPigPart([8 * U, 8 * U, 8 * U], buildMobPartFaceRects(0, 0, 8, 8, 8));
+            head.position.set(0, 11 * U, 10 * U);
+            pig.add(head);
+
+            const legRects = buildMobPartFaceRects(0, 16, 4, 6, 4);
+            const legOffsets = [[-3*U, 3*U, 5*U], [3*U, 3*U, 5*U], [-3*U, 3*U, -5*U], [3*U, 3*U, -5*U]];
+            const legs = [];
+            for (const off of legOffsets) {
+                const leg = createPigPart([4 * U, 6 * U, 4 * U], legRects);
+                leg.position.set(off[0], off[1], off[2]);
+                pig.add(leg);
+                legs.push(leg);
+            }
+
+            const hitbox = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.9, 1.0), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
+            hitbox.position.set(0, 0.5, 0);
+            hitbox.userData.pigHitbox = true;
+            pig.add(hitbox);
+            pig.userData.pigHitbox = hitbox;
+            pig.userData.pigHead = head;
+            pig.userData.pigLegs = legs;
+            return pig;
+        }
+
+        function getSurfaceYForEntity(wx, wz) {
+            const x = Math.floor(wx);
+            const z = Math.floor(wz);
+            for (let y = CHUNK_HEIGHT - 2; y >= 2; y--) {
+                const under = getBlockType(x, y - 1, z);
+                const feet = getBlockType(x, y, z);
+                if (isSolid(under) && !isLiquid(under) && feet === 0) return y;
+            }
+            return -1;
+        }
+
+        function spawnPigAt(wx, wz) {
+            const y = getSurfaceYForEntity(wx, wz);
+            if (y < SEA_LEVEL || y > SEA_LEVEL + 24) return false;
+            const under = getBlockType(Math.floor(wx), y - 1, Math.floor(wz));
+            if (under !== 1 && under !== 2) return false;
+
+            const pigRoot = createPigMesh();
+            pigRoot.position.set(Math.floor(wx) + 0.5, y, Math.floor(wz) + 0.5);
+            scene.add(pigRoot);
+            pigEntities.push({
+                root: pigRoot,
+                hp: 8,
+                dir: new THREE.Vector3(Math.random() - 0.5, 0, Math.random() - 0.5).normalize(),
+                changeDirMs: 900 + Math.random() * 1800,
+                bobPhase: Math.random() * Math.PI * 2,
+            });
+            return true;
+        }
+
+        function spawnInitialPigs() {
+            let spawned = 0;
+            for (let i = 0; i < 120 && spawned < 10; i++) {
+                const wx = (Math.random() * 2 - 1) * (WORLD_RADIUS * CHUNK_SIZE * 0.72);
+                const wz = (Math.random() * 2 - 1) * (WORLD_RADIUS * CHUNK_SIZE * 0.72);
+                if (spawnPigAt(wx, wz)) spawned++;
+            }
+        }
+
+        function updatePigs(time, deltaMs) {
+            if (!pigEntities.length) return;
+            const dt = Math.max(0.001, Math.min(0.05, deltaMs / 1000));
+            for (const pig of pigEntities) {
+                pig.changeDirMs -= deltaMs;
+                if (pig.changeDirMs <= 0) {
+                    pig.changeDirMs = 900 + Math.random() * 1800;
+                    pig.dir.set(Math.random() - 0.5, 0, Math.random() - 0.5).normalize();
+                }
+
+                const speed = 0.75;
+                const nx = pig.root.position.x + pig.dir.x * speed * dt;
+                const nz = pig.root.position.z + pig.dir.z * speed * dt;
+                const ny = getSurfaceYForEntity(nx, nz);
+                if (ny > 0) {
+                    pig.root.position.x = nx;
+                    pig.root.position.z = nz;
+                    pig.root.position.y = ny;
+                }
+                pig.root.rotation.y = Math.atan2(pig.dir.x, pig.dir.z);
+
+                const swing = Math.sin(time * 0.008 + pig.bobPhase) * 0.17;
+                const legs = pig.root.userData.pigLegs || [];
+                if (legs[0]) legs[0].rotation.x = swing;
+                if (legs[1]) legs[1].rotation.x = -swing;
+                if (legs[2]) legs[2].rotation.x = -swing;
+                if (legs[3]) legs[3].rotation.x = swing;
+            }
+        }
+
+        function getPigHitFromCrosshair() {
+            if (!pigEntities.length) return null;
+            raycaster.setFromCamera({ x: 0, y: 0 }, camera);
+            const hitboxes = pigEntities.map(p => p.root.userData.pigHitbox).filter(Boolean);
+            const hits = raycaster.intersectObjects(hitboxes, false);
+            if (!hits.length) return null;
+            const hitObj = hits[0].object;
+            return pigEntities.find((p) => p.root.userData.pigHitbox === hitObj) || null;
+        }
+
+        function hurtPig(pig, amount = 4) {
+            if (!pig) return;
+            pig.hp -= amount;
+            if (pig.hp > 0) {
+                pig.changeDirMs = 0;
+                pig.dir.set((Math.random() - 0.5) * 2, 0, (Math.random() - 0.5) * 2).normalize();
+                showGameMessage('Pig: oink!');
+                return;
+            }
+            const idx = pigEntities.indexOf(pig);
+            if (idx >= 0) pigEntities.splice(idx, 1);
+            scene.remove(pig.root);
+            const drops = 1 + Math.floor(Math.random() * 3);
+            addToInventory(89, drops);
+            showGameMessage(`+${drops} Raw Porkchop`);
+        }
+
+        function setupEatingOverlay() {
+            if (eatOverlayEl) return;
+            const root = document.createElement('div');
+            root.id = 'eat-overlay';
+            root.className = 'hidden';
+            const item = document.createElement('div');
+            item.id = 'eat-item';
+            root.appendChild(item);
+            document.body.appendChild(root);
+            eatOverlayEl = root;
+            eatItemEl = item;
+        }
+
+        function startEatingAnimation(itemId) {
+            if (!eatOverlayEl || !eatItemEl) setupEatingOverlay();
+            const texKey = blockMaterials[itemId]?.textureKey;
+            const img = texKey ? ASSET_FILEPATHS[texKey] : null;
+            if (img) {
+                eatItemEl.style.backgroundImage = `url('${img}')`;
+                eatItemEl.style.backgroundSize = 'contain';
+                eatItemEl.style.backgroundRepeat = 'no-repeat';
+                eatItemEl.style.backgroundPosition = 'center';
+                eatItemEl.style.backgroundColor = 'transparent';
+            } else {
+                eatItemEl.style.backgroundImage = 'none';
+                eatItemEl.style.backgroundColor = '#cda173';
+            }
+            eatOverlayEl.classList.remove('hidden');
+            eatingAnimState = { active: true, timeMs: 0, durationMs: 900, itemId, particleMs: 0 };
+        }
+
+        function spawnEatingParticle() {
+            if (!eatOverlayEl) return;
+            const p = document.createElement('div');
+            p.className = 'eat-particle';
+            p.style.left = `${44 + Math.random() * 28}%`;
+            p.style.top = `${48 + Math.random() * 16}%`;
+            p.style.backgroundImage = `url('${BREAKING_PARTICLE_BASE}/break_particles.png')`;
+            p.style.backgroundSize = 'cover';
+            p.style.transform = `scale(${0.6 + Math.random() * 0.7})`;
+            eatOverlayEl.appendChild(p);
+            setTimeout(() => p.remove(), 620);
+        }
+
+        function updateEatingAnimation(deltaMs, time) {
+            if (!eatingAnimState.active) return;
+            eatingAnimState.timeMs += deltaMs;
+            eatingAnimState.particleMs += deltaMs;
+            if (eatItemEl) {
+                const bob = Math.sin(time * 0.02) * 10;
+                eatItemEl.style.transform = `translate(-50%, -50%) translateY(${bob}px)`;
+            }
+            if (eatingAnimState.particleMs >= 110) {
+                eatingAnimState.particleMs = 0;
+                spawnEatingParticle();
+            }
+            if (eatingAnimState.timeMs >= eatingAnimState.durationMs) {
+                eatingAnimState.active = false;
+                if (eatOverlayEl) eatOverlayEl.classList.add('hidden');
+            }
+        }
+
+        function tryEatSelectedItem() {
+            const held = inventory[selectedHotbarIndex];
+            if (!held) return false;
+            const foodCfg = held.id === 89 ? { hunger: 3 } : (held.id === 90 ? { hunger: 8 } : null);
+            if (!foodCfg) return false;
+            if (window.HungerSystem && window.HungerSystem.canConsume && !window.HungerSystem.canConsume()) {
+                showGameMessage('You are full.');
+                return true;
+            }
+            if (window.HungerSystem?.consume) window.HungerSystem.consume(foodCfg.hunger);
+            consumeSelectedItem();
+            startEatingAnimation(held.id);
+            return true;
         }
 
         function initChatSystem() {
@@ -1270,6 +1591,7 @@ window.perlin = perlinInstance;
 
             const held = inventory[selectedHotbarIndex];
             const equippedPickaxe = PickaxeSystem.getEquippedPickaxe ? PickaxeSystem.getEquippedPickaxe(held) : null;
+            const equippedTool = PickaxeSystem.getEquippedTool ? PickaxeSystem.getEquippedTool(held) : equippedPickaxe;
             const breakable = BlockBreakableSystem.canBreakBlock
                 ? BlockBreakableSystem.canBreakBlock(blockId, equippedPickaxe)
                 : { canBreak: true, dropsItems: true, reason: null };
@@ -1288,11 +1610,13 @@ window.perlin = perlinInstance;
                 ? BlockHardnessSystem.toLegacyHardness(hardnessGrade)
                 : Math.max(0.2, hardnessGrade / 5);
 
-            const effectivePickaxe = breakable.dropsItems ? equippedPickaxe : null;
+            const effectiveTool = equippedTool && equippedTool.toolType === 'shovel'
+                ? equippedTool
+                : (breakable.dropsItems ? equippedPickaxe : null);
 
             if (PickaxeSystem.getMiningTimeMs) {
                 return {
-                    durationMs: PickaxeSystem.getMiningTimeMs(blockId, legacyHardness, effectivePickaxe),
+                    durationMs: PickaxeSystem.getMiningTimeMs(blockId, legacyHardness, effectiveTool),
                     allowed: true,
                     reason: breakable.reason || null,
                     requiredTier: breakable.requiredTier || null,
@@ -1317,6 +1641,112 @@ window.perlin = perlinInstance;
                     tex.minFilter = THREE.NearestFilter;
                     breakingStageTextures[i] = tex;
                 });
+            }
+            loader.load(`${BREAKING_PARTICLE_BASE}/break_particle.png`, (tex) => {
+                tex.magFilter = THREE.NearestFilter;
+                tex.minFilter = THREE.NearestFilter;
+                breakParticleTexture = tex;
+            }, undefined, () => {
+                breakParticleTexture = null;
+            });
+            loader.load(`${BREAKING_PARTICLE_BASE}/lava.png`, (tex) => {
+                tex.magFilter = THREE.NearestFilter;
+                tex.minFilter = THREE.NearestFilter;
+                lavaParticleTexture = tex;
+            }, undefined, () => {
+                lavaParticleTexture = null;
+            });
+        }
+
+        function spawnWorldParticle(kind, position, velocity, lifeMs, scale = 0.22) {
+            if (!scene) return;
+            const tex = kind === 'lava' ? lavaParticleTexture : breakParticleTexture;
+            const mat = new THREE.SpriteMaterial({
+                map: tex || null,
+                color: kind === 'lava' ? 0xffa347 : 0xffffff,
+                transparent: true,
+                opacity: kind === 'lava' ? 0.92 : 0.95,
+                depthWrite: false,
+            });
+            const sprite = new THREE.Sprite(mat);
+            sprite.scale.set(scale, scale, scale);
+            sprite.position.copy(position);
+            scene.add(sprite);
+            activeWorldParticles.push({
+                sprite,
+                vel: velocity.clone(),
+                ageMs: 0,
+                lifeMs,
+                gravity: kind === 'lava' ? -3.2 : -7.2,
+                drag: kind === 'lava' ? 0.9 : 0.82,
+            });
+        }
+
+        function emitBreakParticles(wx, wy, wz, count = 8, burst = false) {
+            for (let i = 0; i < count; i++) {
+                const px = wx + 0.2 + Math.random() * 0.6;
+                const py = wy + 0.2 + Math.random() * 0.6;
+                const pz = wz + 0.2 + Math.random() * 0.6;
+                const speed = burst ? (1.4 + Math.random() * 1.7) : (0.6 + Math.random() * 0.9);
+                const vel = new THREE.Vector3((Math.random() - 0.5) * speed, (Math.random() * 0.9 + 0.25) * speed, (Math.random() - 0.5) * speed);
+                const life = burst ? (420 + Math.random() * 300) : (230 + Math.random() * 180);
+                spawnWorldParticle('break', new THREE.Vector3(px, py, pz), vel, life, burst ? 0.16 : 0.13);
+            }
+        }
+
+        function maybeSpawnLavaParticles(deltaMs) {
+            lavaParticleScanMs += deltaMs;
+            if (lavaParticleScanMs < 120) return;
+            lavaParticleScanMs = 0;
+
+            const baseX = Math.floor(yawObject.position.x);
+            const baseY = Math.floor(yawObject.position.y);
+            const baseZ = Math.floor(yawObject.position.z);
+
+            const samples = 16;
+            for (let i = 0; i < samples; i++) {
+                const wx = baseX + Math.floor((Math.random() - 0.5) * 20);
+                const wy = Math.max(2, Math.min(CHUNK_HEIGHT - 3, baseY + Math.floor((Math.random() - 0.5) * 10)));
+                const wz = baseZ + Math.floor((Math.random() - 0.5) * 20);
+                const t = getBlockType(wx, wy, wz);
+                const isLava = t === 33 || (t >= 60 && t <= 66);
+                if (!isLava) continue;
+
+                const above = getBlockType(wx, wy + 1, wz);
+                const below = getBlockType(wx, wy - 1, wz);
+                const airAbove = above === 0;
+                const airBelow = below === 0;
+
+                if (airAbove && Math.random() < 0.2) {
+                    const pos = new THREE.Vector3(wx + 0.5 + (Math.random() - 0.5) * 0.26, wy + 1.02, wz + 0.5 + (Math.random() - 0.5) * 0.26);
+                    const vel = new THREE.Vector3((Math.random() - 0.5) * 0.35, 1.1 + Math.random() * 1.0, (Math.random() - 0.5) * 0.35);
+                    spawnWorldParticle('lava', pos, vel, 620 + Math.random() * 420, 0.18 + Math.random() * 0.1);
+                }
+
+                if (airBelow && Math.random() < 0.5) {
+                    const pos = new THREE.Vector3(wx + 0.5 + (Math.random() - 0.5) * 0.18, wy - 0.05, wz + 0.5 + (Math.random() - 0.5) * 0.18);
+                    const vel = new THREE.Vector3((Math.random() - 0.5) * 0.08, -(1.0 + Math.random() * 1.1), (Math.random() - 0.5) * 0.08);
+                    spawnWorldParticle('lava', pos, vel, 520 + Math.random() * 320, 0.14 + Math.random() * 0.08);
+                }
+            }
+        }
+
+        function updateWorldParticles(deltaMs) {
+            if (!activeWorldParticles.length) return;
+            const dt = Math.min(0.05, Math.max(0, deltaMs / 1000));
+            for (let i = activeWorldParticles.length - 1; i >= 0; i--) {
+                const p = activeWorldParticles[i];
+                p.ageMs += deltaMs;
+                p.vel.y += p.gravity * dt;
+                p.vel.multiplyScalar(Math.max(0.01, 1 - (1 - p.drag) * dt * 18));
+                p.sprite.position.addScaledVector(p.vel, dt);
+                const fade = 1 - (p.ageMs / p.lifeMs);
+                p.sprite.material.opacity = Math.max(0, fade);
+                if (p.ageMs >= p.lifeMs) {
+                    scene.remove(p.sprite);
+                    p.sprite.material.dispose();
+                    activeWorldParticles.splice(i, 1);
+                }
             }
         }
 
@@ -1387,6 +1817,7 @@ window.perlin = perlinInstance;
                 neededMs,
                 missMs: 0,
                 dropOnBreak: miningInfo.dropOnBreak !== false,
+                particleMs: 0,
             };
             return true;
         }
@@ -1430,6 +1861,7 @@ window.perlin = perlinInstance;
         }
 
         function interactOrPlaceAtCrosshair() {
+            if (tryEatSelectedItem()) return;
             raycaster.setFromCamera({ x: 0, y: 0 }, camera);
             const meshes = [];
             worldGroup.children.forEach(g => g.children.forEach(m => meshes.push(m)));
@@ -1485,6 +1917,11 @@ window.perlin = perlinInstance;
             if (!intersects.length) return;
 
             if (event.button === 0) {
+                const pigHit = getPigHitFromCrosshair();
+                if (pigHit) {
+                    hurtPig(pigHit, 4);
+                    return;
+                }
                 isLeftMouseDown = true;
                 const target = getTargetBlockFromCrosshair();
                 if (target) {
@@ -1636,6 +2073,7 @@ window.perlin = perlinInstance;
                     if (drop && drop.id > 0 && drop.count > 0) addToInventory(drop.id, drop.count);
                 }
                 chunkData[index] = 0;
+                emitBreakParticles(wx, wy, wz, 14, true);
             } else {
                
                 if (oldType !== 0 && oldType !== 4) return false; 
@@ -1681,7 +2119,7 @@ window.perlin = perlinInstance;
             player.isMoving = isMoving;
             const isSprinting = isMoving && (player.keys['e'] || mobileControls.sprint);
             if (window.HungerSystem) {
-                window.HungerSystem.update(performance.now(), { isMoving, isSprinting });
+                window.HungerSystem.update(performance.now(), { isMoving, isSprinting, isJumping: player.isJumping });
             }
             const hungerMultiplier = window.HungerSystem ? window.HungerSystem.getSpeedMultiplier() : 1;
             const sprintMultiplier = isSprinting ? player.sprintMultiplier : 1;
@@ -1786,6 +2224,7 @@ window.perlin = perlinInstance;
                     renderHearts();
                     setInitialPlayerPosition();
                     inventory = new Array(TOTAL_INV_SIZE).fill(null);
+                    if (window.HungerSystem?.setValue) window.HungerSystem.setValue(20);
                     updateHotbarUI();
                 }, 1000);
             }
@@ -2763,7 +3202,84 @@ window.perlin = perlinInstance;
             document.addEventListener('keyup', e => player.keys[e.key.toLowerCase()] = false);
         }
 
-      
+
+        function getTreeSpawnChanceForBiome(biomeName, topY) {
+            const map = worldGenSettings.treeDensityByBiome || {};
+            const baseChance = Number(map[biomeName] ?? map.Plains ?? 0.04);
+            let adjusted = baseChance;
+            if (topY > SEA_LEVEL + 26) adjusted *= 0.7;
+            if (topY < SEA_LEVEL + 2) adjusted *= 0.5;
+            return Math.max(0, Math.min(0.45, adjusted));
+        }
+
+        function hasNearbyTreeTrunk(data, x, z, radius) {
+            for (let ox = -radius; ox <= radius; ox++) {
+                for (let oz = -radius; oz <= radius; oz++) {
+                    if (ox === 0 && oz === 0) continue;
+                    const tx = x + ox;
+                    const tz = z + oz;
+                    if (tx < 0 || tx >= CHUNK_SIZE || tz < 0 || tz >= CHUNK_SIZE) continue;
+                    for (let y = CHUNK_HEIGHT - 2; y >= 1; y--) {
+                        const idx = tx + y * CHUNK_SIZE + tz * CHUNK_SIZE * CHUNK_HEIGHT;
+                        const block = data[idx];
+                        if (block === 5) return true;
+                        if (block !== 0 && block !== 6) break;
+                    }
+                }
+            }
+            return false;
+        }
+
+        function canPlaceMinecraftLikeTree(data, x, z, topY, trunkHeight) {
+            if (x < 2 || x > CHUNK_SIZE - 3 || z < 2 || z > CHUNK_SIZE - 3) return false;
+            const maxY = Math.min(CHUNK_HEIGHT - 2, topY + trunkHeight + 3);
+            for (let y = topY + 1; y <= maxY; y++) {
+                const rel = y - (topY + trunkHeight);
+                const radius = rel >= 0 ? 1 : (rel >= -2 ? 2 : 1);
+                for (let ox = -radius; ox <= radius; ox++) {
+                    for (let oz = -radius; oz <= radius; oz++) {
+                        const tx = x + ox;
+                        const tz = z + oz;
+                        if (tx < 0 || tx >= CHUNK_SIZE || tz < 0 || tz >= CHUNK_SIZE) return false;
+                        const idx = tx + y * CHUNK_SIZE + tz * CHUNK_SIZE * CHUNK_HEIGHT;
+                        const b = data[idx];
+                        if (b !== 0 && b !== 6) return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        function placeMinecraftLikeTree(data, x, z, topY, trunkHeight, wx, wz) {
+            const trunkTopY = topY + trunkHeight;
+            for (let i = 1; i <= trunkHeight; i++) {
+                const ty = topY + i;
+                const idx = x + ty * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
+                data[idx] = 5;
+            }
+
+            for (let y = trunkTopY - 2; y <= trunkTopY + 1; y++) {
+                if (y < 1 || y >= CHUNK_HEIGHT) continue;
+                const rel = y - trunkTopY;
+                const radius = rel === 1 ? 1 : (rel === 0 ? 2 : (rel === -1 ? 2 : 1));
+                for (let ox = -radius; ox <= radius; ox++) {
+                    for (let oz = -radius; oz <= radius; oz++) {
+                        if (Math.abs(ox) === radius && Math.abs(oz) === radius && hashRand2D(wx + ox * 31, wz + oz * 17 + y * 7, 611) < 0.35) continue;
+                        const tx = x + ox;
+                        const tz = z + oz;
+                        if (tx < 0 || tx >= CHUNK_SIZE || tz < 0 || tz >= CHUNK_SIZE) continue;
+                        const idx = tx + y * CHUNK_SIZE + tz * CHUNK_SIZE * CHUNK_HEIGHT;
+                        if (data[idx] === 0) data[idx] = 6;
+                    }
+                }
+            }
+
+            const crownY = trunkTopY + 2;
+            if (crownY < CHUNK_HEIGHT) {
+                const crownIdx = x + crownY * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
+                if (data[crownIdx] === 0) data[crownIdx] = 6;
+            }
+        }
         
         function generateChunkData(cx, cz) {
              const data = new Array(CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE);
@@ -3011,71 +3527,38 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
                          data[x + y*CHUNK_SIZE + z*CHUNK_SIZE*CHUNK_HEIGHT] = t;
                      }
                   
-                     // --- Tree Generation (deterministic + chunk-safe placement) ---
-                     if (!isRiver) {
+                     // --- Tree Generation (Minecraft-like oaks on natural low/mid elevations) ---
+                     if (!isRiver && (biome === 'Forest' || biome === 'Plains')) {
                          let topY = -1;
                          for (let yy = CHUNK_HEIGHT - 2; yy >= 1; yy--) {
                              const tidx = x + yy * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
                              const ttype = data[tidx];
-                             if (ttype !== 0 && ttype !== 4) {
+                             if (ttype !== 0 && ttype !== 4 && ttype !== 6) {
                                  topY = yy;
                                  break;
                              }
                          }
 
-                         if (topY >= SEA_LEVEL) {
+                         if (topY >= SEA_LEVEL && topY <= SEA_LEVEL + 20) {
                              const topIdx = x + topY * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
                              const topType = data[topIdx];
                              const validGround = (topType === 1 || topType === 2);
-                             if (validGround && x > 0 && x < CHUNK_SIZE - 1 && z > 0 && z < CHUNK_SIZE - 1) {
+                             if (validGround) {
                                  const treeNoise = octaveNoise2D(wx, wz, 2, 0.56, 2.0, 0.028, 700, -350) * 0.5 + 0.5;
                                  const scatter = hashRand2D(wx, wz, 99);
                                  const density = treeNoise * 0.6 + scatter * 0.4;
-                                 const chance = 0.4;
-                                 const denseBonus = 0.4;
-                                     const shouldTrySpawn = true;
+                                 const chance = getTreeSpawnChanceForBiome(biome, topY);
+                                 const clusterBonus = Number(worldGenSettings.treeClusterBonus ?? 0.12);
+                                 const nearbyTree = hasNearbyTreeTrunk(data, x, z, 3);
+                                 const spacingGate = Number(worldGenSettings.treeMinSpacingChance ?? 0.65);
+                                 const spawnRoll = hashRand2D(wx, wz, 431);
+                                 const shouldTrySpawn = (spawnRoll < (chance + density * clusterBonus)) && (!nearbyTree || spawnRoll < spacingGate * 0.75);
 
                                  if (shouldTrySpawn) {
-                                     const heightLimit = 4 + Math.floor(hashRand2D(wx, wz, 157) * 3); // 4-6
-                                     let obstructed = false;
-                                     for (let ty = topY + 1; ty <= Math.min(CHUNK_HEIGHT - 2, topY + heightLimit + 2) && !obstructed; ty++) {
-                                         const canopyRadius = ty >= topY + heightLimit - 2 ? 2 : 0;
-                                         for (let ox = -canopyRadius; ox <= canopyRadius && !obstructed; ox++) {
-                                             for (let oz = -canopyRadius; oz <= canopyRadius && !obstructed; oz++) {
-                                                 const tx = x + ox;
-                                                 const tz = z + oz;
-                                                 if (tx < 0 || tx >= CHUNK_SIZE || tz < 0 || tz >= CHUNK_SIZE) continue;
-                                                 const idx = tx + ty * CHUNK_SIZE + tz * CHUNK_SIZE * CHUNK_HEIGHT;
-                                                 const b = data[idx];
-                                                 if (b !== 0 && b !== 6) obstructed = true;
-                                             }
-                                         }
-                                     }
-
-                                     if (!obstructed) {
+                                     const trunkHeight = 4 + Math.floor(hashRand2D(wx, wz, 157) * 2); // 4-5
+                                     if (canPlaceMinecraftLikeTree(data, x, z, topY, trunkHeight)) {
                                          if (data[topIdx] === 2) data[topIdx] = 1;
-                                         for (let i = 1; i <= heightLimit; i++) {
-                                             const ty = topY + i;
-                                             if (ty >= CHUNK_HEIGHT) break;
-                                             const idx = x + ty * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_HEIGHT;
-                                             if (data[idx] === 0 || data[idx] === 6) data[idx] = 5;
-                                         }
-
-                                         for (let ly = -3; ly <= 1; ly++) {
-                                             const yAbs = topY + heightLimit + ly;
-                                             if (yAbs < 1 || yAbs >= CHUNK_HEIGHT) continue;
-                                             const radius = ly >= 0 ? 1 : (ly === -1 ? 2 : (ly === -2 ? 2 : 1));
-                                             for (let lx = -radius; lx <= radius; lx++) {
-                                                 for (let lz = -radius; lz <= radius; lz++) {
-                                                     if (lx * lx + lz * lz > radius * radius) continue;
-                                                     const tx = x + lx;
-                                                     const tz = z + lz;
-                                                     if (tx < 0 || tx >= CHUNK_SIZE || tz < 0 || tz >= CHUNK_SIZE) continue;
-                                                     const lidx = tx + yAbs * CHUNK_SIZE + tz * CHUNK_SIZE * CHUNK_HEIGHT;
-                                                     if (data[lidx] === 0) data[lidx] = 6;
-                                                 }
-                                             }
-                                         }
+                                         placeMinecraftLikeTree(data, x, z, topY, trunkHeight, wx, wz);
                                      }
                                  }
                              }
@@ -3275,7 +3758,35 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
             return [u0, v1, u0, v0, u1, v0, u1, v1];
         }
 
+        function removeTorchLightsForChunk(chunkKey) {
+            const entries = torchLightsByChunk.get(chunkKey);
+            if (!entries) return;
+            for (const light of entries) {
+                scene.remove(light);
+            }
+            torchLightsByChunk.delete(chunkKey);
+        }
+
+        function syncTorchLightsForChunk(group, torchPositions) {
+            if (!scene) return;
+            const chunkKey = `${group.userData.cx},${group.userData.cz}`;
+            removeTorchLightsForChunk(chunkKey);
+            if (!torchPositions || torchPositions.length === 0) return;
+
+            const maxLightsPerChunk = 24;
+            const created = [];
+            for (let i = 0; i < torchPositions.length && created.length < maxLightsPerChunk; i++) {
+                const p = torchPositions[i];
+                const light = new THREE.PointLight(0xffc88a, 0.88, 12, 2);
+                light.position.set(p.x + 0.5, p.y + 0.62, p.z + 0.5);
+                scene.add(light);
+                created.push(light);
+            }
+            if (created.length) torchLightsByChunk.set(chunkKey, created);
+        }
+
         function updateChunkGeometry(group, data) {
+
             const nextHash = computeChunkHash(data);
             if (group.userData.meshHash === nextHash && group.children.length > 0) return;
             group.userData.meshHash = nextHash;
@@ -3287,14 +3798,23 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
             
             const cx = group.userData.cx;
             const cz = group.userData.cz;
+            const torchPositions = [];
 
             const faces = [
-                { name: 'posX', dir: [1,0,0], corners: [[1,1,1],[1,0,1],[1,0,0],[1,1,0]], uv: [0,1, 0,0, 1,0, 1,1] }, // Right
-                { name: 'negX', dir: [-1,0,0], corners: [[0,1,0],[0,0,0],[0,0,1],[0,1,1]], uv: [0,1, 0,0, 1,0, 1,1] }, // Left
-                { name: 'top', dir: [0,1,0], corners: [[0,1,1],[1,1,1],[1,1,0],[0,1,0]], uv: [0,1, 0,0, 1,0, 1,1] }, // Top
-                { name: 'bottom', dir: [0,-1,0], corners: [[0,0,0],[1,0,0],[1,0,1],[0,0,1]], uv: [0,1, 0,0, 1,0, 1,1] } ,// Bottom
-                { name: 'posZ', dir: [0,0,1], corners: [[0,1,1],[0,0,1],[1,0,1],[1,1,1]], uv: [0,1, 0,0, 1,0, 1,1] }, // Back
-                { name: 'negZ', dir: [0,0,-1], corners: [[1,1,0],[1,0,0],[0,0,0],[0,1,0]], uv: [0,1, 0,0, 1,0, 1,1] } // Front
+                { name: 'posX', dir: [1,0,0], corners: [[1,1,1],[1,0,1],[1,0,0],[1,1,0]], uv: [0,1, 0,0, 1,0, 1,1] },
+                { name: 'negX', dir: [-1,0,0], corners: [[0,1,0],[0,0,0],[0,0,1],[0,1,1]], uv: [0,1, 0,0, 1,0, 1,1] },
+                { name: 'top', dir: [0,1,0], corners: [[0,1,1],[1,1,1],[1,1,0],[0,1,0]], uv: [0,1, 0,0, 1,0, 1,1] },
+                { name: 'bottom', dir: [0,-1,0], corners: [[0,0,0],[1,0,0],[1,0,1],[0,0,1]], uv: [0,1, 0,0, 1,0, 1,1] },
+                { name: 'posZ', dir: [0,0,1], corners: [[0,1,1],[0,0,1],[1,0,1],[1,1,1]], uv: [0,1, 0,0, 1,0, 1,1] },
+                { name: 'negZ', dir: [0,0,-1], corners: [[1,1,0],[1,0,0],[0,0,0],[0,1,0]], uv: [0,1, 0,0, 1,0, 1,1] }
+            ];
+            const torchFaces = [
+                { name: 'posX', dir: [1,0,0], corners: [[0.5625,0.8,0.5625],[0.5625,0.05,0.5625],[0.5625,0.05,0.4375],[0.5625,0.8,0.4375]], uv: [0,1,0,0,1,0,1,1] },
+                { name: 'negX', dir: [-1,0,0], corners: [[0.4375,0.8,0.4375],[0.4375,0.05,0.4375],[0.4375,0.05,0.5625],[0.4375,0.8,0.5625]], uv: [0,1,0,0,1,0,1,1] },
+                { name: 'top', dir: [0,1,0], corners: [[0.4375,0.8,0.5625],[0.5625,0.8,0.5625],[0.5625,0.8,0.4375],[0.4375,0.8,0.4375]], uv: [0,1,0,0,1,0,1,1] },
+                { name: 'bottom', dir: [0,-1,0], corners: [[0.4375,0.05,0.4375],[0.5625,0.05,0.4375],[0.5625,0.05,0.5625],[0.4375,0.05,0.5625]], uv: [0,1,0,0,1,0,1,1] },
+                { name: 'posZ', dir: [0,0,1], corners: [[0.4375,0.8,0.5625],[0.4375,0.05,0.5625],[0.5625,0.05,0.5625],[0.5625,0.8,0.5625]], uv: [0,1,0,0,1,0,1,1] },
+                { name: 'negZ', dir: [0,0,-1], corners: [[0.5625,0.8,0.4375],[0.5625,0.05,0.4375],[0.4375,0.05,0.4375],[0.4375,0.8,0.4375]], uv: [0,1,0,0,1,0,1,1] }
             ];
 
             const get = (x,y,z) => {
@@ -3313,15 +3833,19 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
                         if(id===0) continue;
                         
                         const mat = blockMaterials[id];
-                        const isTrans = mat.transparent || (mat.textured && mat.textureKey === 'LEAVES'); 
-                        
+                        const isTorch = id === 22;
+                        if (isTorch) torchPositions.push({ x: x + cx*16, y, z: z + cz*16 });
+                        const isTrans = mat.transparent || (mat.textured && mat.textureKey === 'LEAVES');
+                        const activeFaces = isTorch ? torchFaces : faces;
+
                         for(let i=0; i<6; i++){
-                            const f = faces[i];
+                            const f = activeFaces[i];
                             const nid = get(x+f.dir[0], y+f.dir[1], z+f.dir[2]);
                             const neighborMat = blockMaterials[nid];
                             
                             let draw = false;
-                            if (nid === 0) draw = true;
+                            if (isTorch) draw = true;
+                            else if (nid === 0) draw = true;
                             else if (!isTrans && neighborMat?.transparent) draw = true;
                             else if (isTrans && nid !== id) draw = true;
 
@@ -3388,6 +3912,8 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
                 mesh.frustumCulled = true;
                 group.add(mesh);
             }
+
+            syncTorchLightsForChunk(group, torchPositions);
         }
 
         const SPAWN_MIN_LIGHT_LEVEL = 13;
@@ -3500,6 +4026,14 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
             }
 
             miningState.elapsedMs += deltaMs;
+            miningState.particleMs = (miningState.particleMs || 0) + deltaMs;
+            if (miningState.particleMs >= 95 && miningState.blockPos) {
+                const wx = Math.floor(miningState.blockPos.x);
+                const wy = Math.floor(miningState.blockPos.y);
+                const wz = Math.floor(miningState.blockPos.z);
+                emitBreakParticles(wx, wy, wz, 3, false);
+                miningState.particleMs = 0;
+            }
             updateBreakingOverlay();
 
             if (miningState.elapsedMs >= miningState.neededMs) {
@@ -3525,9 +4059,13 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
             if(!isInventoryOpen) {
                 updatePlayerMovement();
                 updateMining(delta);
+                maybeSpawnLavaParticles(delta);
+                updateWorldParticles(delta);
                 applyBlockPhysics(time);
                 updateChunkFrustumCulling();
                 updateGnomes(time);
+                updatePigs(time, delta);
+                updateEatingAnimation(delta, time);
                 updatePlayerAvatarVisuals(time);
                 updateFirstPersonHand(time);
                 const dtSec = delta / 1000;
@@ -3537,6 +4075,10 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
                 }
             } else {
                 updateFirstPersonHand(time);
+                updatePigs(time, delta);
+                updateEatingAnimation(delta, time);
+                maybeSpawnLavaParticles(delta);
+                updateWorldParticles(delta);
                 miningState.active = false;
                 updateBreakingOverlay();
             }
