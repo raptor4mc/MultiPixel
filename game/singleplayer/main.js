@@ -32,7 +32,7 @@
         const BlockBreakableSystem = window.BlockBreakableSystem || {};
         const SpawnLighting = window.SpawnLighting || {};
 
-        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-02-28-05';
+        window.__SINGLEPLAYER_BUILD__ = 'sp-2026-03-01-01';
         console.info('[Singleplayer build]', window.__SINGLEPLAYER_BUILD__);
 
         const TerrainModules = {};
@@ -224,6 +224,11 @@ window.perlin = perlinInstance;
         let skinSystem = null;
         let iglooStructureDef = null;
         const gnomeEntities = [];
+        const pigEntities = [];
+        let pigTexture = null;
+        let eatOverlayEl = null;
+        let eatItemEl = null;
+        let eatingAnimState = { active: false, timeMs: 0, durationMs: 0, itemId: 0, particleMs: 0 };
         
         // Calculate the world boundary coordinates
         const WORLD_MAX_COORD = (WORLD_RADIUS + 0.5) * CHUNK_SIZE;
@@ -371,7 +376,9 @@ window.perlin = perlinInstance;
             scene.add(worldGroup);
 
     
+            await loadPigTexture();
             generateWorld();
+            spawnInitialPigs();
             setupPointerLockControls();
             setupKeyboardControls();
             setupBlockInteraction();
@@ -411,7 +418,18 @@ window.perlin = perlinInstance;
                 if (isInventoryOpen) toggleInventory();
             });
             if (window.HungerSystem) {
-                window.HungerSystem.init({ messageCallback: showGameMessage });
+                window.HungerSystem.init({
+                    messageCallback: showGameMessage,
+                    onRegenerateHealth: (halfHeart) => {
+                        if (player.health < player.maxHealth) {
+                            player.health = Math.min(player.maxHealth, player.health + (halfHeart || 1));
+                            renderHearts();
+                        }
+                    },
+                    onStarveDamageTick: (amount) => {
+                        if (player.health > 1) takeDamage(amount || 1);
+                    }
+                });
             }
             
            // Renderer setup
@@ -421,6 +439,7 @@ window.perlin = perlinInstance;
             document.body.appendChild(renderer.domElement);
             setupFirstPersonHandOverlay();
             setupInventorySkinRig();
+            setupEatingOverlay();
             
             window.addEventListener('resize', onWindowResize);
             document.addEventListener('contextmenu', e => e.preventDefault()); 
@@ -663,6 +682,259 @@ window.perlin = perlinInstance;
                 lookTarget.y = g.root.position.y + 1.55;
                 g.head.lookAt(lookTarget);
             }
+        }
+
+        async function loadPigTexture() {
+            const path = window.SingleplayerConfig?.ASSET_FILEPATHS?.PIG_TEXTURE;
+            if (!path) return;
+            pigTexture = await new Promise((resolve) => {
+                new THREE.TextureLoader().load(path, (t) => {
+                    t.magFilter = THREE.NearestFilter;
+                    t.minFilter = THREE.NearestFilter;
+                    t.wrapS = THREE.ClampToEdgeWrapping;
+                    t.wrapT = THREE.ClampToEdgeWrapping;
+                    resolve(t);
+                }, undefined, () => resolve(null));
+            });
+        }
+
+        function createAtlasFaceTexture(baseTex, rect, atlasW = 64, atlasH = 32) {
+            if (!baseTex || !rect) return null;
+            const [x, y, w, h] = rect;
+            const tex = baseTex.clone();
+            tex.magFilter = THREE.NearestFilter;
+            tex.minFilter = THREE.NearestFilter;
+            tex.wrapS = THREE.ClampToEdgeWrapping;
+            tex.wrapT = THREE.ClampToEdgeWrapping;
+            tex.repeat.set(w / atlasW, h / atlasH);
+            tex.offset.set(x / atlasW, 1 - ((y + h) / atlasH));
+            tex.needsUpdate = true;
+            return tex;
+        }
+
+        function buildMobPartFaceRects(x, y, w, h, d) {
+            return {
+                0: [x, y + d, w, h],
+                1: [x + w + d, y + d, w, h],
+                2: [x + w, y, w, d],
+                3: [x + w + d, y, w, d],
+                4: [x + w, y + d, w, h],
+                5: [x + (w * 2) + d, y + d, w, h],
+            };
+        }
+
+        function createPigPart(dim, rects) {
+            const mats = [];
+            for (let i = 0; i < 6; i++) {
+                const faceTex = createAtlasFaceTexture(pigTexture, rects[i], 64, 32);
+                mats.push(new THREE.MeshStandardMaterial({ map: faceTex || null, color: faceTex ? 0xffffff : 0xe8b6b8, roughness: 0.92 }));
+            }
+            return new THREE.Mesh(new THREE.BoxGeometry(dim[0], dim[1], dim[2]), mats);
+        }
+
+        function createPigMesh() {
+            const U = 1 / 16;
+            const pig = new THREE.Group();
+
+            const body = createPigPart([10 * U, 8 * U, 16 * U], buildMobPartFaceRects(28, 8, 10, 8, 16));
+            body.position.y = 10 * U;
+            pig.add(body);
+
+            const head = createPigPart([8 * U, 8 * U, 8 * U], buildMobPartFaceRects(0, 0, 8, 8, 8));
+            head.position.set(0, 11 * U, 10 * U);
+            pig.add(head);
+
+            const legRects = buildMobPartFaceRects(0, 16, 4, 6, 4);
+            const legOffsets = [[-3*U, 3*U, 5*U], [3*U, 3*U, 5*U], [-3*U, 3*U, -5*U], [3*U, 3*U, -5*U]];
+            const legs = [];
+            for (const off of legOffsets) {
+                const leg = createPigPart([4 * U, 6 * U, 4 * U], legRects);
+                leg.position.set(off[0], off[1], off[2]);
+                pig.add(leg);
+                legs.push(leg);
+            }
+
+            const hitbox = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.9, 1.0), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
+            hitbox.position.set(0, 0.5, 0);
+            hitbox.userData.pigHitbox = true;
+            pig.add(hitbox);
+            pig.userData.pigHitbox = hitbox;
+            pig.userData.pigHead = head;
+            pig.userData.pigLegs = legs;
+            return pig;
+        }
+
+        function getSurfaceYForEntity(wx, wz) {
+            const x = Math.floor(wx);
+            const z = Math.floor(wz);
+            for (let y = CHUNK_HEIGHT - 2; y >= 2; y--) {
+                const under = getBlockType(x, y - 1, z);
+                const feet = getBlockType(x, y, z);
+                if (isSolid(under) && !isLiquid(under) && feet === 0) return y;
+            }
+            return -1;
+        }
+
+        function spawnPigAt(wx, wz) {
+            const y = getSurfaceYForEntity(wx, wz);
+            if (y < SEA_LEVEL || y > SEA_LEVEL + 24) return false;
+            const under = getBlockType(Math.floor(wx), y - 1, Math.floor(wz));
+            if (under !== 1 && under !== 2) return false;
+
+            const pigRoot = createPigMesh();
+            pigRoot.position.set(Math.floor(wx) + 0.5, y, Math.floor(wz) + 0.5);
+            scene.add(pigRoot);
+            pigEntities.push({
+                root: pigRoot,
+                hp: 8,
+                dir: new THREE.Vector3(Math.random() - 0.5, 0, Math.random() - 0.5).normalize(),
+                changeDirMs: 900 + Math.random() * 1800,
+                bobPhase: Math.random() * Math.PI * 2,
+            });
+            return true;
+        }
+
+        function spawnInitialPigs() {
+            let spawned = 0;
+            for (let i = 0; i < 120 && spawned < 10; i++) {
+                const wx = (Math.random() * 2 - 1) * (WORLD_RADIUS * CHUNK_SIZE * 0.72);
+                const wz = (Math.random() * 2 - 1) * (WORLD_RADIUS * CHUNK_SIZE * 0.72);
+                if (spawnPigAt(wx, wz)) spawned++;
+            }
+        }
+
+        function updatePigs(time, deltaMs) {
+            if (!pigEntities.length) return;
+            const dt = Math.max(0.001, Math.min(0.05, deltaMs / 1000));
+            for (const pig of pigEntities) {
+                pig.changeDirMs -= deltaMs;
+                if (pig.changeDirMs <= 0) {
+                    pig.changeDirMs = 900 + Math.random() * 1800;
+                    pig.dir.set(Math.random() - 0.5, 0, Math.random() - 0.5).normalize();
+                }
+
+                const speed = 0.75;
+                const nx = pig.root.position.x + pig.dir.x * speed * dt;
+                const nz = pig.root.position.z + pig.dir.z * speed * dt;
+                const ny = getSurfaceYForEntity(nx, nz);
+                if (ny > 0) {
+                    pig.root.position.x = nx;
+                    pig.root.position.z = nz;
+                    pig.root.position.y = ny;
+                }
+                pig.root.rotation.y = Math.atan2(pig.dir.x, pig.dir.z);
+
+                const swing = Math.sin(time * 0.008 + pig.bobPhase) * 0.17;
+                const legs = pig.root.userData.pigLegs || [];
+                if (legs[0]) legs[0].rotation.x = swing;
+                if (legs[1]) legs[1].rotation.x = -swing;
+                if (legs[2]) legs[2].rotation.x = -swing;
+                if (legs[3]) legs[3].rotation.x = swing;
+            }
+        }
+
+        function getPigHitFromCrosshair() {
+            if (!pigEntities.length) return null;
+            raycaster.setFromCamera({ x: 0, y: 0 }, camera);
+            const hitboxes = pigEntities.map(p => p.root.userData.pigHitbox).filter(Boolean);
+            const hits = raycaster.intersectObjects(hitboxes, false);
+            if (!hits.length) return null;
+            const hitObj = hits[0].object;
+            return pigEntities.find((p) => p.root.userData.pigHitbox === hitObj) || null;
+        }
+
+        function hurtPig(pig, amount = 4) {
+            if (!pig) return;
+            pig.hp -= amount;
+            if (pig.hp > 0) {
+                pig.changeDirMs = 0;
+                pig.dir.set((Math.random() - 0.5) * 2, 0, (Math.random() - 0.5) * 2).normalize();
+                showGameMessage('Pig: oink!');
+                return;
+            }
+            const idx = pigEntities.indexOf(pig);
+            if (idx >= 0) pigEntities.splice(idx, 1);
+            scene.remove(pig.root);
+            const drops = 1 + Math.floor(Math.random() * 3);
+            addToInventory(89, drops);
+            showGameMessage(`+${drops} Raw Porkchop`);
+        }
+
+        function setupEatingOverlay() {
+            if (eatOverlayEl) return;
+            const root = document.createElement('div');
+            root.id = 'eat-overlay';
+            root.className = 'hidden';
+            const item = document.createElement('div');
+            item.id = 'eat-item';
+            root.appendChild(item);
+            document.body.appendChild(root);
+            eatOverlayEl = root;
+            eatItemEl = item;
+        }
+
+        function startEatingAnimation(itemId) {
+            if (!eatOverlayEl || !eatItemEl) setupEatingOverlay();
+            const texKey = blockMaterials[itemId]?.textureKey;
+            const img = texKey ? ASSET_FILEPATHS[texKey] : null;
+            if (img) {
+                eatItemEl.style.backgroundImage = `url('${img}')`;
+                eatItemEl.style.backgroundSize = 'contain';
+                eatItemEl.style.backgroundRepeat = 'no-repeat';
+                eatItemEl.style.backgroundPosition = 'center';
+                eatItemEl.style.backgroundColor = 'transparent';
+            } else {
+                eatItemEl.style.backgroundImage = 'none';
+                eatItemEl.style.backgroundColor = '#cda173';
+            }
+            eatOverlayEl.classList.remove('hidden');
+            eatingAnimState = { active: true, timeMs: 0, durationMs: 900, itemId, particleMs: 0 };
+        }
+
+        function spawnEatingParticle() {
+            if (!eatOverlayEl) return;
+            const p = document.createElement('div');
+            p.className = 'eat-particle';
+            p.style.left = `${44 + Math.random() * 28}%`;
+            p.style.top = `${48 + Math.random() * 16}%`;
+            p.style.backgroundImage = `url('${BREAKING_PARTICLE_BASE}/break_particles.png')`;
+            p.style.backgroundSize = 'cover';
+            p.style.transform = `scale(${0.6 + Math.random() * 0.7})`;
+            eatOverlayEl.appendChild(p);
+            setTimeout(() => p.remove(), 620);
+        }
+
+        function updateEatingAnimation(deltaMs, time) {
+            if (!eatingAnimState.active) return;
+            eatingAnimState.timeMs += deltaMs;
+            eatingAnimState.particleMs += deltaMs;
+            if (eatItemEl) {
+                const bob = Math.sin(time * 0.02) * 10;
+                eatItemEl.style.transform = `translate(-50%, -50%) translateY(${bob}px)`;
+            }
+            if (eatingAnimState.particleMs >= 110) {
+                eatingAnimState.particleMs = 0;
+                spawnEatingParticle();
+            }
+            if (eatingAnimState.timeMs >= eatingAnimState.durationMs) {
+                eatingAnimState.active = false;
+                if (eatOverlayEl) eatOverlayEl.classList.add('hidden');
+            }
+        }
+
+        function tryEatSelectedItem() {
+            const held = inventory[selectedHotbarIndex];
+            if (!held) return false;
+            const foodCfg = held.id === 89 ? { hunger: 3 } : (held.id === 90 ? { hunger: 8 } : null);
+            if (!foodCfg) return false;
+            if (window.HungerSystem && window.HungerSystem.canConsume && !window.HungerSystem.canConsume()) {
+                showGameMessage('You are full.');
+                return true;
+            }
+            if (window.HungerSystem?.consume) window.HungerSystem.consume(foodCfg.hunger);
+            consumeSelectedItem();
+            startEatingAnimation(held.id);
+            return true;
         }
 
         function initChatSystem() {
@@ -1589,6 +1861,7 @@ window.perlin = perlinInstance;
         }
 
         function interactOrPlaceAtCrosshair() {
+            if (tryEatSelectedItem()) return;
             raycaster.setFromCamera({ x: 0, y: 0 }, camera);
             const meshes = [];
             worldGroup.children.forEach(g => g.children.forEach(m => meshes.push(m)));
@@ -1644,6 +1917,11 @@ window.perlin = perlinInstance;
             if (!intersects.length) return;
 
             if (event.button === 0) {
+                const pigHit = getPigHitFromCrosshair();
+                if (pigHit) {
+                    hurtPig(pigHit, 4);
+                    return;
+                }
                 isLeftMouseDown = true;
                 const target = getTargetBlockFromCrosshair();
                 if (target) {
@@ -1841,7 +2119,7 @@ window.perlin = perlinInstance;
             player.isMoving = isMoving;
             const isSprinting = isMoving && (player.keys['e'] || mobileControls.sprint);
             if (window.HungerSystem) {
-                window.HungerSystem.update(performance.now(), { isMoving, isSprinting });
+                window.HungerSystem.update(performance.now(), { isMoving, isSprinting, isJumping: player.isJumping });
             }
             const hungerMultiplier = window.HungerSystem ? window.HungerSystem.getSpeedMultiplier() : 1;
             const sprintMultiplier = isSprinting ? player.sprintMultiplier : 1;
@@ -1946,6 +2224,7 @@ window.perlin = perlinInstance;
                     renderHearts();
                     setInitialPlayerPosition();
                     inventory = new Array(TOTAL_INV_SIZE).fill(null);
+                    if (window.HungerSystem?.setValue) window.HungerSystem.setValue(20);
                     updateHotbarUI();
                 }, 1000);
             }
@@ -3785,6 +4064,8 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
                 applyBlockPhysics(time);
                 updateChunkFrustumCulling();
                 updateGnomes(time);
+                updatePigs(time, delta);
+                updateEatingAnimation(delta, time);
                 updatePlayerAvatarVisuals(time);
                 updateFirstPersonHand(time);
                 const dtSec = delta / 1000;
@@ -3794,6 +4075,8 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
                 }
             } else {
                 updateFirstPersonHand(time);
+                updatePigs(time, delta);
+                updateEatingAnimation(delta, time);
                 maybeSpawnLavaParticles(delta);
                 updateWorldParticles(delta);
                 miningState.active = false;

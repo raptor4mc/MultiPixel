@@ -139,12 +139,15 @@
     COPPER_PICKAXE: getAssetPath('textures/item/tool/pickaxe/copper_pickaxe.png'),
     IRON_PICKAXE: getAssetPath('textures/item/tool/pickaxe/iron_pickaxe.png'),
     DIAMOND_PICKAXE: getAssetPath('textures/item/tool/pickaxe/diamond_pickaxe.png'),
-    WOODEN_SHOVEL: getAssetPath('textures/item/tool/shovel/wooden_shovel.png'),
-    STONE_SHOVEL: getAssetPath('textures/item/tool/shovel/stone_shovel.png'),
-    GOLDEN_SHOVEL: getAssetPath('textures/item/tool/shovel/golden_shovel.png'),
-    COPPER_SHOVEL: getAssetPath('textures/item/tool/shovel/copper_shovel.png'),
-    IRON_SHOVEL: getAssetPath('textures/item/tool/shovel/iron_shovel.png'),
-    DIAMOND_SHOVEL: getAssetPath('textures/item/tool/shovel/diamond_shovel.png'),
+    WOODEN_SHOVEL: getAssetPath('textures/item/tools/shovel/wooden_shovel.png'),
+    STONE_SHOVEL: getAssetPath('textures/item/tools/shovel/stone_shovel.png'),
+    GOLDEN_SHOVEL: getAssetPath('textures/item/tools/shovel/golden_shovel.png'),
+    COPPER_SHOVEL: getAssetPath('textures/item/tools/shovel/copper_shovel.png'),
+    IRON_SHOVEL: getAssetPath('textures/item/tools/shovel/iron_shovel.png'),
+    DIAMOND_SHOVEL: getAssetPath('textures/item/tools/shovel/diamond_shovel.png'),
+    PIG_TEXTURE: getAssetPath('textures/mobs/pig.png'),
+    PORKCHOP_RAW: getAssetPath('textures/item/food/pork/porkchop.png'),
+    PORKCHOP_COOKED: getAssetPath('textures/item/food/pork/cooked_porkchop.png'),
   };
 
   const blockMaterials = {
@@ -370,6 +373,8 @@
     86: { name: 'Copper Shovel', id: 86, textured: true, textureKey: 'COPPER_SHOVEL', toolType: 'shovel', tier: 4 },
     87: { name: 'Iron Shovel', id: 87, textured: true, textureKey: 'IRON_SHOVEL', toolType: 'shovel', tier: 5 },
     88: { name: 'Diamond Shovel', id: 88, textured: true, textureKey: 'DIAMOND_SHOVEL', toolType: 'shovel', tier: 6 },
+    89: { name: 'Raw Porkchop', id: 89, textured: true, textureKey: 'PORKCHOP_RAW' },
+    90: { name: 'Cooked Porkchop', id: 90, textured: true, textureKey: 'PORKCHOP_COOKED' },
   }; 
 
   window.SingleplayerConfig = {
