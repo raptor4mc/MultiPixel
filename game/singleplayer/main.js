@@ -103,6 +103,16 @@
         let lastTime = 0; // For delta time calculation
         let ambientLight, hemiLight, moonLight, dirLight; // global lighting rig
 
+        const SWIM_SPEED_FACTOR = 0.58;
+        const SWIM_VERTICAL_SPEED = 0.1;
+        const SWIM_SINK_SPEED = -0.028;
+        const SWIM_SPRINT_MULTIPLIER = 1.35;
+        const BREATH_MAX = 20;
+        const BREATH_DRAIN_PER_SEC = BREATH_MAX / 15;
+        const BREATH_REGEN_PER_SEC = BREATH_MAX / 4;
+        const DROWN_DAMAGE_INTERVAL_SEC = 1;
+        const AIR_POP_DURATION_SEC = 0.5;
+
         // Three.js specific materials created after textures are loaded
         let materials = {};
 
@@ -130,7 +140,8 @@ window.perlin = perlinInstance;
             maxHealth: DEFAULT_PLAYER.maxHealth,
             fallStartY: 0, 
             inAir: false,
-            isMoving: false
+            isMoving: false,
+            isSwimming: false
         };
 
       
@@ -158,6 +169,12 @@ window.perlin = perlinInstance;
         let miningState = { active: false, key: null, blockPos: null, targetType: 0, elapsedMs: 0, neededMs: 0, missMs: 0, dropOnBreak: true, particleMs: 0 };
         let isLeftMouseDown = false;
         const breakingStageTextures = new Array(10).fill(null);
+        const airState = {
+            value: BREATH_MAX,
+            drownTimerSec: 0,
+            popTimerSec: 0,
+            wasUnderLiquid: false,
+        };
         let breakingCrackMesh = null;
         let breakParticleTexture = null;
         let lavaParticleTexture = null;
@@ -383,6 +400,7 @@ window.perlin = perlinInstance;
             
           
             renderHearts();
+            renderAirBubbles(false);
             updateHotbarUI();
             skinSystem = window.SingleplayerSkinSystem?.create({ showGameMessage }) || null;
             const closeBtn = document.getElementById('inventory-close-btn');
@@ -541,7 +559,6 @@ window.perlin = perlinInstance;
             hemiLight.intensity = 0.18 + daylight * 0.55;
             scene.fog.near = 20 + daylight * 8;
             scene.fog.far = 105 + daylight * 38;
-            document.getElementById('time-of-day').textContent = phaseInfo.phase;
         }
 
 
@@ -980,17 +997,36 @@ window.perlin = perlinInstance;
      
         function renderHearts() {
             const container = document.getElementById('health-container');
+            if (!container) return;
             container.innerHTML = '';
-            const hearts = Math.ceil(player.health / 2);
-            // --- USING DIRECT PATH FOR UI HEART ---
-            const heartPath = ASSET_FILEPATHS.HEART; 
-            
-            for(let i=0; i<hearts; i++) {
-                const heartImg = document.createElement('img');
-                heartImg.src = heartPath;
-                heartImg.className = 'heart-icon';
-                heartImg.alt = 'Full Heart';
-                container.appendChild(heartImg);
+
+            const fullHeartPath = ASSET_FILEPATHS.HEART_FULL || ASSET_FILEPATHS.HEART;
+            const halfHeartPath = ASSET_FILEPATHS.HEART_HALF || fullHeartPath;
+            const emptyHeartPath = ASSET_FILEPATHS.HEART_EMPTY || fullHeartPath;
+
+            const maxHearts = Math.max(1, Math.floor((player.maxHealth || 20) / 2));
+            const healthUnits = Math.max(0, Math.min(Math.round(Number(player.health) || 0), maxHearts * 2));
+
+            for (let i = 0; i < maxHearts; i++) {
+                const filledUnits = Math.max(0, Math.min(2, healthUnits - i * 2));
+                const heartSlot = document.createElement('div');
+                heartSlot.className = 'status-slot';
+
+                const baseHeartImg = document.createElement('img');
+                baseHeartImg.src = emptyHeartPath;
+                baseHeartImg.alt = 'Heart Container';
+                baseHeartImg.className = 'heart-icon';
+                heartSlot.appendChild(baseHeartImg);
+
+                if (filledUnits > 0) {
+                    const overlayHeartImg = document.createElement('img');
+                    overlayHeartImg.src = filledUnits === 2 ? fullHeartPath : halfHeartPath;
+                    overlayHeartImg.alt = filledUnits === 2 ? 'Full Heart' : 'Half Heart';
+                    overlayHeartImg.className = 'heart-icon status-slot-overlay';
+                    heartSlot.appendChild(overlayHeartImg);
+                }
+
+                container.appendChild(heartSlot);
             }
         }
 
@@ -2127,6 +2163,103 @@ window.perlin = perlinInstance;
             return TerrainModules['river'].getMask({ perlin, wx, wz });
         }
 
+        function getPlayerLiquidState() {
+            const px = Math.floor(yawObject.position.x);
+            const pz = Math.floor(yawObject.position.z);
+            const feetY = Math.floor(yawObject.position.y + 0.1);
+            const bodyY = Math.floor(yawObject.position.y + PLAYER_HEIGHT * 0.5);
+            const eyeY = Math.floor(yawObject.position.y + 1.62);
+
+            const feet = getBlockType(px, feetY, pz);
+            const body = getBlockType(px, bodyY, pz);
+            const eye = getBlockType(px, eyeY, pz);
+
+            const feetLiquid = isLiquid(feet);
+            const bodyLiquid = isLiquid(body);
+            const eyeLiquid = isLiquid(eye);
+
+            return {
+                isInLiquid: feetLiquid || bodyLiquid,
+                isUnderLiquid: eyeLiquid,
+                feetBlock: feet,
+                bodyBlock: body,
+                eyeBlock: eye,
+            };
+        }
+
+        function renderAirBubbles(isUnderLiquid) {
+            const container = document.getElementById('air-container');
+            if (!container) return;
+
+            if (!isUnderLiquid && airState.value >= BREATH_MAX - 0.001) {
+                container.style.display = 'none';
+                container.innerHTML = '';
+                return;
+            }
+
+            container.style.display = 'flex';
+            container.innerHTML = '';
+
+            const fullAirPath = ASSET_FILEPATHS.AIR_FULL || '';
+            const popAirPath = ASSET_FILEPATHS.AIR_POP || fullAirPath;
+            const goneAirPath = ASSET_FILEPATHS.AIR_GONE || fullAirPath;
+            const maxBubbles = Math.ceil(BREATH_MAX / 2);
+            const units = Math.max(0, Math.min(BREATH_MAX, Math.round(airState.value)));
+
+            for (let i = 0; i < maxBubbles; i++) {
+                const bubbleUnits = Math.max(0, Math.min(2, units - i * 2));
+                const airImg = document.createElement('img');
+                airImg.className = 'air-icon';
+
+                if (bubbleUnits === 2) {
+                    airImg.src = fullAirPath;
+                    airImg.alt = 'Air Bubble';
+                } else if (bubbleUnits === 1) {
+                    if (airState.popTimerSec > 0) {
+                        airImg.src = popAirPath;
+                        airImg.alt = 'Air Pop';
+                    } else {
+                        airImg.src = goneAirPath;
+                        airImg.alt = 'Air Empty';
+                    }
+                } else {
+                    airImg.src = goneAirPath;
+                    airImg.alt = 'Air Empty';
+                }
+                container.appendChild(airImg);
+            }
+        }
+
+        function updateBreathing(dtSec, isUnderLiquid) {
+            if (isUnderLiquid) {
+                const before = airState.value;
+                airState.value = Math.max(0, airState.value - BREATH_DRAIN_PER_SEC * dtSec);
+
+                if (before > 1 && airState.value <= 1) {
+                    airState.popTimerSec = AIR_POP_DURATION_SEC;
+                }
+
+                if (airState.value <= 0.001) {
+                    airState.drownTimerSec += dtSec;
+                    if (airState.drownTimerSec >= DROWN_DAMAGE_INTERVAL_SEC) {
+                        airState.drownTimerSec = 0;
+                        takeDamage(1);
+                    }
+                } else {
+                    airState.drownTimerSec = 0;
+                }
+            } else {
+                airState.value = Math.min(BREATH_MAX, airState.value + BREATH_REGEN_PER_SEC * dtSec);
+                airState.drownTimerSec = 0;
+            }
+
+            if (airState.popTimerSec > 0) {
+                airState.popTimerSec = Math.max(0, airState.popTimerSec - dtSec);
+            }
+
+            airState.wasUnderLiquid = isUnderLiquid;
+            renderAirBubbles(isUnderLiquid);
+        }
 
         function updatePlayerMovement() {
             if (!player.canMove || isInventoryOpen) return;
@@ -2136,11 +2269,23 @@ window.perlin = perlinInstance;
             const prevZ = yawObject.position.z;
 
             // Apply world movement
+            const liquidState = getPlayerLiquidState();
+            const isSwimming = liquidState.isInLiquid;
+            player.isSwimming = isSwimming;
+
             player.direction.set(0, 0, 0);
-            const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(yawObject.quaternion);
-            const right = new THREE.Vector3(1, 0, 0).applyQuaternion(yawObject.quaternion);
-            forward.y = 0; forward.normalize();
-            right.y = 0; right.normalize();
+
+            const walkForward = new THREE.Vector3(0, 0, -1).applyQuaternion(yawObject.quaternion);
+            const walkRight = new THREE.Vector3(1, 0, 0).applyQuaternion(yawObject.quaternion);
+            walkForward.y = 0; walkForward.normalize();
+            walkRight.y = 0; walkRight.normalize();
+
+            const swimForward = camera.getWorldDirection(new THREE.Vector3()).normalize();
+            const swimRight = new THREE.Vector3().crossVectors(swimForward, new THREE.Vector3(0, 1, 0));
+            if (swimRight.lengthSq() > 0.0001) swimRight.normalize();
+
+            const forward = isSwimming ? swimForward : walkForward;
+            const right = isSwimming ? swimRight : walkRight;
 
             if (player.keys['w']) player.direction.add(forward);
             if (player.keys['s']) player.direction.sub(forward);
@@ -2154,23 +2299,42 @@ window.perlin = perlinInstance;
 
             const isMoving = player.direction.lengthSq() > 0;
             player.isMoving = isMoving;
+
             const isSprinting = isMoving && (player.keys['e'] || mobileControls.sprint);
             if (window.HungerSystem) {
                 window.HungerSystem.update(performance.now(), { isMoving, isSprinting, isJumping: player.isJumping });
             }
             const hungerMultiplier = window.HungerSystem ? window.HungerSystem.getSpeedMultiplier() : 1;
-            const sprintMultiplier = isSprinting ? player.sprintMultiplier : 1;
-            player.moveSpeed = player.baseMoveSpeed * sprintMultiplier * hungerMultiplier;
 
-            player.velocity.x = player.direction.x * player.moveSpeed;
-            player.velocity.z = player.direction.z * player.moveSpeed;
-            player.velocity.y += GRAVITY;
+            if (isSwimming) {
+                const swimSprintMultiplier = isSprinting ? SWIM_SPRINT_MULTIPLIER : 1;
+                player.moveSpeed = player.baseMoveSpeed * SWIM_SPEED_FACTOR * swimSprintMultiplier * hungerMultiplier;
+                player.velocity.x = player.direction.x * player.moveSpeed;
+                player.velocity.z = player.direction.z * player.moveSpeed;
 
-          
-            if ((player.keys[' '] || mobileControls.jump) && !player.isJumping) {
-                player.velocity.y = JUMP_POWER;
-                player.isJumping = true;
+                const swimUp = !!(player.keys[' '] || mobileControls.jump);
+                const swimDown = !!player.keys['shift'];
+                if (swimUp && !swimDown) {
+                    player.velocity.y = SWIM_VERTICAL_SPEED;
+                } else if (swimDown && !swimUp) {
+                    player.velocity.y = -SWIM_VERTICAL_SPEED;
+                } else {
+                    player.velocity.y = SWIM_SINK_SPEED;
+                }
+                player.isJumping = false;
+            } else {
+                const sprintMultiplier = isSprinting ? player.sprintMultiplier : 1;
+                player.moveSpeed = player.baseMoveSpeed * sprintMultiplier * hungerMultiplier;
+                player.velocity.x = player.direction.x * player.moveSpeed;
+                player.velocity.z = player.direction.z * player.moveSpeed;
+                player.velocity.y += GRAVITY;
+
+                if ((player.keys[' '] || mobileControls.jump) && !player.isJumping) {
+                    player.velocity.y = JUMP_POWER;
+                    player.isJumping = true;
+                }
             }
+
 
            
             yawObject.position.x += player.velocity.x;
@@ -2224,7 +2388,7 @@ window.perlin = perlinInstance;
                    
                     if (player.inAir) {
                         const fallDist = player.fallStartY - yawObject.position.y;
-                        if (fallDist > 4) { // 4 blocks safe fall
+                        if (fallDist > 4 && !player.isSwimming) { // 4 blocks safe fall
                             const dmg = Math.floor(fallDist - 3);
                             takeDamage(dmg);
                         }
@@ -2262,6 +2426,10 @@ window.perlin = perlinInstance;
                     setInitialPlayerPosition();
                     inventory = new Array(TOTAL_INV_SIZE).fill(null);
                     if (window.HungerSystem?.setValue) window.HungerSystem.setValue(20);
+                    airState.value = BREATH_MAX;
+                    airState.drownTimerSec = 0;
+                    airState.popTimerSec = 0;
+                    renderAirBubbles(false);
                     updateHotbarUI();
                 }, 1000);
             }
@@ -3162,13 +3330,29 @@ window.perlin = perlinInstance;
 
         function updatePlayerAvatarVisuals(time) {
             if (!playerAvatarParts) return;
-            const swing = player.isMoving ? Math.sin(time * 0.015) * 0.7 : 0;
-            playerAvatarParts.leftLegPivot.rotation.x = swing;
-            playerAvatarParts.rightLegPivot.rotation.x = -swing;
-            playerAvatarParts.leftArmPivot.rotation.x = -swing;
-            playerAvatarParts.rightArmPivot.rotation.x = swing;
+
+            if (playerAvatar) {
+                playerAvatar.rotation.x = player.isSwimming ? -Math.PI / 2 : 0;
+                playerAvatar.rotation.z = 0;
+            }
+
+            if (player.isSwimming) {
+                const stroke = time * 0.02;
+                const legKick = Math.sin(time * 0.028) * 0.25;
+                playerAvatarParts.leftLegPivot.rotation.x = legKick;
+                playerAvatarParts.rightLegPivot.rotation.x = -legKick;
+                playerAvatarParts.leftArmPivot.rotation.x = stroke;
+                playerAvatarParts.rightArmPivot.rotation.x = stroke + Math.PI;
+            } else {
+                const swing = player.isMoving ? Math.sin(time * 0.015) * 0.7 : 0;
+                playerAvatarParts.leftLegPivot.rotation.x = swing;
+                playerAvatarParts.rightLegPivot.rotation.x = -swing;
+                playerAvatarParts.leftArmPivot.rotation.x = -swing;
+                playerAvatarParts.rightArmPivot.rotation.x = swing;
+            }
 
             if (inventorySkinRigEl) {
+                const swing = player.isMoving ? Math.sin(time * 0.015) * 0.7 : 0;
                 const sdeg = swing * 40;
                 const lLeg = document.getElementById('inv-skin-leg-left');
                 const rLeg = document.getElementById('inv-skin-leg-right');
@@ -4036,7 +4220,6 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
                     count++;
                 }
             }
-            document.getElementById('chunks-count').textContent = count;
         }
 
         function updateMining(deltaMs) {
@@ -4098,6 +4281,9 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
 
             cycleTimeMs = (cycleTimeMs + delta) % DAY_CYCLE_DURATION;
             updateSkyAndSun();
+
+            const liquidState = getPlayerLiquidState();
+            updateBreathing(delta / 1000, liquidState.isUnderLiquid);
 
             if(!isInventoryOpen) {
                 updatePlayerMovement();

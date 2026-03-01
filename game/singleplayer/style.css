@@ -105,11 +105,23 @@ body {
     image-rendering: pixelated;
 }
 
-.heart-icon, .food-icon {
+.heart-icon, .food-icon, .air-icon {
     width: 22px;
     height: 22px;
     image-rendering: pixelated;
     filter: drop-shadow(1px 1px 0px #000);
+}
+
+.status-slot {
+    position: relative;
+    width: 22px;
+    height: 22px;
+}
+
+.status-slot-overlay {
+    position: absolute;
+    left: 0;
+    top: 0;
 }
 
 .text-neon-green {
