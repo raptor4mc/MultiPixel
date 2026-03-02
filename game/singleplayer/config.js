@@ -150,6 +150,7 @@
     COPPER_PICKAXE: getAssetPath('textures/item/tool/pickaxe/copper_pickaxe.png'),
     IRON_PICKAXE: getAssetPath('textures/item/tool/pickaxe/iron_pickaxe.png'),
     DIAMOND_PICKAXE: getAssetPath('textures/item/tool/pickaxe/diamond_pickaxe.png'),
+    EMERALD_PICKAXE: getAssetPath('textures/item/tool/pickaxe/emerald_pickaxe.png'),
     WOODEN_SHOVEL: getAssetPath('textures/item/tool/shovel/wooden_shovel.png'),
     STONE_SHOVEL: getAssetPath('textures/item/tool/shovel/stone_shovel.png'),
     GOLDEN_SHOVEL: getAssetPath('textures/item/tool/shovel/golden_shovel.png'),
@@ -381,6 +382,9 @@
     73: { name: 'Copper Pickaxe', id: 73, textured: true, textureKey: 'COPPER_PICKAXE', toolType: 'pickaxe', tier: 4 },
     74: { name: 'Iron Pickaxe', id: 74, textured: true, textureKey: 'IRON_PICKAXE', toolType: 'pickaxe', tier: 5 },
     75: { name: 'Diamond Pickaxe', id: 75, textured: true, textureKey: 'DIAMOND_PICKAXE', toolType: 'pickaxe', tier: 6 },
+    93: { name: 'Emerald Pickaxe', id: 93, txtured: true, textureKey: 'EMERALD_PICKAXE', toolType: 'pickaxe', tier: 7 },
+
+    //SHovel
     83: { name: 'Wooden Shovel', id: 83, textured: true, textureKey: 'WOODEN_SHOVEL', toolType: 'shovel', tier: 1 },
     84: { name: 'Stone Shovel', id: 84, textured: true, textureKey: 'STONE_SHOVEL', toolType: 'shovel', tier: 2 },
     85: { name: 'Gold Shovel', id: 85, textured: true, textureKey: 'GOLDEN_SHOVEL', toolType: 'shovel', tier: 3 },
