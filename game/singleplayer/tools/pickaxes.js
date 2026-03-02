@@ -6,6 +6,8 @@
     73: { name: 'Copper Pickaxe', tier: 4, hardBlockSpeed: 0.30, softBlockPenalty: 1 },
     74: { name: 'Iron Pickaxe', tier: 5, hardBlockSpeed: 0.18, softBlockPenalty: 1 },
     75: { name: 'Diamond Pickaxe', tier: 6, hardBlockSpeed: 0.14, softBlockPenalty: 1 },
+    93: { name: 'Emerald Pickaxe', tier: 7, hardBlockSpeed: 0.12, softBlockPenalty: 1 },
+        
   };
 
   const SHOVEL_BY_ITEM_ID = {
