@@ -16,7 +16,7 @@
     86: { name: 'Copper Shovel', tier: 4, softBlockSpeed: 0.34, hardBlockPenalty: 1.2 },
     87: { name: 'Iron Shovel', tier: 5, softBlockSpeed: 0.22, hardBlockPenalty: 1.18 },
     88: { name: 'Diamond Shovel', tier: 6, softBlockSpeed: 0.15, hardBlockPenalty: 1.15 },
-    94: { name: 'Emerald Shovel', tier: 7, softBlockSpeed: 0.10, hardBlockPenalty: 1.10
+    94: { name: 'Emerald Shovel', tier: 7, softBlockSpeed: 0.10, hardBlockPenalty: 1.10 },
   };
 
   const HARD_BLOCKS = new Set([3, 13, 21, 24, 27, 29, 18, 30, 35, 40, 43, 54, 17, 20, 32, 34, 36, 37, 41, 45, 55, 68, 23, 71, 39]);
