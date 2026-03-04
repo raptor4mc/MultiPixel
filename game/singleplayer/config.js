@@ -160,6 +160,7 @@
     IRON_SHOVEL: getAssetPath('textures/item/tool/shovel/iron_shovel.png'),
     DIAMOND_SHOVEL: getAssetPath('textures/item/tool/shovel/diamond_shovel.png'),
     EMERALD_SHOVEL: getAssetPath('textures/item/tool/shovel/emerald_shovel.png'),
+    
     PIG_TEXTURE: getAssetPath('textures/mobs/pig.png'),
     PORKCHOP_RAW: getAssetPath('textures/item/food/pork/porkchop.png'),
     PORKCHOP_COOKED: getAssetPath('textures/item/food/pork/cooked_porkchop.png'),
