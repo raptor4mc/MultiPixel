@@ -159,7 +159,7 @@
     COPPER_SHOVEL: getAssetPath('textures/item/tool/shovel/copper_shovel.png'),
     IRON_SHOVEL: getAssetPath('textures/item/tool/shovel/iron_shovel.png'),
     DIAMOND_SHOVEL: getAssetPath('textures/item/tool/shovel/diamond_shovel.png'),
-    EMERALD_SHOVEL: getAssetPath('textures/item/tool/shovel/emerald_pickaxe.png
+    EMERALD_SHOVEL: getAssetPath('textures/item/tool/shovel/emerald_pickaxe.png'),
 '),
     
     PIG_TEXTURE: getAssetPath('textures/mobs/pig.png'),
