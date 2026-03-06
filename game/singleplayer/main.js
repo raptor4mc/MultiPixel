@@ -520,6 +520,18 @@ window.perlin = perlinInstance;
             return { phase: 'Night', localT: (t - sunsetEnd) / DAY_SEGMENTS.night };
         }
 
+        function setTimeByClock(hours, minutes) {
+            const hh = Number.parseInt(hours, 10);
+            const mm = Number.parseInt(minutes, 10);
+            if (!Number.isFinite(hh) || !Number.isFinite(mm)) return false;
+            if (hh < 0 || hh > 23 || mm < 0 || mm > 59) return false;
+            const minutesOfDay = hh * 60 + mm;
+            const dayProgress = minutesOfDay / 1440;
+            cycleTimeMs = dayProgress * DAY_CYCLE_DURATION;
+            updateSkyAndSun();
+            return true;
+        }
+
         function updateSkyAndSun() {
             const phaseInfo = getTimePhaseInfo();
             let sunFactor = 0;
@@ -920,6 +932,23 @@ window.perlin = perlinInstance;
             }
         }
 
+        function spawnMobById(mobId, amount = 1) {
+            const id = Number.parseInt(mobId, 10);
+            if (!Number.isFinite(id)) return 0;
+            const qty = Math.max(1, Math.min(64, Number.parseInt(amount, 10) || 1));
+            let spawned = 0;
+
+            for (let i = 0; i < qty; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const dist = 3 + Math.random() * 6;
+                const wx = yawObject.position.x + Math.cos(angle) * dist;
+                const wz = yawObject.position.z + Math.sin(angle) * dist;
+                const ok = id === 1 ? spawnPigAt(wx, wz) : (id === 2 ? spawnZombieAt(wx, wz) : false);
+                if (ok) spawned++;
+            }
+            return spawned;
+        }
+
         function updatePigs(time, deltaMs) {
             if (!pigEntities.length) return;
             const dt = Math.max(0.001, Math.min(0.05, deltaMs / 1000));
@@ -1194,6 +1223,9 @@ window.perlin = perlinInstance;
                 showGameMessage,
                 addToInventory,
                 getBlockById: (id) => blockMaterials[id] || null,
+                getMobById: (id) => window.SingleplayerMobConfig?.byId?.[id] || null,
+                spawnMobById,
+                setTimeByClock,
                 mobileAssetBase: MOBILE_ASSET_BASE,
                 onOpen: () => {
                     player.canMove = false;

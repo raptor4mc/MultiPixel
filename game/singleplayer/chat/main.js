@@ -140,7 +140,7 @@
                     <img id="chat-close-icon" alt="close chat" draggable="false" />
                 </button>
                 <div id="chat-log"></div>
-                <input id="chat-input" type="text" maxlength="180" placeholder="Type message or /give <id> <amount>" autocomplete="off" />
+                <input id="chat-input" type="text" maxlength="180" placeholder="Type message or /give, /spawn, /time" autocomplete="off" />
             </div>
         `;
         document.body.appendChild(root);
@@ -178,7 +178,7 @@
         context = initContext || {};
         buildUI();
         loadCensorWords();
-        pushMessage('Do /help to see all the commands', 'chat-info');
+        pushMessage(', 'chat-info');
     }
 
     window.SingleplayerChat = {
