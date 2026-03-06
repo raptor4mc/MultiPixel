@@ -558,7 +558,7 @@ body {
     right: 3vw;
     bottom: 2vh;
     width: min(28vw, 280px);
-    height: min(22vw, 220px);
+    height: min(24vw, 230px);
     image-rendering: pixelated;
     background-repeat: no-repeat;
     z-index: 240;

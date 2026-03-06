@@ -47,6 +47,7 @@
     { name: 'Copper Pickaxe', output: { id: 73, count: 1}, shape: [[69, 69, 69], [0, 10, 0], [0, 10, 0]] },
     { name: 'Iron Pickaxe', output: { id: 74, count: 1}, shape: [[67, 67, 67 ], [0, 10, 0], [0, 10, 0]] },
     { name: 'Diamond Pickaxe', output: { id: 75, count: 1}, shape: [[44, 44, 44], [0, 10, 0], [0, 10, 0]] },
+    { name: 'Emerald Pickaxe', output: { id: 93, count: 1}, shape: [[56, 56, 56], [0, 10, 0], [0, 10, 0]] },
     { name: 'Wooden Shovel', output: { id: 83, count: 1 }, shape: [[8], [10], [10]] },
     { name: 'Stone Shovel', output: { id: 84, count: 1 }, shape: [[17], [10], [10]] },
     { name: 'Stone Shovel', output: { id: 84, count: 1 }, shape: [[3], [10], [10]] },
