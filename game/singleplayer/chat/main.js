@@ -7,6 +7,7 @@
     let logEl = null;
     let inputEl = null;
     let closeBtn = null;
+    let helpOverlayEl = null;
     let isOpen = false;
     let context = null;
     let censorWords = [];
@@ -71,6 +72,16 @@
         return censorWords.find((word) => normalized.includes(` ${word} `));
     }
 
+    function openCommandHelp() {
+        if (!helpOverlayEl) return;
+        helpOverlayEl.classList.add('open');
+    }
+
+    function closeCommandHelp() {
+        if (!helpOverlayEl) return;
+        helpOverlayEl.classList.remove('open');
+    }
+
     function open() {
         if (!root || isOpen) return;
         isOpen = true;
@@ -87,6 +98,7 @@
         if (!root || !isOpen) return;
         isOpen = false;
         root.classList.remove('open');
+        closeCommandHelp();
         if (context && context.onClose) context.onClose();
         scheduleFeedCollapse();
     }
@@ -140,7 +152,17 @@
                     <img id="chat-close-icon" alt="close chat" draggable="false" />
                 </button>
                 <div id="chat-log"></div>
-                <input id="chat-input" type="text" maxlength="180" placeholder="Type message or /give <id> <amount>" autocomplete="off" />
+                <input id="chat-input" type="text" maxlength="180" placeholder="Type message or /give, /spawn, /time, /help" autocomplete="off" />
+            </div>
+            <div id="chat-help-overlay" role="dialog" aria-label="Command help">
+                <div id="chat-help-panel">
+                    <h3>Command Help</h3>
+                    <p><strong>/give</strong> &lt;itemId|itemName&gt; &lt;amount&gt; — give item stacks.</p>
+                    <p><strong>/spawn</strong> &lt;mobId|mobName&gt; &lt;amount&gt; — spawn mobs (1 = pig, 2 = zombie).</p>
+                    <p><strong>/time</strong> &lt;HH:MM&gt; — set time with military clock (00:00 to 23:59).</p>
+                    <p><strong>/help</strong> — open this command help panel.</p>
+                    <button id="chat-help-close" type="button">Close</button>
+                </div>
             </div>
         `;
         document.body.appendChild(root);
@@ -149,6 +171,8 @@
         logEl = document.getElementById('chat-log');
         inputEl = document.getElementById('chat-input');
         closeBtn = document.getElementById('chat-close-btn');
+        helpOverlayEl = document.getElementById('chat-help-overlay');
+        const helpCloseBtn = document.getElementById('chat-help-close');
         const closeIcon = document.getElementById('chat-close-icon');
         const mobileAssetBase = context?.mobileAssetBase || './assets/mobile';
         if (closeIcon) closeIcon.src = `${mobileAssetBase}/cdb_clear.png`;
@@ -169,16 +193,33 @@
             }
             if (e.key === 'Escape') {
                 e.preventDefault();
+                if (helpOverlayEl?.classList.contains('open')) {
+                    closeCommandHelp();
+                    return;
+                }
                 close();
             }
         });
+
+        if (helpCloseBtn) {
+            helpCloseBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                closeCommandHelp();
+            });
+        }
+
+        if (helpOverlayEl) {
+            helpOverlayEl.addEventListener('click', (e) => {
+                if (e.target === helpOverlayEl) closeCommandHelp();
+            });
+        }
     }
 
     function init(initContext) {
         context = initContext || {};
         buildUI();
         loadCensorWords();
-        pushMessage('Chat ready. Use /give <id> <amount>.', 'chat-info');
+        pushMessage('Chat ready. Use /give, /spawn, /time, /help.', 'chat-info');
     }
 
     window.SingleplayerChat = {
@@ -186,6 +227,7 @@
         open,
         close,
         toggle,
+        openCommandHelp,
         isOpen: () => isOpen
     };
 })();

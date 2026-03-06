@@ -105,11 +105,23 @@ body {
     image-rendering: pixelated;
 }
 
-.heart-icon, .food-icon {
+.heart-icon, .food-icon, .air-icon {
     width: 22px;
     height: 22px;
     image-rendering: pixelated;
     filter: drop-shadow(1px 1px 0px #000);
+}
+
+.status-slot {
+    position: relative;
+    width: 22px;
+    height: 22px;
+}
+
+.status-slot-overlay {
+    position: absolute;
+    left: 0;
+    top: 0;
 }
 
 .text-neon-green {
@@ -643,4 +655,49 @@ body {
 @keyframes eatParticleFall {
     0% { opacity: 0.95; transform: translateY(0) scale(1); }
     100% { opacity: 0; transform: translateY(95px) scale(0.6); }
+}
+
+#chat-help-overlay {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.65);
+    z-index: 260;
+    pointer-events: auto;
+}
+
+#chat-help-overlay.open {
+    display: flex;
+}
+
+#chat-help-panel {
+    width: min(680px, 92vw);
+    background: rgba(16, 20, 30, 0.96);
+    border: 2px solid rgba(255, 255, 255, 0.22);
+    border-radius: 12px;
+    padding: 16px 18px;
+    color: #fff;
+    box-shadow: 0 14px 45px rgba(0, 0, 0, 0.45);
+}
+
+#chat-help-panel h3 {
+    margin: 0 0 10px;
+    font-size: 20px;
+}
+
+#chat-help-panel p {
+    margin: 8px 0;
+    line-height: 1.35;
+}
+
+#chat-help-close {
+    margin-top: 12px;
+    padding: 8px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+    cursor: pointer;
 }
