@@ -150,12 +150,17 @@
     COPPER_PICKAXE: getAssetPath('textures/item/tool/pickaxe/copper_pickaxe.png'),
     IRON_PICKAXE: getAssetPath('textures/item/tool/pickaxe/iron_pickaxe.png'),
     DIAMOND_PICKAXE: getAssetPath('textures/item/tool/pickaxe/diamond_pickaxe.png'),
+    EMERALD_PICKAXE: getAssetPath('textures/item/tool/pickaxe/emerald_pickaxe.png'),
+
+    //Shovel
     WOODEN_SHOVEL: getAssetPath('textures/item/tool/shovel/wooden_shovel.png'),
     STONE_SHOVEL: getAssetPath('textures/item/tool/shovel/stone_shovel.png'),
     GOLDEN_SHOVEL: getAssetPath('textures/item/tool/shovel/golden_shovel.png'),
     COPPER_SHOVEL: getAssetPath('textures/item/tool/shovel/copper_shovel.png'),
     IRON_SHOVEL: getAssetPath('textures/item/tool/shovel/iron_shovel.png'),
     DIAMOND_SHOVEL: getAssetPath('textures/item/tool/shovel/diamond_shovel.png'),
+    EMERALD_SHOVEL: getAssetPath('textures/item/tool/shovel/emerald_shovel.png'),
+    
     PIG_TEXTURE: getAssetPath('textures/mobs/pig.png'),
     PORKCHOP_RAW: getAssetPath('textures/item/food/pork/porkchop.png'),
     PORKCHOP_COOKED: getAssetPath('textures/item/food/pork/cooked_porkchop.png'),
@@ -381,12 +386,17 @@
     73: { name: 'Copper Pickaxe', id: 73, textured: true, textureKey: 'COPPER_PICKAXE', toolType: 'pickaxe', tier: 4 },
     74: { name: 'Iron Pickaxe', id: 74, textured: true, textureKey: 'IRON_PICKAXE', toolType: 'pickaxe', tier: 5 },
     75: { name: 'Diamond Pickaxe', id: 75, textured: true, textureKey: 'DIAMOND_PICKAXE', toolType: 'pickaxe', tier: 6 },
+    93: { name: 'Emerald Pickaxe', id: 93, txtured: true, textureKey: 'EMERALD_PICKAXE', toolType: 'pickaxe', tier: 7 },
+
+    //SHovel
     83: { name: 'Wooden Shovel', id: 83, textured: true, textureKey: 'WOODEN_SHOVEL', toolType: 'shovel', tier: 1 },
     84: { name: 'Stone Shovel', id: 84, textured: true, textureKey: 'STONE_SHOVEL', toolType: 'shovel', tier: 2 },
     85: { name: 'Gold Shovel', id: 85, textured: true, textureKey: 'GOLDEN_SHOVEL', toolType: 'shovel', tier: 3 },
     86: { name: 'Copper Shovel', id: 86, textured: true, textureKey: 'COPPER_SHOVEL', toolType: 'shovel', tier: 4 },
     87: { name: 'Iron Shovel', id: 87, textured: true, textureKey: 'IRON_SHOVEL', toolType: 'shovel', tier: 5 },
     88: { name: 'Diamond Shovel', id: 88, textured: true, textureKey: 'DIAMOND_SHOVEL', toolType: 'shovel', tier: 6 },
+    94: { name: 'Emerald Shovel', id: 94, textured: true, textureKey: 'EMERALD_SHOVEL', toolType: 'shovel', tier: 7 },
+    
     89: { name: 'Raw Porkchop', id: 89, textured: true, textureKey: 'PORKCHOP_RAW' },
     90: { name: 'Cooked Porkchop', id: 90, textured: true, textureKey: 'PORKCHOP_COOKED' },
     92: { name: 'Rotten Flesh', id: 92, textured: true, textureKey: 'ROTTEN_FLESH' },

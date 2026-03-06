@@ -6,6 +6,7 @@
     73: { name: 'Copper Pickaxe', tier: 4, hardBlockSpeed: 0.30, softBlockPenalty: 1 },
     74: { name: 'Iron Pickaxe', tier: 5, hardBlockSpeed: 0.18, softBlockPenalty: 1 },
     75: { name: 'Diamond Pickaxe', tier: 6, hardBlockSpeed: 0.14, softBlockPenalty: 1 },
+    93: { name: 'Emerald Pickaxe', tier: 7, hardBlockSpeed: 0.12, softBlockPenalty: 1 },
   };
 
   const SHOVEL_BY_ITEM_ID = {
@@ -15,9 +16,10 @@
     86: { name: 'Copper Shovel', tier: 4, softBlockSpeed: 0.34, hardBlockPenalty: 1.2 },
     87: { name: 'Iron Shovel', tier: 5, softBlockSpeed: 0.22, hardBlockPenalty: 1.18 },
     88: { name: 'Diamond Shovel', tier: 6, softBlockSpeed: 0.15, hardBlockPenalty: 1.15 },
+    94: { name: 'Emerald Shovel', tier: 7, softBlockSpeed: 0.10, hardBlockPenalty: 1.10 },
   };
 
-  const HARD_BLOCKS = new Set([3,13,21,24,27,29,18,30,35,40,43,54,17,20,32,34,36,37,41,45,55,68,23,71,39]);
+  const HARD_BLOCKS = new Set([3, 13, 21, 24, 27, 29, 18, 30, 35, 40, 43, 54, 17, 20, 32, 34, 36, 37, 41, 45, 55, 68, 23, 71, 39]);
   const SOFT_BLOCKS = new Set([1,2,7,15,28]);
 
   function getEquippedPickaxe(item) {

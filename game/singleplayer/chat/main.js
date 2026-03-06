@@ -129,14 +129,14 @@
 
         const censored = hasCensoredWord(rawInput);
         if (censored) {
-            const warning = `Warning: "${censored}" is blocked in chat.`;
+            const warning = `Warning: "${censored}" this is a curse word.`;
             pushMessage(warning, 'chat-system-error');
             if (context?.showGameMessage) context.showGameMessage(warning);
             inputEl.value = '';
             return;
         }
 
-        pushMessage(`You: ${rawInput}`, 'chat-player');
+        pushMessage(`Player: ${rawInput}`, 'chat-player');
         inputEl.value = '';
     }
 

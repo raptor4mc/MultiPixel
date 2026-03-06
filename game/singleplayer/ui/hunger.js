@@ -65,13 +65,13 @@
     const dt = Math.max(0, (nowMs - state.lastTickAt) / 1000);
     state.lastTickAt = nowMs;
 
-    const drain = isSprinting ? 0.44 : (isMoving ? 0.11 : 0.012);
-    const jumpDrain = isJumping ? 0.06 : 0;
+    const drain = isSprinting ? 0.08 : (isMoving ? 0.015 : 0);
+    const jumpDrain = isJumping ? 0.02 : 0;
     state.value = clamp(state.value - (drain + jumpDrain) * dt, 0, state.max);
 
     if (state.value < 5 && !state.lowHungerWarned) {
       state.lowHungerWarned = true;
-      if (onMessage) onMessage('You are starving! Eat food to recover.');
+      if (onMessage) onMessage('');
     } else if (state.value >= 5) {
       state.lowHungerWarned = false;
     }
