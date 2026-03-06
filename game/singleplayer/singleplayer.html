@@ -27,6 +27,10 @@
     <script src="BlockPhysics/sand.js?v=10"></script>
     <script src="BlockPhysics/lava.js?v=10"></script>
     <script src="skin/init.js?v=1"></script>
+    <script src="chat/commands/mobs/config.js?v=1"></script>
+    <script src="chat/commands/give/main.js?v=1"></script>
+    <script src="chat/commands/spawn/main.js?v=1"></script>
+    <script src="chat/commands/time/main.js?v=1"></script>
     <script src="chat/commands/commands.js?v=1"></script>
     <script src="chat/main.js?v=2"></script>
     <script src="main.js?v=16"></script>
@@ -41,9 +45,6 @@
             MultiPixel wiki
         </a>
         <p><span id="fps-counter"></span></p>
-        <p><span id="time-of-day"></span></p>
-        <p><span id="chunks-count"></span></p>
-        <p><span id="hunger-value"></span></p>
        <a href="https://discord.gg/ymfybc9ePu"
             target="_blank"
               class="text-blue-400 underline hover:text-blue-300">
@@ -51,9 +52,12 @@
         </a>
     </div>
     <div id="hud" class="absolute inset-0 pointer-events-none z-20 flex flex-col justify-end items-center pb-2">
-        <div id="status-bars" class="flex items-center space-x-3 mb-2">
+        <div id="status-bars" class="flex items-end space-x-3 mb-2">
             <div id="health-container" class="flex space-x-1"></div>
-            <div id="hunger-container" class="flex space-x-1"></div>
+            <div class="flex flex-col items-start space-y-1">
+                <div id="air-container" class="flex space-x-1" style="display: none;"></div>
+                <div id="hunger-container" class="flex space-x-1"></div>
+            </div>
         </div>
         <div id="hotbar" class="flex space-x-1 p-1 bg-black/40 rounded-lg pointer-events-auto">
         </div>

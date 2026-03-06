@@ -103,6 +103,16 @@
         let lastTime = 0; // For delta time calculation
         let ambientLight, hemiLight, moonLight, dirLight; // global lighting rig
 
+        const SWIM_SPEED_FACTOR = 0.58;
+        const SWIM_VERTICAL_SPEED = 0.1;
+        const SWIM_SINK_SPEED = -0.028;
+        const SWIM_SPRINT_MULTIPLIER = 1.35;
+        const BREATH_MAX = 20;
+        const BREATH_DRAIN_PER_SEC = BREATH_MAX / 15;
+        const BREATH_REGEN_PER_SEC = BREATH_MAX / 4;
+        const DROWN_DAMAGE_INTERVAL_SEC = 1;
+        const AIR_POP_DURATION_SEC = 0.5;
+
         // Three.js specific materials created after textures are loaded
         let materials = {};
 
@@ -130,7 +140,8 @@ window.perlin = perlinInstance;
             maxHealth: DEFAULT_PLAYER.maxHealth,
             fallStartY: 0, 
             inAir: false,
-            isMoving: false
+            isMoving: false,
+            isSwimming: false
         };
 
       
@@ -158,6 +169,12 @@ window.perlin = perlinInstance;
         let miningState = { active: false, key: null, blockPos: null, targetType: 0, elapsedMs: 0, neededMs: 0, missMs: 0, dropOnBreak: true, particleMs: 0 };
         let isLeftMouseDown = false;
         const breakingStageTextures = new Array(10).fill(null);
+        const airState = {
+            value: BREATH_MAX,
+            drownTimerSec: 0,
+            popTimerSec: 0,
+            wasUnderLiquid: false,
+        };
         let breakingCrackMesh = null;
         let breakParticleTexture = null;
         let lavaParticleTexture = null;
@@ -220,7 +237,10 @@ window.perlin = perlinInstance;
         let iglooStructureDef = null;
         const gnomeEntities = [];
         const pigEntities = [];
+        const zombieEntities = [];
         let pigTexture = null;
+        let zombieTexture = null;
+        let zombieSpawnTimerMs = 0;
         let eatOverlayEl = null;
         let eatItemEl = null;
         let eatingAnimState = { active: false, timeMs: 0, durationMs: 0, itemId: 0, particleMs: 0 };
@@ -372,6 +392,7 @@ window.perlin = perlinInstance;
 
     
             await loadPigTexture();
+            await loadZombieTexture();
             generateWorld();
             spawnInitialPigs();
             setupPointerLockControls();
@@ -383,6 +404,7 @@ window.perlin = perlinInstance;
             
           
             renderHearts();
+            renderAirBubbles(false);
             updateHotbarUI();
             skinSystem = window.SingleplayerSkinSystem?.create({ showGameMessage }) || null;
             const closeBtn = document.getElementById('inventory-close-btn');
@@ -498,6 +520,18 @@ window.perlin = perlinInstance;
             return { phase: 'Night', localT: (t - sunsetEnd) / DAY_SEGMENTS.night };
         }
 
+        function setTimeByClock(hours, minutes) {
+            const hh = Number.parseInt(hours, 10);
+            const mm = Number.parseInt(minutes, 10);
+            if (!Number.isFinite(hh) || !Number.isFinite(mm)) return false;
+            if (hh < 0 || hh > 23 || mm < 0 || mm > 59) return false;
+            const minutesOfDay = hh * 60 + mm;
+            const dayProgress = minutesOfDay / 1440;
+            cycleTimeMs = dayProgress * DAY_CYCLE_DURATION;
+            updateSkyAndSun();
+            return true;
+        }
+
         function updateSkyAndSun() {
             const phaseInfo = getTimePhaseInfo();
             let sunFactor = 0;
@@ -541,7 +575,6 @@ window.perlin = perlinInstance;
             hemiLight.intensity = 0.18 + daylight * 0.55;
             scene.fog.near = 20 + daylight * 8;
             scene.fog.far = 105 + daylight * 38;
-            document.getElementById('time-of-day').textContent = phaseInfo.phase;
         }
 
 
@@ -694,6 +727,21 @@ window.perlin = perlinInstance;
             });
         }
 
+        async function loadZombieTexture() {
+            const path = window.SingleplayerConfig?.ASSET_FILEPATHS?.ZOMBIE_TEXTURE;
+            if (!path) return;
+            zombieTexture = await new Promise((resolve) => {
+                new THREE.TextureLoader().load(path, (t) => {
+                    t.magFilter = THREE.NearestFilter;
+                    t.minFilter = THREE.NearestFilter;
+                    t.flipY = false;
+                    t.wrapS = THREE.ClampToEdgeWrapping;
+                    t.wrapT = THREE.ClampToEdgeWrapping;
+                    resolve(t);
+                }, undefined, () => resolve(null));
+            });
+        }
+
         function createAtlasFaceTexture(baseTex, rect, atlasW = 64, atlasH = 32) {
             if (!baseTex || !rect) return null;
             const [x, y, w, h] = rect;
@@ -761,6 +809,74 @@ window.perlin = perlinInstance;
             return pig;
         }
 
+        function getZombiePartRects(partName) {
+            if (partName === 'head') return buildMobPartFaceRects(0, 0, 8, 8, 8);
+            if (partName === 'body') return buildMobPartFaceRects(16, 16, 8, 12, 4);
+            if (partName === 'rightArm') return buildMobPartFaceRects(40, 16, 4, 12, 4);
+            if (partName === 'leftArm') return buildMobPartFaceRects(40, 16, 4, 12, 4);
+            if (partName === 'rightLeg') return buildMobPartFaceRects(0, 16, 4, 12, 4);
+            if (partName === 'leftLeg') return buildMobPartFaceRects(0, 16, 4, 12, 4);
+            return null;
+        }
+
+        function createZombiePart(dim, rects) {
+            const mats = [];
+            for (let i = 0; i < 6; i++) {
+                const faceTex = createAtlasFaceTexture(zombieTexture, rects[i], 64, 64);
+                mats.push(new THREE.MeshStandardMaterial({ map: faceTex || null, color: faceTex ? 0xffffff : 0x72b86a, roughness: 0.88 }));
+            }
+            return new THREE.Mesh(new THREE.BoxGeometry(dim[0], dim[1], dim[2]), mats);
+        }
+
+        function createZombieMesh() {
+            const U = 1 / 16;
+            const root = new THREE.Group();
+
+            const body = createZombiePart([8 * U, 12 * U, 4 * U], getZombiePartRects('body'));
+            body.position.y = 18 * U;
+            root.add(body);
+
+            const head = createZombiePart([8 * U, 8 * U, 8 * U], getZombiePartRects('head'));
+            head.position.y = 28 * U;
+            root.add(head);
+
+            const rightArmPivot = new THREE.Group();
+            rightArmPivot.position.set(6 * U, 24 * U, 0);
+            const rightArm = createZombiePart([4 * U, 12 * U, 4 * U], getZombiePartRects('rightArm'));
+            rightArm.position.set(0, -6 * U, 0);
+            rightArmPivot.add(rightArm);
+
+            const leftArmPivot = new THREE.Group();
+            leftArmPivot.position.set(-6 * U, 24 * U, 0);
+            const leftArm = createZombiePart([4 * U, 12 * U, 4 * U], getZombiePartRects('leftArm'));
+            leftArm.position.set(0, -6 * U, 0);
+            leftArm.scale.x = -1;
+            leftArmPivot.add(leftArm);
+
+            const rightLegPivot = new THREE.Group();
+            rightLegPivot.position.set(2 * U, 12 * U, 0);
+            const rightLeg = createZombiePart([4 * U, 12 * U, 4 * U], getZombiePartRects('rightLeg'));
+            rightLeg.position.set(0, -6 * U, 0);
+            rightLegPivot.add(rightLeg);
+
+            const leftLegPivot = new THREE.Group();
+            leftLegPivot.position.set(-2 * U, 12 * U, 0);
+            const leftLeg = createZombiePart([4 * U, 12 * U, 4 * U], getZombiePartRects('leftLeg'));
+            leftLeg.position.set(0, -6 * U, 0);
+            leftLeg.scale.x = -1;
+            leftLegPivot.add(leftLeg);
+
+            root.add(leftArmPivot, rightArmPivot, leftLegPivot, rightLegPivot);
+
+            const hitbox = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.8, 0.8), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
+            hitbox.position.set(0, 0.9, 0);
+            hitbox.userData.zombieHitbox = true;
+            root.add(hitbox);
+            root.userData.zombieHitbox = hitbox;
+            root.userData.zombieParts = { head, leftArmPivot, rightArmPivot, leftLegPivot, rightLegPivot };
+            return root;
+        }
+
         function getSurfaceYForEntity(wx, wz, startY = null) {
             const x = Math.floor(wx);
             const z = Math.floor(wz);
@@ -788,7 +904,10 @@ window.perlin = perlinInstance;
             if (y < SEA_LEVEL || y > SEA_LEVEL + 24) return false;
             const under = getBlockType(Math.floor(wx), y - 1, Math.floor(wz));
             if (under !== 1 && under !== 2) return false;
+            return spawnPigAtExact(wx, y, wz);
+        }
 
+        function spawnPigAtExact(wx, y, wz) {
             const pigRoot = createPigMesh();
             pigRoot.position.set(Math.floor(wx) + 0.5, y, Math.floor(wz) + 0.5);
             scene.add(pigRoot);
@@ -811,6 +930,23 @@ window.perlin = perlinInstance;
                 const wz = (Math.random() * 2 - 1) * (WORLD_RADIUS * CHUNK_SIZE * 0.72);
                 if (spawnPigAt(wx, wz)) spawned++;
             }
+        }
+
+        function spawnMobById(mobId, amount = 1) {
+            const id = Number.parseInt(mobId, 10);
+            if (!Number.isFinite(id)) return 0;
+            const qty = Math.max(1, Math.min(64, Number.parseInt(amount, 10) || 1));
+            let spawned = 0;
+
+            for (let i = 0; i < qty; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const dist = 3 + Math.random() * 6;
+                const wx = yawObject.position.x + Math.cos(angle) * dist;
+                const wz = yawObject.position.z + Math.sin(angle) * dist;
+                const ok = id === 1 ? spawnPigAt(wx, wz) : (id === 2 ? spawnZombieAt(wx, wz) : false);
+                if (ok) spawned++;
+            }
+            return spawned;
         }
 
         function updatePigs(time, deltaMs) {
@@ -874,6 +1010,133 @@ window.perlin = perlinInstance;
             const drops = 1 + Math.floor(Math.random() * 3);
             addToInventory(89, drops);
             showGameMessage(`+${drops} Raw Porkchop`);
+        }
+
+        function getZombieHitFromCrosshair() {
+            if (!zombieEntities.length) return null;
+            raycaster.setFromCamera({ x: 0, y: 0 }, camera);
+            const hitboxes = zombieEntities.map(z => z.root.userData.zombieHitbox).filter(Boolean);
+            const hits = raycaster.intersectObjects(hitboxes, false);
+            if (!hits.length) return null;
+            const hitObj = hits[0].object;
+            return zombieEntities.find((z) => z.root.userData.zombieHitbox === hitObj) || null;
+        }
+
+        function hurtZombie(zombie, amount = 4) {
+            if (!zombie) return;
+            zombie.hp -= amount;
+            if (zombie.hp > 0) return;
+            const idx = zombieEntities.indexOf(zombie);
+            if (idx >= 0) zombieEntities.splice(idx, 1);
+            scene.remove(zombie.root);
+            const drops = 1 + Math.floor(Math.random() * 2);
+            addToInventory(92, drops);
+            showGameMessage(`+${drops} Rotten Flesh`);
+        }
+
+        function canZombieSeeSky(wx, wy, wz) {
+            for (let y = wy + 1; y < CHUNK_HEIGHT; y++) {
+                const b = getBlockType(wx, y, wz);
+                if (b !== 0 && !isLiquid(b)) return false;
+            }
+            return true;
+        }
+
+        function spawnZombieAt(wx, wz) {
+            const y = getSurfaceYForEntity(wx, wz);
+            if (y < SEA_LEVEL || y > SEA_LEVEL + 26) return false;
+            const under = getBlockType(Math.floor(wx), y - 1, Math.floor(wz));
+            if (under === 0 || isLiquid(under)) return false;
+
+            const root = createZombieMesh();
+            root.position.set(Math.floor(wx) + 0.5, y, Math.floor(wz) + 0.5);
+            scene.add(root);
+            zombieEntities.push({
+                root,
+                hp: 20,
+                attackCooldownMs: 0,
+                burnTickMs: 0,
+                targetY: y,
+                groundProbeMs: 0,
+            });
+            return true;
+        }
+
+        function trySpawnNightZombie(deltaMs) {
+            const phase = getTimePhaseInfo().phase;
+            if (phase !== 'Night') return;
+            zombieSpawnTimerMs -= deltaMs;
+            if (zombieSpawnTimerMs > 0) return;
+            zombieSpawnTimerMs = 2200 + Math.random() * 3200;
+            if (zombieEntities.length >= 8) return;
+
+            const angle = Math.random() * Math.PI * 2;
+            const dist = 14 + Math.random() * 20;
+            const wx = yawObject.position.x + Math.cos(angle) * dist;
+            const wz = yawObject.position.z + Math.sin(angle) * dist;
+            spawnZombieAt(wx, wz);
+        }
+
+        function updateZombies(time, deltaMs) {
+            if (!zombieEntities.length) return;
+            const dt = Math.max(0.001, Math.min(0.05, deltaMs / 1000));
+            const phase = getTimePhaseInfo().phase;
+            const burningTime = phase === 'Day' || phase === 'Sunrise';
+            const playerPos = yawObject.position;
+
+            for (let i = zombieEntities.length - 1; i >= 0; i--) {
+                const z = zombieEntities[i];
+                const toPlayer = new THREE.Vector3(playerPos.x - z.root.position.x, 0, playerPos.z - z.root.position.z);
+                const dist = toPlayer.length();
+                if (dist > 0.001) toPlayer.normalize();
+
+                const speed = 1.18;
+                const nx = z.root.position.x + toPlayer.x * speed * dt;
+                const nz = z.root.position.z + toPlayer.z * speed * dt;
+
+                z.groundProbeMs -= deltaMs;
+                if (z.groundProbeMs <= 0) {
+                    z.groundProbeMs = 180;
+                    z.targetY = getSurfaceYForEntity(nx, nz, z.targetY);
+                }
+
+                if (z.targetY > 0) {
+                    z.root.position.x = nx;
+                    z.root.position.z = nz;
+                    z.root.position.y += (z.targetY - z.root.position.y) * Math.min(1, dt * 12);
+                }
+
+                if (dist > 0.1) z.root.rotation.y = Math.atan2(toPlayer.x, toPlayer.z);
+
+                const parts = z.root.userData.zombieParts;
+                if (parts) {
+                    const walk = Math.sin(time * 0.01 + i) * 0.45;
+                    parts.leftLegPivot.rotation.x = walk;
+                    parts.rightLegPivot.rotation.x = -walk;
+                    parts.leftArmPivot.rotation.x = -walk;
+                    parts.rightArmPivot.rotation.x = walk;
+                }
+
+                z.attackCooldownMs = Math.max(0, z.attackCooldownMs - deltaMs);
+                if (dist < 1.35 && z.attackCooldownMs <= 0) {
+                    z.attackCooldownMs = 900;
+                    takeDamage(3);
+                }
+
+                const zx = Math.floor(z.root.position.x);
+                const zy = Math.floor(z.root.position.y + 1.6);
+                const zz = Math.floor(z.root.position.z);
+                const inLiquid = isLiquid(getBlockType(zx, zy, zz));
+                if (burningTime && !inLiquid && canZombieSeeSky(zx, zy, zz)) {
+                    z.burnTickMs += deltaMs;
+                    if (z.burnTickMs >= 900) {
+                        z.burnTickMs = 0;
+                        hurtZombie(z, 2);
+                    }
+                } else {
+                    z.burnTickMs = 0;
+                }
+            }
         }
 
         function setupEatingOverlay() {
@@ -941,7 +1204,7 @@ window.perlin = perlinInstance;
         function tryEatSelectedItem() {
             const held = inventory[selectedHotbarIndex];
             if (!held) return false;
-            const foodCfg = held.id === 89 ? { hunger: 3 } : (held.id === 90 ? { hunger: 8 } : null);
+            const foodCfg = held.id === 89 ? { hunger: 3 } : (held.id === 90 ? { hunger: 8 } : (held.id === 92 ? { hunger: 4 } : null));
             if (!foodCfg) return false;
             if (window.HungerSystem && window.HungerSystem.canConsume && !window.HungerSystem.canConsume()) {
                 showGameMessage('You are full.');
@@ -960,6 +1223,9 @@ window.perlin = perlinInstance;
                 showGameMessage,
                 addToInventory,
                 getBlockById: (id) => blockMaterials[id] || null,
+                getMobById: (id) => window.SingleplayerMobConfig?.byId?.[id] || null,
+                spawnMobById,
+                setTimeByClock,
                 mobileAssetBase: MOBILE_ASSET_BASE,
                 onOpen: () => {
                     player.canMove = false;
@@ -980,17 +1246,36 @@ window.perlin = perlinInstance;
      
         function renderHearts() {
             const container = document.getElementById('health-container');
+            if (!container) return;
             container.innerHTML = '';
-            const hearts = Math.ceil(player.health / 2);
-            // --- USING DIRECT PATH FOR UI HEART ---
-            const heartPath = ASSET_FILEPATHS.HEART; 
-            
-            for(let i=0; i<hearts; i++) {
-                const heartImg = document.createElement('img');
-                heartImg.src = heartPath;
-                heartImg.className = 'heart-icon';
-                heartImg.alt = 'Full Heart';
-                container.appendChild(heartImg);
+
+            const fullHeartPath = ASSET_FILEPATHS.HEART_FULL || ASSET_FILEPATHS.HEART;
+            const halfHeartPath = ASSET_FILEPATHS.HEART_HALF || fullHeartPath;
+            const emptyHeartPath = ASSET_FILEPATHS.HEART_EMPTY || fullHeartPath;
+
+            const maxHearts = Math.max(1, Math.floor((player.maxHealth || 20) / 2));
+            const healthUnits = Math.max(0, Math.min(Math.round(Number(player.health) || 0), maxHearts * 2));
+
+            for (let i = 0; i < maxHearts; i++) {
+                const filledUnits = Math.max(0, Math.min(2, healthUnits - i * 2));
+                const heartSlot = document.createElement('div');
+                heartSlot.className = 'status-slot';
+
+                const baseHeartImg = document.createElement('img');
+                baseHeartImg.src = emptyHeartPath;
+                baseHeartImg.alt = 'Heart Container';
+                baseHeartImg.className = 'heart-icon';
+                heartSlot.appendChild(baseHeartImg);
+
+                if (filledUnits > 0) {
+                    const overlayHeartImg = document.createElement('img');
+                    overlayHeartImg.src = filledUnits === 2 ? fullHeartPath : halfHeartPath;
+                    overlayHeartImg.alt = filledUnits === 2 ? 'Full Heart' : 'Half Heart';
+                    overlayHeartImg.className = 'heart-icon status-slot-overlay';
+                    heartSlot.appendChild(overlayHeartImg);
+                }
+
+                container.appendChild(heartSlot);
             }
         }
 
@@ -1954,6 +2239,11 @@ window.perlin = perlinInstance;
             if (!intersects.length) return;
 
             if (event.button === 0) {
+                const zombieHit = getZombieHitFromCrosshair();
+                if (zombieHit) {
+                    hurtZombie(zombieHit, 4);
+                    return;
+                }
                 const pigHit = getPigHitFromCrosshair();
                 if (pigHit) {
                     hurtPig(pigHit, 4);
@@ -2127,6 +2417,103 @@ window.perlin = perlinInstance;
             return TerrainModules['river'].getMask({ perlin, wx, wz });
         }
 
+        function getPlayerLiquidState() {
+            const px = Math.floor(yawObject.position.x);
+            const pz = Math.floor(yawObject.position.z);
+            const feetY = Math.floor(yawObject.position.y + 0.1);
+            const bodyY = Math.floor(yawObject.position.y + PLAYER_HEIGHT * 0.5);
+            const eyeY = Math.floor(yawObject.position.y + 1.62);
+
+            const feet = getBlockType(px, feetY, pz);
+            const body = getBlockType(px, bodyY, pz);
+            const eye = getBlockType(px, eyeY, pz);
+
+            const feetLiquid = isLiquid(feet);
+            const bodyLiquid = isLiquid(body);
+            const eyeLiquid = isLiquid(eye);
+
+            return {
+                isInLiquid: feetLiquid || bodyLiquid,
+                isUnderLiquid: eyeLiquid,
+                feetBlock: feet,
+                bodyBlock: body,
+                eyeBlock: eye,
+            };
+        }
+
+        function renderAirBubbles(isUnderLiquid) {
+            const container = document.getElementById('air-container');
+            if (!container) return;
+
+            if (!isUnderLiquid && airState.value >= BREATH_MAX - 0.001) {
+                container.style.display = 'none';
+                container.innerHTML = '';
+                return;
+            }
+
+            container.style.display = 'flex';
+            container.innerHTML = '';
+
+            const fullAirPath = ASSET_FILEPATHS.AIR_FULL || '';
+            const popAirPath = ASSET_FILEPATHS.AIR_POP || fullAirPath;
+            const goneAirPath = ASSET_FILEPATHS.AIR_GONE || fullAirPath;
+            const maxBubbles = Math.ceil(BREATH_MAX / 2);
+            const units = Math.max(0, Math.min(BREATH_MAX, Math.round(airState.value)));
+
+            for (let i = 0; i < maxBubbles; i++) {
+                const bubbleUnits = Math.max(0, Math.min(2, units - i * 2));
+                const airImg = document.createElement('img');
+                airImg.className = 'air-icon';
+
+                if (bubbleUnits === 2) {
+                    airImg.src = fullAirPath;
+                    airImg.alt = 'Air Bubble';
+                } else if (bubbleUnits === 1) {
+                    if (airState.popTimerSec > 0) {
+                        airImg.src = popAirPath;
+                        airImg.alt = 'Air Pop';
+                    } else {
+                        airImg.src = goneAirPath;
+                        airImg.alt = 'Air Empty';
+                    }
+                } else {
+                    airImg.src = goneAirPath;
+                    airImg.alt = 'Air Empty';
+                }
+                container.appendChild(airImg);
+            }
+        }
+
+        function updateBreathing(dtSec, isUnderLiquid) {
+            if (isUnderLiquid) {
+                const before = airState.value;
+                airState.value = Math.max(0, airState.value - BREATH_DRAIN_PER_SEC * dtSec);
+
+                if (before > 1 && airState.value <= 1) {
+                    airState.popTimerSec = AIR_POP_DURATION_SEC;
+                }
+
+                if (airState.value <= 0.001) {
+                    airState.drownTimerSec += dtSec;
+                    if (airState.drownTimerSec >= DROWN_DAMAGE_INTERVAL_SEC) {
+                        airState.drownTimerSec = 0;
+                        takeDamage(1);
+                    }
+                } else {
+                    airState.drownTimerSec = 0;
+                }
+            } else {
+                airState.value = Math.min(BREATH_MAX, airState.value + BREATH_REGEN_PER_SEC * dtSec);
+                airState.drownTimerSec = 0;
+            }
+
+            if (airState.popTimerSec > 0) {
+                airState.popTimerSec = Math.max(0, airState.popTimerSec - dtSec);
+            }
+
+            airState.wasUnderLiquid = isUnderLiquid;
+            renderAirBubbles(isUnderLiquid);
+        }
 
         function updatePlayerMovement() {
             if (!player.canMove || isInventoryOpen) return;
@@ -2136,11 +2523,23 @@ window.perlin = perlinInstance;
             const prevZ = yawObject.position.z;
 
             // Apply world movement
+            const liquidState = getPlayerLiquidState();
+            const isSwimming = liquidState.isInLiquid;
+            player.isSwimming = isSwimming;
+
             player.direction.set(0, 0, 0);
-            const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(yawObject.quaternion);
-            const right = new THREE.Vector3(1, 0, 0).applyQuaternion(yawObject.quaternion);
-            forward.y = 0; forward.normalize();
-            right.y = 0; right.normalize();
+
+            const walkForward = new THREE.Vector3(0, 0, -1).applyQuaternion(yawObject.quaternion);
+            const walkRight = new THREE.Vector3(1, 0, 0).applyQuaternion(yawObject.quaternion);
+            walkForward.y = 0; walkForward.normalize();
+            walkRight.y = 0; walkRight.normalize();
+
+            const swimForward = camera.getWorldDirection(new THREE.Vector3()).normalize();
+            const swimRight = new THREE.Vector3().crossVectors(swimForward, new THREE.Vector3(0, 1, 0));
+            if (swimRight.lengthSq() > 0.0001) swimRight.normalize();
+
+            const forward = isSwimming ? swimForward : walkForward;
+            const right = isSwimming ? swimRight : walkRight;
 
             if (player.keys['w']) player.direction.add(forward);
             if (player.keys['s']) player.direction.sub(forward);
@@ -2154,23 +2553,42 @@ window.perlin = perlinInstance;
 
             const isMoving = player.direction.lengthSq() > 0;
             player.isMoving = isMoving;
+
             const isSprinting = isMoving && (player.keys['e'] || mobileControls.sprint);
             if (window.HungerSystem) {
                 window.HungerSystem.update(performance.now(), { isMoving, isSprinting, isJumping: player.isJumping });
             }
             const hungerMultiplier = window.HungerSystem ? window.HungerSystem.getSpeedMultiplier() : 1;
-            const sprintMultiplier = isSprinting ? player.sprintMultiplier : 1;
-            player.moveSpeed = player.baseMoveSpeed * sprintMultiplier * hungerMultiplier;
 
-            player.velocity.x = player.direction.x * player.moveSpeed;
-            player.velocity.z = player.direction.z * player.moveSpeed;
-            player.velocity.y += GRAVITY;
+            if (isSwimming) {
+                const swimSprintMultiplier = isSprinting ? SWIM_SPRINT_MULTIPLIER : 1;
+                player.moveSpeed = player.baseMoveSpeed * SWIM_SPEED_FACTOR * swimSprintMultiplier * hungerMultiplier;
+                player.velocity.x = player.direction.x * player.moveSpeed;
+                player.velocity.z = player.direction.z * player.moveSpeed;
 
-          
-            if ((player.keys[' '] || mobileControls.jump) && !player.isJumping) {
-                player.velocity.y = JUMP_POWER;
-                player.isJumping = true;
+                const swimUp = !!(player.keys[' '] || mobileControls.jump);
+                const swimDown = !!player.keys['shift'];
+                if (swimUp && !swimDown) {
+                    player.velocity.y = SWIM_VERTICAL_SPEED;
+                } else if (swimDown && !swimUp) {
+                    player.velocity.y = -SWIM_VERTICAL_SPEED;
+                } else {
+                    player.velocity.y = SWIM_SINK_SPEED;
+                }
+                player.isJumping = false;
+            } else {
+                const sprintMultiplier = isSprinting ? player.sprintMultiplier : 1;
+                player.moveSpeed = player.baseMoveSpeed * sprintMultiplier * hungerMultiplier;
+                player.velocity.x = player.direction.x * player.moveSpeed;
+                player.velocity.z = player.direction.z * player.moveSpeed;
+                player.velocity.y += GRAVITY;
+
+                if ((player.keys[' '] || mobileControls.jump) && !player.isJumping) {
+                    player.velocity.y = JUMP_POWER;
+                    player.isJumping = true;
+                }
             }
+
 
            
             yawObject.position.x += player.velocity.x;
@@ -2224,7 +2642,7 @@ window.perlin = perlinInstance;
                    
                     if (player.inAir) {
                         const fallDist = player.fallStartY - yawObject.position.y;
-                        if (fallDist > 4) { // 4 blocks safe fall
+                        if (fallDist > 4 && !player.isSwimming) { // 4 blocks safe fall
                             const dmg = Math.floor(fallDist - 3);
                             takeDamage(dmg);
                         }
@@ -2262,6 +2680,10 @@ window.perlin = perlinInstance;
                     setInitialPlayerPosition();
                     inventory = new Array(TOTAL_INV_SIZE).fill(null);
                     if (window.HungerSystem?.setValue) window.HungerSystem.setValue(20);
+                    airState.value = BREATH_MAX;
+                    airState.drownTimerSec = 0;
+                    airState.popTimerSec = 0;
+                    renderAirBubbles(false);
                     updateHotbarUI();
                 }, 1000);
             }
@@ -3162,13 +3584,29 @@ window.perlin = perlinInstance;
 
         function updatePlayerAvatarVisuals(time) {
             if (!playerAvatarParts) return;
-            const swing = player.isMoving ? Math.sin(time * 0.015) * 0.7 : 0;
-            playerAvatarParts.leftLegPivot.rotation.x = swing;
-            playerAvatarParts.rightLegPivot.rotation.x = -swing;
-            playerAvatarParts.leftArmPivot.rotation.x = -swing;
-            playerAvatarParts.rightArmPivot.rotation.x = swing;
+
+            if (playerAvatar) {
+                playerAvatar.rotation.x = player.isSwimming ? -Math.PI / 2 : 0;
+                playerAvatar.rotation.z = 0;
+            }
+
+            if (player.isSwimming) {
+                const stroke = time * 0.02;
+                const legKick = Math.sin(time * 0.028) * 0.25;
+                playerAvatarParts.leftLegPivot.rotation.x = legKick;
+                playerAvatarParts.rightLegPivot.rotation.x = -legKick;
+                playerAvatarParts.leftArmPivot.rotation.x = stroke;
+                playerAvatarParts.rightArmPivot.rotation.x = stroke + Math.PI;
+            } else {
+                const swing = player.isMoving ? Math.sin(time * 0.015) * 0.7 : 0;
+                playerAvatarParts.leftLegPivot.rotation.x = swing;
+                playerAvatarParts.rightLegPivot.rotation.x = -swing;
+                playerAvatarParts.leftArmPivot.rotation.x = -swing;
+                playerAvatarParts.rightArmPivot.rotation.x = swing;
+            }
 
             if (inventorySkinRigEl) {
+                const swing = player.isMoving ? Math.sin(time * 0.015) * 0.7 : 0;
                 const sdeg = swing * 40;
                 const lLeg = document.getElementById('inv-skin-leg-left');
                 const rLeg = document.getElementById('inv-skin-leg-right');
@@ -3607,8 +4045,10 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
                      }
                  }
              }
+             const spawnedPigs = [];
              placeIglooInChunk(data, cx, cz, spawnedGnomes);
-             return { data, spawnedGnomes };
+             placeDesertWellInChunk(data, cx, cz, spawnedPigs);
+             return { data, spawnedGnomes, spawnedPigs };
         }
 
         function placeIglooInChunk(data, cx, cz, spawnedGnomes) {
@@ -3690,6 +4130,83 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
             spawnedGnomes.push({ wx: worldX, wy: gnomeY, wz: worldZ });
         }
 
+        function placeDesertWellInChunk(data, cx, cz, spawnedPigs) {
+            const centerX = Math.floor(CHUNK_SIZE / 2);
+            const centerZ = Math.floor(CHUNK_SIZE / 2);
+            const worldX = cx * CHUNK_SIZE + centerX;
+            const worldZ = cz * CHUNK_SIZE + centerZ;
+
+            if (getBiome(worldX, worldZ) !== 'Desert') return;
+            if (hashRand2D(cx, cz, 9127) > 0.08) return;
+
+            const idx = (lx, ly, lz) => lx + ly * CHUNK_SIZE + lz * CHUNK_SIZE * CHUNK_HEIGHT;
+            const getColumnTop = (lx, lz) => {
+                for (let y = CHUNK_HEIGHT - 2; y >= 1; y--) {
+                    const t = data[idx(lx, y, lz)];
+                    if (t !== 0 && t !== 4) return y;
+                }
+                return -1;
+            };
+
+            const radius = 2;
+            if (centerX - radius < 2 || centerX + radius >= CHUNK_SIZE - 2 || centerZ - radius < 2 || centerZ + radius >= CHUNK_SIZE - 2) return;
+
+            const topY = getColumnTop(centerX, centerZ);
+            if (topY < SEA_LEVEL - 1) return;
+            if (data[idx(centerX, topY, centerZ)] !== 7) return;
+
+            for (let dx = -radius; dx <= radius; dx++) {
+                for (let dz = -radius; dz <= radius; dz++) {
+                    const lx = centerX + dx;
+                    const lz = centerZ + dz;
+                    const y = getColumnTop(lx, lz);
+                    if (y < 1 || Math.abs(y - topY) > 1) return;
+                    const ground = data[idx(lx, y, lz)];
+                    if (ground !== 7 && ground !== 13) return;
+                }
+            }
+
+            const sandstone = 13;
+            const water = 4;
+            const copperBlock = 34;
+            const wellY = topY + 1;
+
+            // 5x5 sandstone base
+            for (let dx = -2; dx <= 2; dx++) {
+                for (let dz = -2; dz <= 2; dz++) {
+                    data[idx(centerX + dx, wellY, centerZ + dz)] = sandstone;
+                }
+            }
+
+            // water basin cross
+            data[idx(centerX, wellY, centerZ)] = water;
+            data[idx(centerX + 1, wellY, centerZ)] = water;
+            data[idx(centerX - 1, wellY, centerZ)] = water;
+            data[idx(centerX, wellY, centerZ + 1)] = water;
+            data[idx(centerX, wellY, centerZ - 1)] = water;
+
+            // copper block under center
+            if (wellY - 1 >= 1) data[idx(centerX, wellY - 1, centerZ)] = copperBlock;
+
+            // pillars
+            for (let py = wellY + 1; py <= wellY + 3; py++) {
+                data[idx(centerX - 1, py, centerZ - 1)] = sandstone;
+                data[idx(centerX - 1, py, centerZ + 1)] = sandstone;
+                data[idx(centerX + 1, py, centerZ - 1)] = sandstone;
+                data[idx(centerX + 1, py, centerZ + 1)] = sandstone;
+            }
+
+            // roof
+            const roofY = wellY + 4;
+            for (let dx = -1; dx <= 1; dx++) {
+                for (let dz = -1; dz <= 1; dz++) {
+                    data[idx(centerX + dx, roofY, centerZ + dz)] = sandstone;
+                }
+            }
+
+            spawnedPigs.push({ wx: worldX + 0.5, wy: wellY + 1, wz: worldZ + 0.5 });
+        }
+
         function createChunk(cx, cz) {
             const generated = generateChunkData(cx, cz);
             const data = generated.data;
@@ -3700,6 +4217,9 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
             worldGroup.add(group);
             if (generated.spawnedGnomes && generated.spawnedGnomes.length) {
                 for (const g of generated.spawnedGnomes) spawnGnomeAt(g.wx, g.wy, g.wz);
+            }
+            if (generated.spawnedPigs && generated.spawnedPigs.length) {
+                for (const pig of generated.spawnedPigs) spawnPigAtExact(pig.wx, pig.wy, pig.wz);
             }
             return group;
         }
@@ -4036,7 +4556,6 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
                     count++;
                 }
             }
-            document.getElementById('chunks-count').textContent = count;
         }
 
         function updateMining(deltaMs) {
@@ -4099,6 +4618,9 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
             cycleTimeMs = (cycleTimeMs + delta) % DAY_CYCLE_DURATION;
             updateSkyAndSun();
 
+            const liquidState = getPlayerLiquidState();
+            updateBreathing(delta / 1000, liquidState.isUnderLiquid);
+
             if(!isInventoryOpen) {
                 updatePlayerMovement();
                 updateMining(delta);
@@ -4108,6 +4630,8 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
                 updateChunkFrustumCulling();
                 updateGnomes(time);
                 updatePigs(time, delta);
+                trySpawnNightZombie(delta);
+                updateZombies(time, delta);
                 updateEatingAnimation(delta, time);
                 updatePlayerAvatarVisuals(time);
                 updateFirstPersonHand(time);
@@ -4119,6 +4643,7 @@ if ((t === 3 || t === 13) && y > 2 && y < CHUNK_HEIGHT * 0.2) {
             } else {
                 updateFirstPersonHand(time);
                 updatePigs(time, delta);
+                updateZombies(time, delta);
                 updateEatingAnimation(delta, time);
                 maybeSpawnLavaParticles(delta);
                 updateWorldParticles(delta);

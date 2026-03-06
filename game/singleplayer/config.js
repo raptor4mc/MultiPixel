@@ -50,8 +50,17 @@
     STONE: getAssetPath('textures/stone.png'),
     LEAVES: getAssetPath('textures/azalea_leaves.png'),
     SAND: getAssetPath('textures/sand.png'),
-    HEART: getAssetPath('ui/heart_full.png'),
+    HEART: getAssetPath('ui/full.png'),
+    HEART_FULL: getAssetPath('ui/full.png'),
+    HEART_HALF: getAssetPath('ui/half.png'),
+    HEART_EMPTY: getAssetPath('ui/container.png'),
     FOOD: getAssetPath('ui/food_full.png'),
+    FOOD_FULL: getAssetPath('ui/food_full.png'),
+    FOOD_HALF: getAssetPath('ui/food_half.png'),
+    FOOD_EMPTY: getAssetPath('ui/food_empty.png'),
+    AIR_FULL: getAssetPath('ui/air_full.png'),
+    AIR_POP: getAssetPath('ui/air_pop.png'),
+    AIR_GONE: getAssetPath('ui/air_gone.png'),
     OAK_PLANK: getAssetPath('textures/oak_planks.png'),
     
     /*Crafting table*/
@@ -150,6 +159,8 @@
     PIG_TEXTURE: getAssetPath('textures/mobs/pig.png'),
     PORKCHOP_RAW: getAssetPath('textures/item/food/pork/porkchop.png'),
     PORKCHOP_COOKED: getAssetPath('textures/item/food/pork/cooked_porkchop.png'),
+    ZOMBIE_TEXTURE: getAssetPath('textures/mobs/hostile/zombie.png'),
+    ROTTEN_FLESH: getAssetPath('textures/item/food/rotten_flesh.png'),
   };
 
   const blockMaterials = {
@@ -378,6 +389,7 @@
     88: { name: 'Diamond Shovel', id: 88, textured: true, textureKey: 'DIAMOND_SHOVEL', toolType: 'shovel', tier: 6 },
     89: { name: 'Raw Porkchop', id: 89, textured: true, textureKey: 'PORKCHOP_RAW' },
     90: { name: 'Cooked Porkchop', id: 90, textured: true, textureKey: 'PORKCHOP_COOKED' },
+    92: { name: 'Rotten Flesh', id: 92, textured: true, textureKey: 'ROTTEN_FLESH' },
   }; 
 
   window.SingleplayerConfig = {

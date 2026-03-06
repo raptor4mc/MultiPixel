@@ -19,19 +19,37 @@
     if (!container) return;
     container.innerHTML = '';
 
-    const iconPath = window.SingleplayerConfig?.ASSET_FILEPATHS?.FOOD || '';
-    const foods = Math.ceil(state.value / 2);
+    const fullFoodPath = window.SingleplayerConfig?.ASSET_FILEPATHS?.FOOD_FULL
+      || window.SingleplayerConfig?.ASSET_FILEPATHS?.FOOD
+      || '';
+    const halfFoodPath = window.SingleplayerConfig?.ASSET_FILEPATHS?.FOOD_HALF || fullFoodPath;
+    const emptyFoodPath = window.SingleplayerConfig?.ASSET_FILEPATHS?.FOOD_EMPTY || fullFoodPath;
 
-    for (let i = 0; i < foods; i++) {
-      const foodImg = document.createElement('img');
-      foodImg.src = iconPath;
-      foodImg.className = 'food-icon';
-      foodImg.alt = 'Food';
-      container.appendChild(foodImg);
+    const maxFoods = Math.ceil(state.max / 2);
+    const clampedValue = clamp(state.value, 0, state.max);
+
+    for (let i = 0; i < maxFoods; i++) {
+      const foodValue = clampedValue - i * 2;
+      const foodSlot = document.createElement('div');
+      foodSlot.className = 'status-slot';
+
+      const baseFoodImg = document.createElement('img');
+      baseFoodImg.src = emptyFoodPath;
+      baseFoodImg.alt = 'Food Container';
+      baseFoodImg.className = 'food-icon';
+      foodSlot.appendChild(baseFoodImg);
+
+      if (foodValue >= 1) {
+        const overlayFoodImg = document.createElement('img');
+        overlayFoodImg.src = foodValue >= 2 ? fullFoodPath : halfFoodPath;
+        overlayFoodImg.alt = foodValue >= 2 ? 'Full Food' : 'Half Food';
+        overlayFoodImg.className = 'food-icon status-slot-overlay';
+        foodSlot.appendChild(overlayFoodImg);
+      }
+
+      container.appendChild(foodSlot);
     }
 
-    const debug = document.getElementById('hunger-value');
-    if (debug) debug.textContent = `Hunger: ${Math.floor(state.value)}/${state.max}`;
   }
 
   function init({ messageCallback, onRegenerateHealth, onStarveDamageTick } = {}) {
