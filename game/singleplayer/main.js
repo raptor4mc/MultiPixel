@@ -1226,6 +1226,7 @@ window.perlin = perlinInstance;
                 getMobById: (id) => window.SingleplayerMobConfig?.byId?.[id] || null,
                 spawnMobById,
                 setTimeByClock,
+                openCommandHelp: () => window.SingleplayerChat?.openCommandHelp?.(),
                 mobileAssetBase: MOBILE_ASSET_BASE,
                 onOpen: () => {
                     player.canMove = false;

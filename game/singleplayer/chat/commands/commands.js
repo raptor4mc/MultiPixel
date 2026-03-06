@@ -17,6 +17,10 @@
       return window.SingleplayerChatCommandTime.execute(parts, ctx);
     }
 
+    if (command === '/help' && window.SingleplayerChatCommandHelp?.execute) {
+      return window.SingleplayerChatCommandHelp.execute(parts, ctx);
+    }
+
     return { handled: true, ok: false, message: `Unknown command: ${command}` };
   }
 
